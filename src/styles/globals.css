@@ -1,4 +1,5 @@
 @import "tailwindcss";
+@import "tw-animate-css";
 
 /* ============================================================================
    NEXORA DESIGN SYSTEM — locked tokens (single source of truth)
@@ -14,6 +15,11 @@
   --primary: #e08a20; /* CTAs, active states, links, key accents */
   --accent: #4a4844; /* hover / pressed, deep emphasis */
   --border: #d4d4d3; /* dividers, input borders, card outlines */
+
+  /* Derived subtle surfaces — tints of foreground over background (palette only,
+     no new hue). Used for ghost/secondary hovers, hover rows, dropdown items, skeletons. */
+  --surface-hover: color-mix(in oklab, var(--foreground) 6%, var(--background));
+  --surface-active: color-mix(in oklab, var(--foreground) 10%, var(--background));
 }
 
 @theme {
@@ -37,6 +43,8 @@
   --color-border: var(--border);
   --color-input: var(--border);
   --color-ring: var(--primary);
+  --color-surface-hover: var(--surface-hover);
+  --color-surface-active: var(--surface-active);
 
   /* shadcn/ui semantic tokens — all mapped to the palette (no new hues) */
   --color-card: var(--background);

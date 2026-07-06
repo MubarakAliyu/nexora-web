@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 import Image from "next/image";
 import { Heading, Text } from "@/components/ui/typography";
 import { Reveal, RevealGroup, RevealItem, CountUp, Parallax } from "@/components/motion";
+import { ComponentsShowcase } from "./components-showcase";
 
 export const metadata: Metadata = {
   title: "Style Guide",
@@ -131,6 +132,13 @@ export default function StyleGuidePage() {
           </div>
         </Parallax>
       </section>
+
+      {/* Component library (Batch 2) ------------------------------------- */}
+      <div className="mt-24 border-t border-border pt-16">
+        <Text variant="caption" className="mb-3">Batch 2</Text>
+        <Heading as="h1" size="h1" className="mb-10">Component library</Heading>
+        <ComponentsShowcase />
+      </div>
     </main>
   );
 }

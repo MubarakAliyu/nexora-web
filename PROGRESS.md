@@ -98,6 +98,54 @@ organised. No visual/design work (that begins Batch 1).
 
 ---
 
+## Batch 2 — Core Component Library ✅
+
+**Completed.** Every reusable UI component built once on the tokens (shadcn/Radix primitives +
+**Flowbite icons only**), across states, and showcased in `/__styleguide`.
+
+### Dependencies added
+Radix primitives (slot, dialog, dropdown-menu, select, checkbox, radio-group, switch, tabs,
+tooltip, popover, avatar, label, separator, scroll-area), `recharts` (v3), `react-day-picker`
+(v10) + `date-fns`, `sonner`, `tw-animate-css` (enter/exit utilities for dialog/sheet).
+
+### Components (`src/components/ui/`)
+- **Forms:** Button (primary/secondary/outline/ghost/link · sm/md/lg/icon · loading · disabled ·
+  asChild), Input, Textarea, Label, Select, Checkbox, RadioGroup, Switch, DatePicker (+ Calendar),
+  FileUpload (drag-drop, keyboard, file list), Spinner.
+- **Data display:** Card (default/interactive/media + Header/Title/Description/Content/Footer),
+  StatCard (KPI + trend, accepts `<CountUp>`), Table primitives, **DataTable** (client-side sort,
+  pagination, row selection, loading/empty/error states), Badge, Avatar (+ image/initials/Group),
+  Timeline, EmptyState, Skeleton (text/card/table/chart), Chart wrappers (Line/Bar/Area/Donut via
+  recharts, all colours = palette tokens).
+- **Navigation & feedback:** Sidebar (260↔72 collapse, active/nested), Topbar (search, notif badge,
+  profile slot), Breadcrumb, Tabs (underline + pill), Pagination (windowed), Dialog, Sheet (4 sides),
+  DropdownMenu, Tooltip, Popover, Alert (info/primary/accent), Toaster (sonner), Separator.
+
+Two palette-derived surface tokens added to `globals.css` (`--surface-hover`, `--surface-active`
+= `color-mix` of foreground over background — no new hue) for ghost/secondary hovers, table row
+hover, dropdown/select item hover, skeletons.
+
+### Icons — standing rule honoured
+Built directly on Radix (not `shadcn add`) so **no `lucide-react` ever entered the codebase**
+(`grep lucide src/` → 0). Flowbite export names drop the `Svg` prefix (`Building`, `Close`,
+`AngleDown`…, imported from `flowbite-react-icons/outline`).
+
+### Verification (browser, real DOM)
+- Build + lint clean, **no warnings**; all 6 routes prerender; **zero console errors** on `/__styleguide`.
+- Rendered: 56 buttons, 7 recharts surfaces (line/bar/area/donut), 1 DataTable.
+- On-token computed styles: primary button / badge / checked checkbox / checked switch =
+  `rgb(224,138,32)` (#E08A20); outline border = `rgb(212,212,211)` (#D4D4D3); table header =
+  `rgb(86,86,85)` (#565655); headings = `Cinzel`.
+- No default-palette leak (earlier `blue-/slate-` "hit" was the substring inside `translate-*`).
+
+### Assumptions logged
+- `--color-destructive` still aliases `--accent`; a muted danger colour is derived when dashboards
+  need it (Batch 9). Alert variants stay palette-only (info/primary/accent) — no red/green.
+- `aria-invalid` inputs use a `--primary` border for the error emphasis (palette-only).
+- shadcn `iconLibrary:"lucide"` remains in `components.json` but is unused — we never run `shadcn add`.
+
+---
+
 ## Asset Inventory (verified visually — not by filename)
 
 Originals in the `Nexora` root are **read-only**; copies live under `nexora-web/public/`.
