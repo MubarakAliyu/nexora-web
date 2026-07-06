@@ -54,17 +54,30 @@ export const Button = React.forwardRef<HTMLButtonElement, ButtonProps>(
     },
     ref,
   ) => {
-    const Comp = asChild ? Slot : "button";
+    // When asChild, Slot requires exactly ONE child — pass `children` through
+    // untouched (no spinner sibling, which would make it a two-element array).
+    if (asChild) {
+      return (
+        <Slot
+          ref={ref}
+          className={cn(buttonVariants({ variant, size }), className)}
+          {...props}
+        >
+          {children}
+        </Slot>
+      );
+    }
+
     return (
-      <Comp
+      <button
         ref={ref}
         className={cn(buttonVariants({ variant, size }), className)}
         disabled={disabled || loading}
         {...props}
       >
-        {!asChild && loading && <Spinner size={16} />}
+        {loading && <Spinner size={16} />}
         {children}
-      </Comp>
+      </button>
     );
   },
 );

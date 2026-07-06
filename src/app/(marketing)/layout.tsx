@@ -1,9 +1,10 @@
 import type { ReactNode } from "react";
+import { MarketingFrame } from "@/components/marketing/marketing-frame";
 
 /**
- * (marketing) route group — public, image-forward, motion-rich pages.
- * Header / footer / WhatsApp chrome are wired in Batch 3. Placeholder for now.
+ * (marketing) route group — composes the shared chrome (header, footer,
+ * floating WhatsApp) around every public page via <MarketingFrame>.
  */
 export default function MarketingLayout({ children }: { children: ReactNode }) {
-  return <>{children}</>;
+  return <MarketingFrame>{children}</MarketingFrame>;
 }

@@ -146,6 +146,72 @@ Built directly on Radix (not `shadcn add`) so **no `lucide-react` ever entered t
 
 ---
 
+## Batch 3 — Marketing Layout Shell ✅
+
+**Completed.** Global chrome shared by every marketing page — header, footer, floating WhatsApp —
+composed around the page slot in `(marketing)/layout.tsx`.
+
+### What was built
+- **`src/content/site.ts`** — single editable source for brand, `primaryNav`, `services`,
+  `footerColumns`, `contact` (address/email/phone/WhatsApp placeholders), `socials`, `whatsappHref`,
+  and `heroRoutes`. Nothing hardcoded in components.
+- **`SiteHeader`** (`components/marketing/site-header.tsx`) — sticky, `fixed top-0`. Transparent over
+  the hero (white logo `logo-white.svg`, light nav) → **crossfades** to a solid `--background`
+  surface + shadow + `--border` bottom once `scrollY > 80` (or immediately on non-hero pages), with
+  the primary dark logo `logo-primary.svg`. Logo swap = two stacked `next/image` with 300ms opacity
+  crossfade. Nav: active route in `--primary` (`aria-current="page"`); non-active = `--foreground`
+  (solid) / `background/90` (transparent), hover `--primary`. "Request a Quote" CTA. Focus rings,
+  keyboard accessible.
+- **`MobileMenu`** — right-drawer built on the Batch-2 **Sheet** (Radix Dialog → focus trap, body
+  scroll-lock, escape + outside-click close for free); links **stagger in** via Framer, close on
+  click; reduced-motion drops the stagger.
+- **`SiteFooter`** — elegant dark `--foreground` surface: white logo, tagline, Cinzel brand quote,
+  5 columns (Navigation / Services / Projects / Information / Contact), contact details (tel/mailto/
+  wa.me), Flowbite social icons, `A Groupe M-Zi Inc. Company` + dynamic `©` year. Stacks on mobile.
+- **`WhatsAppButton`** — fixed bottom-right `--primary` circle (Flowbite `Whatsapp`), Framer entrance
+  (fade+rise, reduced-motion safe), hover scale + "Chat with us" label reveal, prefilled wa.me link.
+- **Wiring:** `(marketing)/layout.tsx` → `<MarketingFrame>`; temp `(marketing)/page.tsx` (full-bleed
+  hero + long scroll) and `(marketing)/about/page.tsx` (no hero) for testing; root `app/page.tsx` removed.
+
+### Has-hero mechanism (as requested)
+`site.ts` exports `heroRoutes: string[]` (currently `["/"]`) + `pageHasHero(pathname)`. The client
+**`MarketingFrame`** reads `usePathname()` (SSR-stable — returns the real path during server render,
+so **no flash**) and computes `hasHero`. It passes `hasHero` to `SiteHeader` (transparent-start vs
+solid-from-top) **and** sets the `<main>` top padding (`pt-20` only when there's no hero, so solid-
+header pages clear the fixed header while hero pages sit full-bleed underneath). Adding a future hero
+page is a one-line change to `heroRoutes` — centralised, typed, no per-component edits.
+
+### Verification (running dev server, real DOM)
+1. **Transition both directions:** at `scrollY 0` → header transparent (`bg` transparent, no border/
+   shadow); after crossing threshold → `bg #F5F5F5`, `border #D4D4D3`, `shadow-sm`. Confirmed via the
+   applied class strings + computed styles. *(Note: the preview browser doesn't emit `scroll` on
+   programmatic `scrollTo`, so I drove the handler with a dispatched `scroll` event; on mount it reads
+   `scrollY` directly, verified solid at a restored scroll position.)*
+2. **Logo variant per state:** transparent → `logo-white` opacity 1 / `logo-primary` 0; solid →
+   reversed. Contrast holds (white nav on hero, `#232220` nav on solid).
+3. **Mobile menu:** opens (`role="dialog"`, `aria-expanded=true`), all 7 links + CTA, **body scroll
+   locked**, **Escape closes** (state closed, body restored), staggered, keyboard accessible.
+4. **WhatsApp:** entrance + hover label reveal; href = prefilled `https://wa.me/256700000000?text=…`.
+5. **Footer:** 5 columns, 6 external links, dynamic year (2026), company line — all present; stacks on mobile.
+6. **Icons:** `grep lucide src/` → **0**; social/WhatsApp icons from `flowbite-react-icons/solid`.
+7. **Reduced motion:** global `@media (prefers-reduced-motion: reduce)` rule confirmed present in the
+   served CSS (flattens header transitions); Framer components use `useReducedMotion`. The preview
+   toolset can't emulate the media feature, so this was verified by shipped-CSS + code, not a live toggle.
+
+- Build + lint clean (7 routes: `/`, `/about`, `/__styleguide`, `/_not-found`); zero console errors.
+
+### Fixes / notes
+- **Button `asChild` bug fixed:** it passed `[false, child]` to Radix `Slot` (the `!asChild && loading`
+  expression became a 2nd child); Slot needs exactly one. Button now branches so `asChild` forwards
+  `children` untouched. (First surfaced here — Batch-2 usages wrapped Buttons in *other* triggers.)
+- **Process note:** running `next build` while the dev server was live corrupted its `.next`
+  (dev/prod artifact collision). Going forward: stop the dev server before `next build`.
+- Nav-link colouring interprets the design "links = primary" rule as: **active** link = `--primary`;
+  resting nav links = `--foreground`/light-for-contrast with `--primary` hover (so contrast holds in
+  both header states). Inline body links still follow the base primary/accent rule.
+
+---
+
 ## Asset Inventory (verified visually — not by filename)
 
 Originals in the `Nexora` root are **read-only**; copies live under `nexora-web/public/`.
