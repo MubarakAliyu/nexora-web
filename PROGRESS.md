@@ -212,6 +212,58 @@ page is a one-line change to `heroRoutes` — centralised, typed, no per-compone
 
 ---
 
+## Batch 4 — Homepage (flagship, Ilios-modelled) ✅
+
+**Completed.** Cinematic, motion-rich homepage; all copy/data in `src/content/home.ts`; real
+property photography; fully on-system.
+
+### Sections built (in order)
+1. **Hero slider** (`hero-slider.tsx`) — full-screen (100svh), 3 slides, auto-advance 6s + pause on
+   hover, Ken-Burns zoom, staggered text (eyebrow→headline lines→sub-line→CTA), **slide counter
+   01·02·03** (active in `--primary`) with an animated **progress line**, manual prev/next arrows,
+   left social rail (Flowbite solid), bottom-left "Contact us" + phone, gradient scrim for contrast.
+2. **Trust bar** (`home-stats.tsx`) — 5 `<CountUp>` stats, `--border` divider grid, staggered reveal.
+3. **About** (`home-about.tsx`) — image slides in from the side + parallax; text staggers; AnimatedLink.
+4. **Services** (`home-services.tsx`) — 8 cards, staggered `RevealGroup`, hover lift + icon→primary.
+5. **Why Choose** (`home-why.tsx`) — 6 value props, staggered reveal.
+6. **Featured projects** (`featured-projects.tsx`) — tabbed showcase; selecting a name fades/zooms in
+   a feature image + details; auto-advance + pause on hover; mobile = stacked tap list.
+7. **Testimonials** (`testimonials.tsx`) — auto-advancing carousel, manual arrows + dots, pause on hover.
+8. **CTA banner** (`home-cta.tsx`) — parallax property image + scrim, Cinzel headline, primary CTA + WhatsApp.
+
+### Reusable motion / interaction treatments created
+- **`CtaButton`** (`cta-button.tsx`) — the single site-wide CTA: `buttonVariants` styling + hover
+  arrow-slide + press scale-down; renders Link (internal/external) or button. Used in hero + CTA banner.
+- **`AnimatedLink`** (`animated-link.tsx`) — inline link with left-origin underline grow + arrow nudge,
+  primary→accent. Used in About, Services, Featured projects.
+- **Nav underline** — added to `SiteHeader` links: full when active, grows from left on hover (fluid).
+- **`SectionHeading`** + **`SectionIcon`** (icon-key → Flowbite registry) shared across sections.
+- Reveal / RevealGroup / CountUp / Parallax (Batch 1) drive the scroll-unfold; shared ease `[0.22,1,0.36,1]`.
+
+### Verified live (DOM/computed styles; dev server left running for your review)
+- Hero: image + text change on nav (villas-dusk→tower-curved-balcony, "Managing Properties."→"Your
+  Asset,"), active counter `#E08A20`, progress line animates, autoplay advances, arrows work, Cinzel headline.
+- Stats count up on scroll-in (1,200+/98%/12/96%/340+). Service cards render + stagger.
+- Featured projects: selecting Munyonyo swaps to its image (tower-poolside) + details. Testimonials advance.
+- Header transparent over hero at top; solid on scroll (Batch-3 mechanism). Zero console errors.
+- Build + lint clean (7 routes). `grep lucide src/` → 0; Flowbite-only; six-token palette; Cinzel/Montserrat.
+
+### Key fix / note — Framer AnimatePresence in dev
+`AnimatePresence` (esp. `mode="wait"`, and even default mode) proved **unreliable under React Strict
+Mode in Next dev** here: exits didn't complete, children accumulated, and enter/opacity states stuck.
+**Resolution:** the crossfading media (hero image, featured image) and the testimonial/detail blocks
+use **keyed remounts** (`<motion.div key={active}>`, mount animation only — no exit) instead of
+`AnimatePresence`. This is fully reliable (proven in-browser). Trade-off: slide changes are a
+fade/zoom-in rather than an overlapping crossfade — clean and cinematic on the dark hero.
+
+### Assumptions
+- Mobile featured-projects is a stacked **tap** list (not swipe-gesture) — selects still crossfade.
+- Hero slide CTAs: 01 Request a Quote, 02 Explore Properties, 03 Book a Consultation (per brief).
+- Service/value icons mapped to nearest Flowbite outline (e.g. Mobile Car Wash → `Truck`, Cleaning →
+  `WandMagicSparkles`), documented in `section-icons.tsx`.
+
+---
+
 ## Asset Inventory (verified visually — not by filename)
 
 Originals in the `Nexora` root are **read-only**; copies live under `nexora-web/public/`.

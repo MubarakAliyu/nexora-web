@@ -84,7 +84,7 @@ export function SiteHeader({ hasHero }: { hasHero: boolean }) {
                 href={item.href}
                 aria-current={active ? "page" : undefined}
                 className={cn(
-                  "rounded-sm text-sm font-medium transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2 focus-visible:ring-offset-transparent",
+                  "group/nav relative rounded-sm text-sm font-medium transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2 focus-visible:ring-offset-transparent",
                   active
                     ? "text-primary"
                     : solid
@@ -93,6 +93,13 @@ export function SiteHeader({ hasHero }: { hasHero: boolean }) {
                 )}
               >
                 {item.label}
+                {/* Fluid underline — full when active, grows from left on hover */}
+                <span
+                  className={cn(
+                    "absolute -bottom-1 left-0 h-px w-full origin-left bg-primary transition-transform duration-300 ease-out",
+                    active ? "scale-x-100" : "scale-x-0 group-hover/nav:scale-x-100",
+                  )}
+                />
               </Link>
             );
           })}
