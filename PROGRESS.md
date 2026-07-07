@@ -325,6 +325,62 @@ Verified: desktop 40px / mobile 133px gap, **no overlap**; controls stable acros
 
 ---
 
+## Batch 6 — Portfolio & Projects Pages ✅
+
+**Completed.** The most image-driven part of the site — `/portfolio`, `/portfolio/[slug]` (9 SSG),
+and `/projects` — with fresh interaction patterns, all reliable and reduced-motion safe.
+
+### Content
+- `src/content/portfolio.ts` — **9 properties** across 5 categories (Residential / Commercial /
+  Condominiums / Institutional / Managed Facilities), each with gallery, spec details, scope, results
+  metrics, related slugs. Plus categories, feature quote, impact stats, and all Projects content
+  (before/after pairs, transformation stories, impact metrics, success stories). `propertySlugs` +
+  `getProperty()` drive the dynamic route. Images assigned per context — no image reused for every card.
+
+### New interactive components
+- `PortfolioGrid` — filter chips + **Framer `layout` reflow** (positions animate on filter, not just
+  show/hide) + scroll-reveal scale-up + hover image zoom. **No AnimatePresence** (removed items just
+  unmount; remaining items animate via `layout`).
+- `Lightbox` + `PropertyGallery` — fullscreen gallery: CSS-crossfade layers, prev/next, **keyboard
+  (Esc / ← / →)**, thumbnails, body-scroll lock, animated open/close via opacity.
+- `BeforeAfter` — **draggable handle** (pointer events → mouse + touch; `touch-none`), `clip-path`
+  reveal, arrow-key accessible `role="slider"`. No motion → reduced-motion safe by nature.
+- `SuccessStories` — tabbed showcase, CSS-crossfade (keyed/CSS pattern).
+- `ParallaxFeature` — full-bleed parallax band with Cinzel pull-quote as a section-to-section transition.
+
+### Pages
+- `/portfolio` — PageHero → filterable animated grid → ParallaxFeature transition → count-up impact
+  strip → CtaBanner.
+- `/portfolio/[slug]` — `generateStaticParams` (all 9) + `generateMetadata` + `notFound()`. Hero →
+  gallery+lightbox → details spec sheet + scope (icon list) → results count-up → related properties → CTA.
+- `/projects` — PageHero → before/after showcase (2 sliders, alternating) → transformation stories
+  (alternating `MediaText`) → impact count-up → tabbed success stories → CtaBanner.
+
+### Verification (running dev server, real DOM)
+1. `/portfolio` — 6 chips, 9 cards; **filter Commercial → 2 cards** (Lugogo, Ntinda) with `layout`
+   reflow; 0 broken images.
+2. `/portfolio/entebbe-villas` — all sections; **lightbox opens** (`aria-hidden=false`, `opacity-100`,
+   3 layers), **Next advances thumbnail 0→1**, scroll-lock + keyboard wired; results count up.
+   **Bad slug `/portfolio/not-a-real-property` → HTTP 404.** Build shows 9 SSG paths.
+3. `/projects` — 2 before/after `role="slider"`s; **keyboard moves handle 50→60**; alternating
+   transformation stories; impact metrics; tabbed success stories switch active tab; 0 broken images.
+4. New patterns (filter reflow, lightbox, before/after drag, tabbed crossfade, parallax feature) all
+   work; reduced-motion safe (CSS-based / `useReducedMotion`; no AnimatePresence anywhere).
+5. Varied real imagery per context; **0 broken images** on every page.
+6. `grep lucide src/` → **0**; Flowbite-only; six-palette; Cinzel/Montserrat.
+7. Mobile 375 `/portfolio` — **no horizontal overflow**; filter chips horizontally scrollable.
+
+- Build + lint clean (28 routes total); computed-opacity reads during CSS transitions are unreliable
+  in the preview (used `aria-hidden`/className/`aria-current` for reliable state checks).
+
+### Notes
+- Before/after uses contrasting images from the set as illustrative Before/After (no true paired
+  shots in assets); labelled clearly and drag/keyboard both work.
+- Portfolio grid kept as a clean animated 3-col grid (uniform aspect) rather than true row-span
+  masonry, to keep `layout` reflow smooth; rhythm comes from stagger + scale-in + hover zoom.
+
+---
+
 ## Asset Inventory (verified visually — not by filename)
 
 Originals in the `Nexora` root are **read-only**; copies live under `nexora-web/public/`.
