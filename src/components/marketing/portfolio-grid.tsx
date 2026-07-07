@@ -56,7 +56,7 @@ export function PortfolioGrid() {
             >
               <Link
                 href={`/portfolio/${p.slug}`}
-                className="group block h-full overflow-hidden rounded-xl border border-border bg-background transition-all duration-300 hover:-translate-y-1 hover:border-primary/40 hover:shadow-lg"
+                className="group block h-full overflow-hidden rounded-xl border border-border bg-background shadow-sm transition-all duration-300 hover:-translate-y-1 hover:border-primary/40 hover:shadow-lg"
               >
                 <div className="relative aspect-[4/3] w-full overflow-hidden">
                   <Image

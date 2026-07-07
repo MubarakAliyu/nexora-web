@@ -20,7 +20,7 @@ export function HomeServices() {
         >
           {services.map((s) => (
             <RevealItem key={s.slug} className="h-full">
-              <div className="group flex h-full flex-col rounded-lg border border-border bg-background p-6 transition-all duration-300 hover:-translate-y-1 hover:border-primary/40 hover:shadow-lg">
+              <div className="group flex h-full flex-col rounded-lg border border-border bg-background p-6 shadow-sm transition-all duration-300 hover:-translate-y-1 hover:border-primary/40 hover:shadow-lg">
                 <span className="mb-5 flex h-12 w-12 items-center justify-center rounded-md bg-surface-active text-primary transition-colors duration-300 group-hover:bg-primary group-hover:text-primary-foreground">
                   <SectionIcon name={s.icon} size={24} />
                 </span>

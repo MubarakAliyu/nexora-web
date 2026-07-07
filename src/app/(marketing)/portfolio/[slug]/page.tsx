@@ -2,13 +2,33 @@ import type { Metadata } from "next";
 import Link from "next/link";
 import Image from "next/image";
 import { notFound } from "next/navigation";
-import { MapPin, ArrowRight } from "flowbite-react-icons/outline";
+import {
+  Building,
+  Home,
+  BadgeCheck,
+  Clock,
+  Truck,
+  AdjustmentsHorizontal,
+  MapPin,
+  Phone,
+  ArrowRight,
+} from "flowbite-react-icons/outline";
+import { Whatsapp } from "flowbite-react-icons/solid";
 import { Reveal, RevealGroup, RevealItem, CountUp } from "@/components/motion";
 import { PageHero } from "@/components/marketing/page-hero";
 import { PropertyGallery } from "@/components/marketing/property-gallery";
+import { GlassPanel } from "@/components/marketing/section-treatments";
+import { MapEmbed } from "@/components/marketing/map-embed";
 import { CtaBanner } from "@/components/marketing/cta-banner";
+import { CtaButton } from "@/components/marketing/cta-button";
 import { SectionIcon } from "@/components/marketing/section-icons";
-import { properties, propertySlugs, getProperty } from "@/content/portfolio";
+import {
+  properties,
+  propertySlugs,
+  getProperty,
+  getPropertyMeta,
+} from "@/content/portfolio";
+import { contact, whatsappHref } from "@/content/site";
 
 export function generateStaticParams() {
   return propertySlugs.map((slug) => ({ slug }));
@@ -34,168 +54,252 @@ export default async function PropertyPage({
   const property = getProperty(slug);
   if (!property) notFound();
 
+  const meta = getPropertyMeta(slug);
   const related = property.related
     .map((s) => getProperty(s))
     .filter((p): p is (typeof properties)[number] => Boolean(p));
+
+  const highlights = [
+    { Icon: Building, label: "Type", value: property.category },
+    { Icon: Home, label: "Units", value: String(property.units) },
+    { Icon: BadgeCheck, label: "Occupancy", value: `${property.occupancy}%` },
+    { Icon: Clock, label: "Year", value: meta.year },
+    { Icon: Truck, label: "Parking", value: meta.parking },
+    { Icon: AdjustmentsHorizontal, label: "Size", value: meta.size },
+  ];
 
   return (
     <>
       <PageHero
         eyebrow={property.category}
         title={property.name}
-        subtitle={`${property.location} · ${property.units} units · ${property.occupancy}% occupancy`}
+        subtitle={`${meta.address} · ${property.units} units · ${property.occupancy}% occupancy`}
         image={property.image}
         imageAlt={property.name}
       />
 
       {/* Gallery */}
-      <section className="mx-auto max-w-7xl px-6 py-20 md:px-10">
+      <section className="mx-auto max-w-7xl px-6 py-16 md:px-10">
         <PropertyGallery images={property.gallery} alt={property.name} />
       </section>
 
-      {/* Details + scope */}
+      {/* Content + sticky enquiry card */}
       <section className="bg-surface-hover">
-        <div className="mx-auto grid max-w-7xl gap-12 px-6 py-24 md:px-10 lg:grid-cols-2 lg:gap-16">
-          <div>
-            <Reveal>
-              <p className="mb-3 text-caption font-medium uppercase tracking-[0.2em] text-primary">
-                Property details
-              </p>
-            </Reveal>
-            <Reveal delay={0.08}>
-              <h2 className="font-heading text-h1 font-semibold text-foreground">
-                About this property
-              </h2>
-            </Reveal>
-            <Reveal delay={0.16}>
-              <p className="mt-4 text-body leading-relaxed text-muted">{property.excerpt}</p>
-            </Reveal>
-            <dl className="mt-8 grid grid-cols-2 gap-x-8 gap-y-5">
-              {property.details.map((d, i) => (
-                <Reveal key={d.label} delay={0.2 + i * 0.06}>
-                  <div className="border-t border-border pt-3">
-                    <dt className="text-caption uppercase tracking-wide text-muted">
-                      {d.label}
-                    </dt>
-                    <dd className="mt-1 font-medium text-foreground">{d.value}</dd>
+        <div className="mx-auto max-w-7xl px-6 py-16 md:px-10 md:py-20">
+          <div className="grid gap-10 lg:grid-cols-3 lg:gap-12">
+            {/* Main column */}
+            <div className="space-y-14 lg:col-span-2">
+              {/* Highlights */}
+              <div>
+                <Reveal>
+                  <h2 className="font-heading text-h2 font-semibold text-foreground">
+                    Property highlights
+                  </h2>
+                </Reveal>
+                <RevealGroup
+                  stagger={0.06}
+                  className="mt-6 grid grid-cols-2 gap-4 sm:grid-cols-3"
+                >
+                  {highlights.map(({ Icon, label, value }) => (
+                    <RevealItem key={label}>
+                      <div className="rounded-xl border border-border bg-background p-4 shadow-sm">
+                        <span className="flex h-10 w-10 items-center justify-center rounded-md bg-surface-active text-primary">
+                          <Icon size={20} />
+                        </span>
+                        <p className="mt-3 text-caption uppercase tracking-wide text-muted">
+                          {label}
+                        </p>
+                        <p className="font-medium text-foreground">{value}</p>
+                      </div>
+                    </RevealItem>
+                  ))}
+                </RevealGroup>
+              </div>
+
+              {/* Overview */}
+              <div>
+                <Reveal>
+                  <h2 className="font-heading text-h2 font-semibold text-foreground">Overview</h2>
+                </Reveal>
+                <Reveal delay={0.08}>
+                  <p className="mt-4 text-body leading-relaxed text-muted">{property.excerpt}</p>
+                </Reveal>
+                <Reveal delay={0.14}>
+                  <p className="mt-4 text-body leading-relaxed text-muted">
+                    Nexora manages {property.name} end-to-end — from leasing and finance to
+                    facilities, maintenance and resident care — with transparent monthly
+                    reporting to owners and a single point of accountability.
+                  </p>
+                </Reveal>
+              </div>
+
+              {/* Scope */}
+              <div>
+                <Reveal>
+                  <h2 className="font-heading text-h2 font-semibold text-foreground">
+                    Scope of management
+                  </h2>
+                </Reveal>
+                <RevealGroup stagger={0.06} className="mt-6 grid gap-3 sm:grid-cols-2">
+                  {property.scope.map((s) => (
+                    <RevealItem key={s.text}>
+                      <div className="flex items-center gap-3 rounded-lg border border-border bg-background p-4">
+                        <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-md bg-surface-active text-primary">
+                          <SectionIcon name={s.icon} size={18} />
+                        </span>
+                        <span className="text-body text-foreground">{s.text}</span>
+                      </div>
+                    </RevealItem>
+                  ))}
+                </RevealGroup>
+              </div>
+
+              {/* Location map */}
+              <div>
+                <Reveal>
+                  <h2 className="font-heading text-h2 font-semibold text-foreground">Location</h2>
+                </Reveal>
+                <Reveal delay={0.08}>
+                  <div className="mt-6">
+                    <MapEmbed lat={meta.lat} lng={meta.lng} label={meta.address} />
                   </div>
                 </Reveal>
-              ))}
-            </dl>
-          </div>
-
-          <div>
-            <Reveal>
-              <p className="mb-3 text-caption font-medium uppercase tracking-[0.2em] text-primary">
-                Scope of management
-              </p>
-            </Reveal>
-            <Reveal delay={0.08}>
-              <h2 className="font-heading text-h1 font-semibold text-foreground">
-                What Nexora manages
-              </h2>
-            </Reveal>
-            <RevealGroup stagger={0.08} className="mt-6 space-y-3">
-              {property.scope.map((s) => (
-                <RevealItem key={s.text}>
-                  <div className="flex items-center gap-4 rounded-lg border border-border bg-background p-4">
-                    <span className="flex h-11 w-11 shrink-0 items-center justify-center rounded-md bg-surface-active text-primary">
-                      <SectionIcon name={s.icon} size={20} />
-                    </span>
-                    <span className="text-body text-foreground">{s.text}</span>
-                  </div>
-                </RevealItem>
-              ))}
-            </RevealGroup>
-          </div>
-        </div>
-      </section>
-
-      {/* Results */}
-      <section className="mx-auto max-w-7xl px-6 py-24 md:px-10">
-        <Reveal>
-          <p className="mb-3 text-caption font-medium uppercase tracking-[0.2em] text-primary">
-            Results achieved
-          </p>
-        </Reveal>
-        <Reveal delay={0.08}>
-          <h2 className="max-w-2xl font-heading text-h1 font-semibold text-foreground">
-            Measurable impact
-          </h2>
-        </Reveal>
-        <div className="mt-10 grid gap-5 sm:grid-cols-3">
-          {property.results.map((r, i) => (
-            <Reveal key={r.label} delay={i * 0.08}>
-              <div className="rounded-xl border border-border bg-background p-8 text-center">
-                <div className="font-heading text-hero font-medium text-primary">
-                  <CountUp to={r.value} prefix={r.prefix} suffix={r.suffix} />
-                </div>
-                <p className="mt-2 text-caption uppercase tracking-wide text-muted">
-                  {r.label}
-                </p>
               </div>
-            </Reveal>
-          ))}
+
+              {/* Results */}
+              <div>
+                <Reveal>
+                  <h2 className="font-heading text-h2 font-semibold text-foreground">
+                    Results achieved
+                  </h2>
+                </Reveal>
+                <div className="mt-6 grid gap-5 sm:grid-cols-3">
+                  {property.results.map((r, i) => (
+                    <Reveal key={r.label} delay={i * 0.08}>
+                      <div className="rounded-xl border border-border bg-background p-6 text-center shadow-sm">
+                        <div className="font-heading text-h1 font-semibold text-primary">
+                          <CountUp to={r.value} prefix={r.prefix} suffix={r.suffix} />
+                        </div>
+                        <p className="mt-2 text-caption uppercase tracking-wide text-muted">
+                          {r.label}
+                        </p>
+                      </div>
+                    </Reveal>
+                  ))}
+                </div>
+              </div>
+            </div>
+
+            {/* Sticky enquiry glass card */}
+            <div className="lg:col-span-1">
+              <div className="lg:sticky lg:top-24">
+                <GlassPanel tone="light" className="p-6 shadow-xl">
+                  <p className="text-caption font-medium uppercase tracking-[0.2em] text-primary">
+                    Enquire
+                  </p>
+                  <h3 className="mt-2 font-heading text-h3 font-semibold text-foreground">
+                    Request a viewing
+                  </h3>
+                  <p className="mt-2 text-body text-muted">
+                    Speak to our team about {property.name} or arrange a visit.
+                  </p>
+                  <div className="mt-5">
+                    <CtaButton href="/contact" className="w-full justify-center">
+                      Request a viewing
+                    </CtaButton>
+                  </div>
+                  <div className="mt-5 space-y-3">
+                    <a
+                      href={`tel:${contact.phone.replace(/\s/g, "")}`}
+                      className="flex items-center gap-3 rounded-lg border border-border bg-background/70 p-3 transition-colors hover:border-primary"
+                    >
+                      <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-md bg-surface-active text-primary">
+                        <Phone size={18} />
+                      </span>
+                      <span className="min-w-0">
+                        <span className="block text-caption text-muted">Call us</span>
+                        <span className="font-medium text-foreground">{contact.phone}</span>
+                      </span>
+                    </a>
+                    <a
+                      href={whatsappHref}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="flex items-center gap-3 rounded-lg border border-border bg-background/70 p-3 transition-colors hover:border-primary"
+                    >
+                      <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-md bg-surface-active text-primary">
+                        <Whatsapp size={18} />
+                      </span>
+                      <span className="min-w-0">
+                        <span className="block text-caption text-muted">WhatsApp</span>
+                        <span className="font-medium text-foreground">
+                          {contact.whatsappDisplay}
+                        </span>
+                      </span>
+                    </a>
+                  </div>
+                </GlassPanel>
+              </div>
+            </div>
+          </div>
         </div>
       </section>
 
       {/* Related properties */}
       {related.length > 0 && (
-        <section className="bg-surface-hover">
-          <div className="mx-auto max-w-7xl px-6 py-24 md:px-10">
-            <Reveal>
-              <p className="mb-3 text-caption font-medium uppercase tracking-[0.2em] text-primary">
-                More from our portfolio
-              </p>
-            </Reveal>
-            <Reveal delay={0.08}>
-              <h2 className="max-w-2xl font-heading text-h1 font-semibold text-foreground">
-                Related properties
-              </h2>
-            </Reveal>
-            <RevealGroup
-              stagger={0.08}
-              className="mt-12 grid gap-5 sm:grid-cols-2 lg:grid-cols-3"
-            >
-              {related.map((r) => (
-                <RevealItem key={r.slug} className="h-full">
-                  <Link
-                    href={`/portfolio/${r.slug}`}
-                    className="group block h-full overflow-hidden rounded-xl border border-border bg-background transition-all duration-300 hover:-translate-y-1 hover:border-primary/40 hover:shadow-lg"
-                  >
-                    <div className="relative aspect-[4/3] w-full overflow-hidden">
-                      <Image
-                        src={r.image}
-                        alt={r.name}
-                        fill
-                        sizes="(max-width: 1024px) 100vw, 33vw"
-                        className="object-cover transition-transform duration-500 group-hover:scale-105"
+        <section className="mx-auto max-w-7xl px-6 py-24 md:px-10">
+          <Reveal>
+            <p className="mb-3 text-caption font-medium uppercase tracking-[0.2em] text-primary">
+              More from our portfolio
+            </p>
+          </Reveal>
+          <Reveal delay={0.08}>
+            <h2 className="max-w-2xl font-heading text-h1 font-semibold text-foreground">
+              Related properties
+            </h2>
+          </Reveal>
+          <RevealGroup
+            stagger={0.08}
+            className="mt-12 grid gap-5 sm:grid-cols-2 lg:grid-cols-3"
+          >
+            {related.map((r) => (
+              <RevealItem key={r.slug} className="h-full">
+                <Link
+                  href={`/portfolio/${r.slug}`}
+                  className="group block h-full overflow-hidden rounded-xl border border-border bg-background shadow-sm transition-all duration-300 hover:-translate-y-1 hover:border-primary/40 hover:shadow-lg"
+                >
+                  <div className="relative aspect-[4/3] w-full overflow-hidden">
+                    <Image
+                      src={r.image}
+                      alt={r.name}
+                      fill
+                      sizes="(max-width: 1024px) 100vw, 33vw"
+                      className="object-cover transition-transform duration-500 group-hover:scale-105"
+                    />
+                    <span className="absolute left-3 top-3 rounded-full bg-background/90 px-2.5 py-1 text-caption font-medium text-foreground">
+                      {r.category}
+                    </span>
+                  </div>
+                  <div className="p-5">
+                    <h3 className="font-heading text-h3 font-semibold text-foreground">
+                      {r.name}
+                    </h3>
+                    <p className="mt-1 flex items-center gap-1.5 text-caption text-muted">
+                      <MapPin size={14} />
+                      {r.location}
+                    </p>
+                    <span className="mt-3 inline-flex items-center gap-1.5 font-medium text-primary transition-colors group-hover:text-accent">
+                      View property
+                      <ArrowRight
+                        size={16}
+                        className="transition-transform duration-300 group-hover:translate-x-1"
                       />
-                      <span className="absolute left-3 top-3 rounded-full bg-background/90 px-2.5 py-1 text-caption font-medium text-foreground">
-                        {r.category}
-                      </span>
-                    </div>
-                    <div className="p-5">
-                      <h3 className="font-heading text-h3 font-semibold text-foreground">
-                        {r.name}
-                      </h3>
-                      <p className="mt-1 flex items-center gap-1.5 text-caption text-muted">
-                        <MapPin size={14} />
-                        {r.location}
-                      </p>
-                      <span className="mt-3 inline-flex items-center gap-1.5 font-medium text-primary transition-colors group-hover:text-accent">
-                        View property
-                        <ArrowRight
-                          size={16}
-                          className="transition-transform duration-300 group-hover:translate-x-1"
-                        />
-                      </span>
-                    </div>
-                  </Link>
-                </RevealItem>
-              ))}
-            </RevealGroup>
-          </div>
+                    </span>
+                  </div>
+                </Link>
+              </RevealItem>
+            ))}
+          </RevealGroup>
         </section>
       )}
 

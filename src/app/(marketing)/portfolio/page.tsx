@@ -32,21 +32,23 @@ export default function PortfolioPage() {
         imageAlt={portfolioFeature.imageAlt}
       />
 
-      {/* Impact strip */}
-      <section className="border-y border-border bg-background">
-        <div className="mx-auto grid max-w-7xl grid-cols-2 gap-px bg-border lg:grid-cols-4">
-          {portfolioStats.map((s, i) => (
-            <div key={s.label} className="bg-background px-6 py-10 text-center">
-              <Reveal delay={i * 0.08}>
-                <div className="font-heading text-h1 font-semibold text-primary md:text-[2.5rem]">
-                  <CountUp to={s.value} prefix={s.prefix} suffix={s.suffix} />
+      {/* Impact strip — elevated floating stat cards */}
+      <section className="bg-gradient-to-b from-background to-surface-hover">
+        <div className="mx-auto max-w-7xl px-6 py-24 md:px-10">
+          <div className="grid grid-cols-2 gap-5 lg:grid-cols-4">
+            {portfolioStats.map((s, i) => (
+              <Reveal key={s.label} delay={i * 0.08}>
+                <div className="rounded-2xl border border-border bg-background p-8 text-center shadow-lg transition-transform duration-300 hover:-translate-y-1">
+                  <div className="font-heading text-hero font-medium text-primary">
+                    <CountUp to={s.value} prefix={s.prefix} suffix={s.suffix} />
+                  </div>
+                  <p className="mx-auto mt-2 max-w-[12rem] text-caption uppercase tracking-wide text-muted">
+                    {s.label}
+                  </p>
                 </div>
-                <p className="mx-auto mt-2 max-w-[12rem] text-caption uppercase tracking-wide text-muted">
-                  {s.label}
-                </p>
               </Reveal>
-            </div>
-          ))}
+            ))}
+          </div>
         </div>
       </section>
 

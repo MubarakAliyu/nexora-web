@@ -357,6 +357,42 @@ export function getProperty(slug: string): Property | undefined {
   return properties.find((p) => p.slug === slug);
 }
 
+/** Extra spec + location metadata per property (address, approx. coords for the
+ *  map, and highlight specs). Coords are Kampala-area approximations. */
+export interface PropertyMeta {
+  address: string;
+  lat: number;
+  lng: number;
+  year: string;
+  parking: string;
+  size: string;
+}
+
+export const propertyMeta: Record<string, PropertyMeta> = {
+  "nakasero-heights": { address: "Nakasero Hill, Kampala, Uganda", lat: 0.33, lng: 32.58, year: "2021", parking: "2 levels", size: "6,400 m²" },
+  "munyonyo-suites": { address: "Munyonyo, Kampala, Uganda", lat: 0.2586, lng: 32.63, year: "2020", parking: "Ample", size: "8,100 m²" },
+  "entebbe-villas": { address: "Lake Victoria Rd, Entebbe, Uganda", lat: 0.0512, lng: 32.4637, year: "2019", parking: "Private", size: "5,200 m²" },
+  "kololo-court": { address: "Kololo, Kampala, Uganda", lat: 0.335, lng: 32.595, year: "2022", parking: "Basement", size: "3,600 m²" },
+  "bugolobi-lofts": { address: "Bugolobi, Kampala, Uganda", lat: 0.318, lng: 32.615, year: "2021", parking: "Secure", size: "2,800 m²" },
+  "lugogo-offices": { address: "Lugogo Bypass, Kampala, Uganda", lat: 0.333, lng: 32.605, year: "2018", parking: "Multi-level", size: "4,500 m²" },
+  "ntinda-plaza": { address: "Ntinda, Kampala, Uganda", lat: 0.362, lng: 32.618, year: "2020", parking: "Customer", size: "5,900 m²" },
+  "jinja-riverside": { address: "Nile Crescent, Jinja, Uganda", lat: 0.4244, lng: 33.2041, year: "2017", parking: "On-site", size: "9,300 m²" },
+  "kampala-facilities": { address: "Greater Kampala, Uganda", lat: 0.3476, lng: 32.5825, year: "Various", parking: "Varies", size: "25 sites" },
+};
+
+export function getPropertyMeta(slug: string): PropertyMeta {
+  return (
+    propertyMeta[slug] ?? {
+      address: "Kampala, Uganda",
+      lat: 0.3476,
+      lng: 32.5825,
+      year: "—",
+      parking: "—",
+      size: "—",
+    }
+  );
+}
+
 export const portfolioHero = {
   eyebrow: "Our Portfolio",
   title: "Properties under Nexora management.",

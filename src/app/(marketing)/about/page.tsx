@@ -3,6 +3,10 @@ import { CheckCircle } from "flowbite-react-icons/outline";
 import { Reveal, RevealGroup, RevealItem } from "@/components/motion";
 import { PageHero } from "@/components/marketing/page-hero";
 import { MediaText } from "@/components/marketing/media-text";
+import {
+  ImageOverlaySection,
+  GlassPanel,
+} from "@/components/marketing/section-treatments";
 import { CtaBanner } from "@/components/marketing/cta-banner";
 import { SectionIcon } from "@/components/marketing/section-icons";
 import { cn } from "@/lib/utils";
@@ -48,38 +52,42 @@ export default function AboutPage() {
         </MediaText>
       </section>
 
-      {/* Vision & Mission — pull statement + offset cards */}
-      <section className="bg-surface-hover">
-        <div className="mx-auto max-w-7xl px-6 py-24 md:px-10">
+      {/* Vision & Mission — pull statement + frosted glass panels over imagery */}
+      <ImageOverlaySection
+        image={visionMission.image}
+        imageAlt={visionMission.imageAlt}
+        scrim="bg-foreground/80"
+      >
+        <div className="mx-auto max-w-7xl px-6 py-28 md:px-10">
           <Reveal>
-            <p className="mx-auto max-w-4xl text-center font-heading text-h2 font-medium italic leading-snug text-foreground md:text-[2.4rem] md:leading-[1.25]">
+            <p className="mx-auto max-w-4xl text-center font-heading text-h2 font-medium italic leading-snug text-background md:text-[2.4rem] md:leading-[1.25]">
               “{visionMission.pullStatement}”
             </p>
           </Reveal>
           <div className="mt-16 grid gap-8 md:grid-cols-2">
             <Reveal>
-              <div className="rounded-lg border-l-2 border-primary bg-background p-8 shadow-sm">
+              <GlassPanel tone="dark" className="border-l-2 border-l-primary p-8">
                 <p className="text-caption font-medium uppercase tracking-[0.2em] text-primary">
                   {visionMission.vision.label}
                 </p>
-                <p className="mt-3 font-heading text-h3 font-medium leading-snug text-foreground">
+                <p className="mt-3 font-heading text-h3 font-medium leading-snug text-background">
                   {visionMission.vision.text}
                 </p>
-              </div>
+              </GlassPanel>
             </Reveal>
             <Reveal delay={0.1}>
-              <div className="rounded-lg border-l-2 border-primary bg-background p-8 shadow-sm md:mt-12">
+              <GlassPanel tone="dark" className="border-l-2 border-l-primary p-8 md:mt-12">
                 <p className="text-caption font-medium uppercase tracking-[0.2em] text-primary">
                   {visionMission.mission.label}
                 </p>
-                <p className="mt-3 font-heading text-h3 font-medium leading-snug text-foreground">
+                <p className="mt-3 font-heading text-h3 font-medium leading-snug text-background">
                   {visionMission.mission.text}
                 </p>
-              </div>
+              </GlassPanel>
             </Reveal>
           </div>
         </div>
-      </section>
+      </ImageOverlaySection>
 
       {/* Core values */}
       <section className="mx-auto max-w-7xl px-6 py-24 md:px-10">
@@ -96,7 +104,7 @@ export default function AboutPage() {
         <RevealGroup stagger={0.08} className="mt-12 grid gap-5 sm:grid-cols-2 lg:grid-cols-3">
           {coreValues.map((v) => (
             <RevealItem key={v.title} className="h-full">
-              <div className="group h-full rounded-lg border border-border bg-background p-6 transition-all duration-300 hover:-translate-y-1 hover:border-primary/40 hover:shadow-lg">
+              <div className="group h-full rounded-lg border border-border bg-background p-6 shadow-sm transition-all duration-300 hover:-translate-y-1 hover:border-primary/40 hover:shadow-lg">
                 <span className="mb-4 flex h-12 w-12 items-center justify-center rounded-md bg-surface-active text-primary transition-colors duration-300 group-hover:bg-primary group-hover:text-primary-foreground">
                   <SectionIcon name={v.icon} size={22} />
                 </span>
@@ -124,7 +132,7 @@ export default function AboutPage() {
           <RevealGroup stagger={0.08} className="mt-12 grid gap-5 sm:grid-cols-2 lg:grid-cols-4">
             {leadership.map((leader) => (
               <RevealItem key={leader.name} className="h-full">
-                <div className="group h-full rounded-lg border border-border bg-background p-6 text-center transition-all duration-300 hover:-translate-y-1 hover:border-primary/40 hover:shadow-lg">
+                <div className="group h-full rounded-lg border border-border bg-background p-6 text-center shadow-sm transition-all duration-300 hover:-translate-y-1 hover:border-primary/40 hover:shadow-lg">
                   <span className="mx-auto flex h-20 w-20 items-center justify-center rounded-full bg-surface-active font-heading text-h3 font-semibold text-primary transition-colors duration-300 group-hover:bg-primary group-hover:text-primary-foreground">
                     {leader.initials}
                   </span>

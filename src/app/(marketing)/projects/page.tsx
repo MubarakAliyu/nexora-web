@@ -1,10 +1,11 @@
 import type { Metadata } from "next";
-import { Reveal, CountUp } from "@/components/motion";
+import { Reveal } from "@/components/motion";
 import { PageHero } from "@/components/marketing/page-hero";
 import { MediaText } from "@/components/marketing/media-text";
 import { BeforeAfter } from "@/components/marketing/before-after";
 import { SuccessStories } from "@/components/marketing/success-stories";
 import { SectionHeading } from "@/components/marketing/section-heading";
+import { ImageStatBand } from "@/components/marketing/section-treatments";
 import { CtaBanner } from "@/components/marketing/cta-banner";
 import {
   projectsHero,
@@ -97,28 +98,14 @@ export default function ProjectsPage() {
         </div>
       </section>
 
-      {/* Impact metrics */}
-      <section className="mx-auto max-w-7xl px-6 py-24 md:px-10">
-        <SectionHeading
-          eyebrow="By the numbers"
-          title="Our measurable impact"
-          align="center"
-        />
-        <div className="mt-12 grid gap-5 sm:grid-cols-2 lg:grid-cols-4">
-          {impactMetrics.map((m, i) => (
-            <Reveal key={m.label} delay={i * 0.08}>
-              <div className="rounded-xl border border-border bg-background p-8 text-center">
-                <div className="font-heading text-hero font-medium text-primary">
-                  <CountUp to={m.value} prefix={m.prefix} suffix={m.suffix} />
-                </div>
-                <p className="mx-auto mt-2 max-w-[12rem] text-caption uppercase tracking-wide text-muted">
-                  {m.label}
-                </p>
-              </div>
-            </Reveal>
-          ))}
-        </div>
-      </section>
+      {/* Impact metrics — image-backed glass stat band */}
+      <ImageStatBand
+        image="/images/properties/tower-poolside.jpg"
+        imageAlt="Nexora-managed residential tower"
+        eyebrow="By the numbers"
+        title="Our measurable impact"
+        stats={impactMetrics}
+      />
 
       {/* Success stories */}
       <section className="bg-surface-hover">

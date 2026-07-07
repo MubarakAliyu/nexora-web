@@ -88,7 +88,7 @@ export default async function ServicePage({
           <RevealGroup stagger={0.08} className="mt-12 grid gap-5 sm:grid-cols-2">
             {service.included.map((item) => (
               <RevealItem key={item.title} className="h-full">
-                <div className="group flex h-full gap-4 rounded-lg border border-border bg-background p-6 transition-all duration-300 hover:-translate-y-1 hover:border-primary/40 hover:shadow-lg">
+                <div className="group flex h-full gap-4 rounded-lg border border-border bg-background p-6 shadow-sm transition-all duration-300 hover:-translate-y-1 hover:border-primary/40 hover:shadow-lg">
                   <span className="flex h-12 w-12 shrink-0 items-center justify-center rounded-md bg-surface-active text-primary transition-colors duration-300 group-hover:bg-primary group-hover:text-primary-foreground">
                     <SectionIcon name={item.icon} size={22} />
                   </span>
@@ -170,7 +170,7 @@ export default async function ServicePage({
                 <RevealItem key={r.slug} className="h-full">
                   <Link
                     href={`/services/${r.slug}`}
-                    className="group block h-full rounded-lg border border-border bg-background p-6 transition-all duration-300 hover:-translate-y-1 hover:border-primary/40 hover:shadow-lg"
+                    className="group block h-full rounded-lg border border-border bg-background p-6 shadow-sm transition-all duration-300 hover:-translate-y-1 hover:border-primary/40 hover:shadow-lg"
                   >
                     <span className="mb-5 flex h-12 w-12 items-center justify-center rounded-md bg-surface-active text-primary transition-colors duration-300 group-hover:bg-primary group-hover:text-primary-foreground">
                       <SectionIcon name={r.icon} size={24} />

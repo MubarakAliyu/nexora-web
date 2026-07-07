@@ -381,6 +381,46 @@ and `/projects` — with fresh interaction patterns, all reliable and reduced-mo
 
 ---
 
+## Design upgrade — glassmorphism treatments + portfolio detail redesign (pre-Batch 7 Part A + C) ✅
+
+Reference-driven visual upgrade (RealestateRoyal / Urban / Estate patterns; our six tokens only).
+Split from Batch 7: Part A (shared restyle) + Part C (portfolio detail) done & verified; **Part B
+(Investors/Blog/Careers/Contact + forms) is the remaining work**, to be built on this new standard.
+
+### Part A — reusable treatments + gray-section upgrade
+- New `components/marketing/section-treatments.tsx`: **GlassPanel** (frosted, `tone` light/dark,
+  tints = alpha of `--foreground`/`--background`, primary accent line), **ImageOverlaySection**
+  (parallax image + scrim), **FloatingImageCard** (rounded offset card + hover zoom), **ImageStatBand**
+  (image-backed frosted count-up stat cards). CSS `@keyframes kenburns` added for hero bands.
+- Applied (varied, not all glass): Home trust bar → `ImageStatBand`; Projects impact → `ImageStatBand`;
+  Portfolio impact → elevated floating stat cards on a gradient; About vision/mission → glass panels
+  over an image band. Resting `shadow-sm` added to every hover-lift card site-wide so cards float.
+- **Contrast (measured, WCAG):** glass stat number (primary, hero-size) **4.3:1** worst-case (bright
+  image under `foreground/85` scrim + `foreground/30` glass) → passes AA-large; **5.9:1** typical;
+  light label **10.6:1**; light enquiry-card glass (dark text) ~13:1. All pass. backdrop-blur kept to
+  a few panels per section (no scroll jank).
+
+### Part C — portfolio detail rebuild (Estate blueprint)
+- `/portfolio/[slug]` rebuilt: gallery (lightbox retained) → **highlights spec grid** (6 Flowbite-icon
+  tiles: Type/Units/Occupancy/Year/Parking/Size) → overview → **embedded map** → scope → results
+  count-up, with a **sticky frosted glass enquiry card** (Request-a-viewing CTA + phone + WhatsApp;
+  `lg:sticky`, stacks on mobile) → related → CTA. New `map-embed.tsx` uses a **keyless OpenStreetMap
+  iframe** (note: swap for Google Maps + API key at launch). `propertyMeta` (address/coords/year/
+  parking/size) added to `portfolio.ts`.
+
+### Verified
+- Build + lint clean (28 routes). `grep lucide` → 0. Portfolio detail: highlights + map iframe +
+  sticky enquiry all present; 0 broken images; **no horizontal overflow at 375** (sticky card stacks).
+- Glass contrast measured AA-passing (values above). Gray stat strips replaced with image-glass /
+  elevated cards — no flat gray bands left on Home/About/Portfolio/Projects.
+
+### Deferred to Part B (Batch 7)
+Investors, Blog (+ `[slug]`), Careers, Contact pages + the 5 lead-capture forms (react-hook-form +
+zod → mocked `lib/api/leads.ts`), all to the new glass/image-overlay standard. Also: the sticky
+enquiry card currently offers CTA + contact affordances; the full enquiry **form** lands with Batch 7.
+
+---
+
 ## Asset Inventory (verified visually — not by filename)
 
 Originals in the `Nexora` root are **read-only**; copies live under `nexora-web/public/`.
