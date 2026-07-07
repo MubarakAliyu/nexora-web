@@ -264,6 +264,67 @@ fade/zoom-in rather than an overlapping crossfade — clean and cinematic on the
 
 ---
 
+## Batch 5 — About & Services Pages ✅
+
+**Completed.** Premium, motion-rich About + Services index + 9 dynamic service sub-pages, matching
+the homepage quality. Includes the Part-A testimonial fix.
+
+### Part A — testimonial carousel fix
+The prev/next arrows overlapped the quote because the blockquote was `absolute` (leftover from the
+old crossfade), so long quotes overflowed the fixed-height box onto the controls. Now that it uses a
+keyed remount (one blockquote at a time), it's back in normal flow inside a reserved-min-height,
+centered box (`max-w-2xl`, comfortable padding, smaller mobile font); controls sit cleanly below.
+Verified: desktop 40px / mobile 133px gap, **no overlap**; controls stable across short/long quotes
+(**no section jump**). Committed separately: `fix: testimonial carousel spacing + control placement`.
+
+### Content (typed)
+- `src/content/about.ts` — hero, story, vision/mission (+ pull statement), 6 core values, 4 leaders,
+  3-phase roadmap, CTA.
+- `src/content/services.ts` — **9 services** with full sub-page data (promise, overview, included
+  sub-services, who-it's-for, pricing note, related slugs) + index hero, 4-step process, CTA.
+  `serviceSlugs` + `getService()` are the single source for the dynamic route.
+
+### Reusable components (extend the Batch-4 kit)
+- `PageHero` — shorter branded hero band, CSS Ken-Burns (`@keyframes kenburns` +
+  `--animate-kenburns`, `motion-reduce:animate-none`) + scrim.
+- `MediaText` — alternating two-column; image slides in from its side (`reverse` flips direction) +
+  parallax; reduced-motion → fade only.
+- `CtaBanner` — generic parallax CTA band (heading/subline/image/primary/secondary).
+- Reused: `CtaButton`, `AnimatedLink`, `Reveal`/`RevealGroup`/`RevealItem`, `SectionIcon`, `Parallax`.
+- **No AnimatePresence `mode="wait"`** anywhere — crossfades use keyed remount / CSS (per Batch-4 lesson).
+
+### Pages
+- `/about` — 7 sections: PageHero → story (`MediaText`, image left) → vision/mission (centered Cinzel
+  pull-statement + offset cards) → core-values grid (hover lift + icon accent) → leadership (initials
+  avatars, hover lift) → growth roadmap (3-phase infographic, Phase 01 active in `--primary`) → CtaBanner.
+- `/services` — PageHero → designed 3-col rich-card grid (hover lift + icon fill + Explore arrow) →
+  dark process strip (big faded numerals) → CtaBanner.
+- `/services/[slug]` — `generateStaticParams` (all 9) + `generateMetadata` + `notFound()`. Sections:
+  PageHero → overview (`MediaText`) → what's-included grid → who-it's-for + pricing-model callout →
+  related services (2–3 cards) → service-specific CtaBanner.
+
+### Verification (running dev server, real DOM)
+1. `/about` — all sections present (6 values, 4 leaders, 3 roadmap phases, CTA), Cinzel hero, header
+   solid-from-top (`#F5F5F5`, `main` `pt-20`), **0 broken images**.
+2. `/services` — 9 unique service links, hover-lift cards, process strip, 0 broken images.
+3. `/services/premium-cleaning` — overview, 4 included cards, who-it's-for, pricing model, related, CTA.
+   **Bad slug `/services/does-not-exist` → HTTP 404.** Build shows 9 SSG paths.
+4. Reveal/hover/parallax consistent with homepage; keyed-remount/CSS patterns (no janky/stuck transitions).
+5. Testimonial fix still correct (78px gap, no overlap).
+6. `grep lucide src/` → **0**; Flowbite-only; six-palette; Cinzel headings verified.
+7. Mobile 375 `/about` — **no horizontal overflow** (scrollWidth == innerWidth). Reduced-motion safe
+   (MediaText `useReducedMotion`, Ken-Burns `motion-reduce:animate-none`, global reduced-motion rule).
+
+- Build + lint clean (17 routes total); zero console errors.
+
+### Assumptions / notes
+- Growth roadmap implemented as a **3-phase card infographic** (rather than the literal Batch-2
+  Timeline) — reads better for 3 phases; Phase 01 ("Now") is the active/primary state.
+- Leadership uses **initials avatars** (no real team photos in assets) with hover lift.
+- `HomeCta` (Batch 4) left as-is; new pages use the generic `CtaBanner` (minor duplication, no risk).
+
+---
+
 ## Asset Inventory (verified visually — not by filename)
 
 Originals in the `Nexora` root are **read-only**; copies live under `nexora-web/public/`.

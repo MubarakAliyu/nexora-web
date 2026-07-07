@@ -22,7 +22,19 @@
   --surface-active: color-mix(in oklab, var(--foreground) 10%, var(--background));
 }
 
+@keyframes kenburns {
+  from {
+    transform: scale(1);
+  }
+  to {
+    transform: scale(1.1);
+  }
+}
+
 @theme {
+  /* Slow Ken-Burns drift for hero-band imagery */
+  --animate-kenburns: kenburns 22s ease-out infinite alternate;
+
   /* Remove ALL default Tailwind colours so only the Nexora palette is reachable
      (no blue-500 / gray-400 / #000 leaking into usage). */
   --color-*: initial;
