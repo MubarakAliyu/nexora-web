@@ -44,32 +44,35 @@ export function Testimonials() {
       onMouseEnter={() => setPaused(true)}
       onMouseLeave={() => setPaused(false)}
     >
-      <div className="mx-auto max-w-3xl px-6 py-24 text-center">
+      <div className="mx-auto max-w-3xl px-6 py-24 text-center sm:px-8">
         <Quote size={40} className="mx-auto text-primary" />
-        <div className="relative mt-6 min-h-[200px] sm:min-h-[168px]">
+
+        {/* Quote block — normal flow, reserved min-height to prevent section jump */}
+        <div className="mt-8 flex min-h-[300px] items-start justify-center sm:min-h-[220px]">
           <motion.blockquote
             key={index}
-            className="absolute inset-x-0 top-0"
+            className="mx-auto max-w-2xl"
             initial={reduce ? { opacity: 0 } : { opacity: 0, x: dir * 32 }}
             animate={{ opacity: 1, x: 0 }}
             transition={{ duration: 0.5, ease: EASE }}
           >
-            <p className="font-heading text-h2 font-medium leading-snug text-foreground">
+            <p className="font-heading text-xl font-medium leading-snug text-foreground sm:text-h2">
               “{t.quote}”
             </p>
             <footer className="mt-6">
               <p className="font-medium text-foreground">{t.name}</p>
-              <p className="text-caption text-muted">{t.role}</p>
+              <p className="mt-0.5 text-caption text-muted">{t.role}</p>
             </footer>
           </motion.blockquote>
         </div>
 
-        <div className="mt-8 flex items-center justify-center gap-4">
+        {/* Controls — below the quote, never overlapping it */}
+        <div className="mt-10 flex items-center justify-center gap-4">
           <button
             type="button"
             onClick={() => go(-1)}
             aria-label="Previous testimonial"
-            className="flex h-10 w-10 items-center justify-center rounded-full border border-border text-foreground transition-colors hover:border-primary hover:text-primary focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary"
+            className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full border border-border text-foreground transition-colors hover:border-primary hover:text-primary focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary"
           >
             <AngleLeft size={18} />
           </button>
@@ -95,7 +98,7 @@ export function Testimonials() {
             type="button"
             onClick={() => go(1)}
             aria-label="Next testimonial"
-            className="flex h-10 w-10 items-center justify-center rounded-full border border-border text-foreground transition-colors hover:border-primary hover:text-primary focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary"
+            className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full border border-border text-foreground transition-colors hover:border-primary hover:text-primary focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary"
           >
             <AngleRight size={18} />
           </button>
