@@ -420,8 +420,8 @@ export const portfolioCta = {
   subline:
     "Join the owners who trust Nexora to protect and grow their assets — with a free, no-obligation assessment.",
   primary: { label: "Request a Free Assessment", href: "/contact" },
-  image: "/images/properties/villas-dusk.jpg",
-  imageAlt: "Luxury villas at dusk",
+  image: "/images/properties/tower-poolside.jpg",
+  imageAlt: "Poolside view of a managed residential tower",
 };
 
 /* --------------------------------------------------- Projects / Transformations */
@@ -534,6 +534,6 @@ export const projectsCta = {
   subline:
     "Let Nexora show you what professional, transparent management can do for your property.",
   primary: { label: "Request a Free Assessment", href: "/contact" },
-  image: "/images/properties/villas-dusk.jpg",
-  imageAlt: "Luxury villas at dusk",
+  image: "/images/properties/tower-curved-balcony.jpg",
+  imageAlt: "Modern managed apartment tower with curved balconies",
 };

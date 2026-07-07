@@ -414,6 +414,20 @@ Split from Batch 7: Part A (shared restyle) + Part C (portfolio detail) done & v
 - Glass contrast measured AA-passing (values above). Gray stat strips replaced with image-glass /
   elevated cards — no flat gray bands left on Home/About/Portfolio/Projects.
 
+### Design revision (per feedback, before Part B)
+- **Homepage/Projects/Portfolio stat strips reverted to light** hover-animated cards (`StatCardsSection`)
+  — the dark glass band was the wrong target. `ImageStatBand` removed.
+- **CTA band before the footer** (the real "#575755" section — Home/About/Services/Portfolio/Projects):
+  now a **clear image with a lighter gradient scrim** (`from-foreground/45 via-/78 to-/45`, darkest
+  behind the centred text) + text-shadow → imagery reads clean, text contrast **7.07:1** worst-case.
+  CTA images swapped to brighter shots (villa-infinity-pool, villa-garden-pool, tower-white-woodbalcony,
+  tower-poolside, tower-curved-balcony). `HomeCta` now reuses the shared `CtaBanner`. *(New Unsplash/
+  Freepik shots can be dropped into `public/images/properties/` — one-line src swap in the content files.)*
+- **About pull-statement** ("We manage properties the way we would want our own managed…") is now a
+  **hover-animated glass card**; `GlassPanel` lifts on hover by default (all cards hover-animate).
+- **Services "A simple, transparent process"** kept, now an **animated flow** — steps reveal in
+  sequence with a connector line drawing Consult → Onboard → Manage → Optimise (`ProcessFlow`).
+
 ### Deferred to Part B (Batch 7)
 Investors, Blog (+ `[slug]`), Careers, Contact pages + the 5 lead-capture forms (react-hook-form +
 zod → mocked `lib/api/leads.ts`), all to the new glass/image-overlay standard. Also: the sticky

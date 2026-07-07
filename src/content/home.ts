@@ -191,6 +191,6 @@ export const ctaBanner = {
   subline:
     "Discover how Nexora can protect your asset, lift your occupancy and simplify ownership. No obligation.",
   primary: { label: "Request a Free Assessment", href: "/contact" },
-  image: "/images/properties/villas-dusk.jpg",
-  imageAlt: "Luxury villas at dusk",
+  image: "/images/properties/villa-infinity-pool.jpg",
+  imageAlt: "Modern managed villa with infinity pool",
 };

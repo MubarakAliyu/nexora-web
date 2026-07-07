@@ -60,9 +60,14 @@ export default function AboutPage() {
       >
         <div className="mx-auto max-w-7xl px-6 py-28 md:px-10">
           <Reveal>
-            <p className="mx-auto max-w-4xl text-center font-heading text-h2 font-medium italic leading-snug text-background md:text-[2.4rem] md:leading-[1.25]">
-              “{visionMission.pullStatement}”
-            </p>
+            <GlassPanel
+              tone="dark"
+              className="mx-auto max-w-3xl p-8 text-center md:p-10"
+            >
+              <p className="font-heading text-h2 font-medium italic leading-snug text-background md:text-[2.2rem] md:leading-[1.25]">
+                “{visionMission.pullStatement}”
+              </p>
+            </GlassPanel>
           </Reveal>
           <div className="mt-16 grid gap-8 md:grid-cols-2">
             <Reveal>

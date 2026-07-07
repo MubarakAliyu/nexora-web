@@ -5,7 +5,7 @@ import { MediaText } from "@/components/marketing/media-text";
 import { BeforeAfter } from "@/components/marketing/before-after";
 import { SuccessStories } from "@/components/marketing/success-stories";
 import { SectionHeading } from "@/components/marketing/section-heading";
-import { ImageStatBand } from "@/components/marketing/section-treatments";
+import { StatCardsSection } from "@/components/marketing/section-treatments";
 import { CtaBanner } from "@/components/marketing/cta-banner";
 import {
   projectsHero,
@@ -98,10 +98,8 @@ export default function ProjectsPage() {
         </div>
       </section>
 
-      {/* Impact metrics — image-backed glass stat band */}
-      <ImageStatBand
-        image="/images/properties/tower-poolside.jpg"
-        imageAlt="Nexora-managed residential tower"
+      {/* Impact metrics — light hover-animated stat cards */}
+      <StatCardsSection
         eyebrow="By the numbers"
         title="Our measurable impact"
         stats={impactMetrics}

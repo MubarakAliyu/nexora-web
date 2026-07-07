@@ -132,6 +132,6 @@ export const aboutCta = {
   subline:
     "Partner with a team that treats your asset like its own — with transparency, care and global standards.",
   primary: { label: "Get in touch", href: "/contact" },
-  image: "/images/properties/villas-dusk.jpg",
-  imageAlt: "Luxury villas at dusk",
+  image: "/images/properties/villa-garden-pool.jpg",
+  imageAlt: "Modern managed villa with garden and pool",
 };

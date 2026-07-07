@@ -4,19 +4,21 @@ import { Reveal, CountUp, Parallax } from "@/components/motion";
 import { cn } from "@/lib/utils";
 
 /* ============================================================================
-   Reusable section treatments — adds depth beyond flat surfaces. All glass
-   tints are alpha of the existing --foreground / --background tokens (no new
-   hues). Strong scrims keep text WCAG-AA legible over imagery.
+   Reusable section treatments. Glass tints are alpha of the existing
+   --foreground / --background tokens (no new hues); strong scrims keep text
+   WCAG-AA legible over imagery.
    ========================================================================== */
 
-/** Frosted glass panel. `tone="dark"` = over imagery (light text);
- *  `tone="light"` = frosted-white panel (dark text). */
+/** Frosted glass panel with a built-in hover lift. `tone="dark"` = over imagery
+ *  (light text); `tone="light"` = frosted-white panel (dark text). */
 export function GlassPanel({
   tone = "dark",
+  hover = true,
   className,
   children,
 }: {
   tone?: "dark" | "light";
+  hover?: boolean;
   className?: string;
   children: ReactNode;
 }) {
@@ -27,6 +29,8 @@ export function GlassPanel({
         tone === "dark"
           ? "border-background/20 bg-foreground/45 text-background"
           : "border-border/70 bg-background/75 text-foreground",
+        hover &&
+          "transition-all duration-300 hover:-translate-y-1 hover:shadow-xl hover:border-primary/50",
         className,
       )}
     >
@@ -35,7 +39,7 @@ export function GlassPanel({
   );
 }
 
-/** Rounded, offset-friendly floating image card with hover zoom. */
+/** Rounded, offset-friendly floating image card with hover zoom + lift. */
 export function FloatingImageCard({
   image,
   alt,
@@ -50,7 +54,12 @@ export function FloatingImageCard({
   children?: ReactNode;
 }) {
   return (
-    <div className={cn("group relative overflow-hidden rounded-2xl shadow-xl", className)}>
+    <div
+      className={cn(
+        "group relative overflow-hidden rounded-2xl shadow-xl transition-transform duration-300 hover:-translate-y-1",
+        className,
+      )}
+    >
       <div
         className={cn(
           "relative w-full",
@@ -74,7 +83,7 @@ export function FloatingImageCard({
   );
 }
 
-/** Full-bleed image band (parallax + strong scrim) with children layered over it. */
+/** Full-bleed image band (parallax + scrim) with children layered over it. */
 export function ImageOverlaySection({
   image,
   imageAlt,
@@ -101,29 +110,34 @@ export function ImageOverlaySection({
   );
 }
 
-export interface BandStat {
+export interface Stat {
   label: string;
   value: number;
   suffix?: string;
   prefix?: string;
 }
 
-/** Image-backed stat band with frosted glass count-up cards (replaces flat strips). */
-export function ImageStatBand({
-  image,
-  imageAlt,
+/** Light stat section — elevated, hover-animated count-up cards on a clean surface. */
+export function StatCardsSection({
   eyebrow,
   title,
   stats,
+  className,
 }: {
-  image: string;
-  imageAlt: string;
   eyebrow?: string;
   title?: string;
-  stats: BandStat[];
+  stats: Stat[];
+  className?: string;
 }) {
+  const cols =
+    stats.length === 5
+      ? "sm:grid-cols-3 lg:grid-cols-5"
+      : stats.length === 3
+        ? "sm:grid-cols-3"
+        : "lg:grid-cols-4";
+
   return (
-    <ImageOverlaySection image={image} imageAlt={imageAlt} scrim="bg-foreground/85">
+    <section className={cn("bg-background", className)}>
       <div className="mx-auto max-w-7xl px-6 py-24 md:px-10">
         {(eyebrow || title) && (
           <div className="mb-12 text-center">
@@ -136,30 +150,21 @@ export function ImageStatBand({
             )}
             {title && (
               <Reveal delay={0.08}>
-                <h2 className="mx-auto max-w-2xl font-heading text-h1 font-semibold text-background">
+                <h2 className="mx-auto max-w-2xl font-heading text-h1 font-semibold text-foreground">
                   {title}
                 </h2>
               </Reveal>
             )}
           </div>
         )}
-        <div
-          className={cn(
-            "grid grid-cols-2 gap-5",
-            stats.length === 3
-              ? "sm:grid-cols-3"
-              : stats.length === 5
-                ? "sm:grid-cols-3 lg:grid-cols-5"
-                : "sm:grid-cols-2 lg:grid-cols-4",
-          )}
-        >
+        <div className={cn("grid grid-cols-2 gap-5", cols)}>
           {stats.map((s, i) => (
             <Reveal key={s.label} delay={i * 0.08}>
-              <div className="rounded-2xl border border-background/20 bg-foreground/30 p-8 text-center shadow-lg backdrop-blur-md">
+              <div className="group h-full rounded-2xl border border-border bg-background p-8 text-center shadow-sm transition-all duration-300 hover:-translate-y-1 hover:border-primary/40 hover:shadow-lg">
                 <div className="font-heading text-hero font-medium text-primary">
                   <CountUp to={s.value} prefix={s.prefix} suffix={s.suffix} />
                 </div>
-                <p className="mx-auto mt-2 max-w-[12rem] text-caption uppercase tracking-wide text-background/85">
+                <p className="mx-auto mt-2 max-w-[12rem] text-caption uppercase tracking-wide text-muted">
                   {s.label}
                 </p>
               </div>
@@ -167,6 +172,6 @@ export function ImageStatBand({
           ))}
         </div>
       </div>
-    </ImageOverlaySection>
+    </section>
   );
 }

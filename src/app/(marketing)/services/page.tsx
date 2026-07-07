@@ -4,13 +4,9 @@ import { ArrowRight } from "flowbite-react-icons/outline";
 import { Reveal, RevealGroup, RevealItem } from "@/components/motion";
 import { PageHero } from "@/components/marketing/page-hero";
 import { CtaBanner } from "@/components/marketing/cta-banner";
+import { ProcessFlow } from "@/components/marketing/process-flow";
 import { SectionIcon } from "@/components/marketing/section-icons";
-import {
-  services,
-  servicesIndexHero,
-  processSteps,
-  servicesCta,
-} from "@/content/services";
+import { services, servicesIndexHero, servicesCta } from "@/content/services";
 
 export const metadata: Metadata = {
   title: "Services",
@@ -75,22 +71,7 @@ export default function ServicesPage() {
               A simple, transparent process
             </h2>
           </Reveal>
-          <RevealGroup
-            stagger={0.1}
-            className="mt-12 grid gap-8 sm:grid-cols-2 lg:grid-cols-4"
-          >
-            {processSteps.map((st) => (
-              <RevealItem key={st.step}>
-                <span className="font-heading text-[3rem] font-medium leading-none text-primary/40">
-                  {st.step}
-                </span>
-                <h3 className="mt-3 font-heading text-h3 font-semibold text-background">
-                  {st.title}
-                </h3>
-                <p className="mt-2 text-body text-background/70">{st.desc}</p>
-              </RevealItem>
-            ))}
-          </RevealGroup>
+          <ProcessFlow />
         </div>
       </section>
 

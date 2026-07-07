@@ -27,16 +27,20 @@ export function CtaBanner({
           <Image src={image} alt={imageAlt} fill sizes="100vw" className="object-cover" />
         </div>
       </Parallax>
-      <div className="absolute inset-0 bg-foreground/75" />
+      {/* Lighter scrim so the imagery reads clean — darkest behind the centred
+          text (AA), lighter top/bottom so the photo shows through. */}
+      <div className="absolute inset-0 bg-gradient-to-t from-foreground/45 via-foreground/78 to-foreground/45" />
 
       <div className="relative z-10 mx-auto max-w-3xl px-6 py-28 text-center">
         <Reveal>
-          <h2 className="font-heading text-h1 font-semibold leading-tight text-background md:text-hero md:leading-[1.1]">
+          <h2 className="font-heading text-h1 font-semibold leading-tight text-background [text-shadow:0_2px_20px_rgba(35,34,32,0.55)] md:text-hero md:leading-[1.1]">
             {heading}
           </h2>
         </Reveal>
         <Reveal delay={0.1}>
-          <p className="mx-auto mt-5 max-w-xl text-body text-background/85">{subline}</p>
+          <p className="mx-auto mt-5 max-w-xl text-body text-background [text-shadow:0_1px_14px_rgba(35,34,32,0.6)]">
+            {subline}
+          </p>
         </Reveal>
         <Reveal delay={0.2}>
           <div className="mt-9 flex flex-col items-center justify-center gap-4 sm:flex-row">
