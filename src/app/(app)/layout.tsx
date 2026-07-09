@@ -1,9 +1,16 @@
 import type { ReactNode } from "react";
+import { TooltipProvider } from "@/components/ui/tooltip";
+import { Toaster } from "@/components/ui/sonner";
 
 /**
- * (app) route group — authenticated Admin / Owner / Tenant dashboards.
- * The role-aware app shell (sidebar, topbar) is built in Batch 8. Placeholder for now.
+ * (app) route group root — authenticated application (auth screens + dashboards).
+ * Provides tooltip context and the toast host; the marketing chrome is NOT used here.
  */
 export default function AppLayout({ children }: { children: ReactNode }) {
-  return <>{children}</>;
+  return (
+    <TooltipProvider delayDuration={200}>
+      {children}
+      <Toaster />
+    </TooltipProvider>
+  );
 }

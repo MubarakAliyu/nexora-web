@@ -479,6 +479,105 @@ render / CSS opacity / keyed-remount over `animate`-on-state and height transiti
 
 ---
 
+## Batch 8 — Authentication & App Shell ✅
+
+**Completed.** The transition from marketing site to product: 6 auth screens, a role-aware app shell
+(sidebar + topbar + drawer), notification center, profile/settings, and a mock role-routing/guard
+system with a **dev role switcher** so all three portals (Admin / Owner / Tenant) can be previewed
+without a real backend. Built to the **quieter dashboard design language** (Cinzel reserved for page
+titles/section headers, Montserrat for dense UI, 150–250ms functional motion, no hero sliders / Ken-
+Burns / parallax / heavy glass).
+
+### Foundation — mock backend + stores
+- **`lib/roles.ts`** — the `Role` union (`super_admin`, `ops_manager`, `property_manager`,
+  `maintenance_officer`, `finance_officer`, `owner`, `tenant`), `roleLabels`, `adminRoles`,
+  `portalForRole(role)` → `/admin` | `/owner` | `/tenant`, and `requires2fa(role)` (true for the
+  internal `adminRoles` — staff must pass 2FA, owners/tenants don't).
+- **`lib/api/auth.ts`** — mocked async auth: `login`, `register`, `requestPasswordReset`,
+  `resetPassword`, `verifyEmail`, `verifyTwoFactor(code)` (accepts any 6-digit code). Returns a fake
+  session `{ user, token }`; unused params (mirroring the real backend contract) are `_`-prefixed.
+- **`lib/api/notifications.ts`** — `AppNotification` type + 8 seed notifications (4 unread) across the
+  5 types (payment/maintenance/lease/announcement/system).
+- **Zustand stores:** `stores/session.ts` (persisted to `localStorage:nexora-session`, `partialize`
+  keeps only `user`; holds `pending` for the 2FA hand-off), `stores/ui.ts` (persisted
+  `sidebarCollapsed`), `stores/notifications.ts` (in-memory, seeded, `markRead`/`markAllRead`).
+
+### Auth screens — `(app)/(auth)/*` (split-panel layout: brand image left, form right)
+`/login`, `/register`, `/forgot-password`, `/reset-password`, `/verify-email`, `/2fa` — all
+react-hook-form + zod, inline `role="alert"` errors, loading buttons, sonner toasts.
+- **/login** carries a **dev role `<select>`** (super_admin / property_manager / finance_officer /
+  owner / tenant) so you choose which portal to enter. On submit: if `requires2fa(role)` → stash the
+  user in `session.pending` and route to `/2fa`; otherwise set the session and route to
+  `portalForRole(role)`.
+- **/2fa** — 6-digit code (any 6 digits pass) → promotes `pending` to the live session → portal.
+- **/verify-email** auto-verifies on mount; **/forgot → /reset** flow toasts and returns to `/login`.
+
+### App shell — `components/app/app-shell.tsx` (wraps every `(dashboard)` route)
+- **Collapsible sidebar** 260 ↔ 72px, collapse state **persisted** in `localStorage` (`nexora-ui`).
+  Full `logo-primary.svg` when expanded, `icon-mark.svg` when collapsed. **Role-aware nav** from
+  `nav-config.tsx` → `navForRole(role)` (owner / tenant / admin sets; admin further filtered by staff
+  sub-role). Active route highlighted; collapsed items show tooltips.
+- **Topbar** — mobile hamburger (opens the off-canvas **Sheet** drawer), breadcrumb from the path,
+  search input, **dev role-switcher dropdown** ("Viewing as …"), notification bell + unread badge,
+  profile menu (avatar → Profile / Settings / Logout).
+- **Mobile** — sidebar hidden below `lg`; the same nav renders inside a left **Sheet** drawer.
+
+### Notifications, profile, settings
+- **`notification-center.tsx`** — bell dropdown, unread badge, latest 6 (mark-read on click),
+  "View all" → `/notifications`.
+- **`/notifications`** — filter chips (All / Unread / 5 types), paginated (6/page), mark-read /
+  mark-all-read.
+- **`/profile`** — details form (name/email/phone, updates the session) + change-password form (both
+  RHF + zod, mock delay + toast).
+- **`/settings`** — notification-preference matrix (each type × in-app/email/SMS) on Batch-2
+  `Switch`es, save → toast.
+
+### Role-routing & guard mechanism (how to preview all three portals — read this)
+There is **no real auth**; everything keys off the persisted `session.user.role`:
+1. **Guard.** `AppShell` is a client component that reads the session. It waits for a `mounted` flag
+   (so persisted `localStorage` has hydrated — avoids an SSR/first-paint false redirect), then: if
+   there's **no user**, it `router.replace("/login")` and renders nothing; otherwise it renders the
+   shell. So every `(dashboard)` route is protected — hitting `/admin` while logged-out bounces to
+   `/login`.
+2. **Entering a portal.** Pick a role in the **/login** dev select and submit → the session is set to
+   that role and you land on `portalForRole(role)` (`/admin`, `/owner`, or `/tenant`). Internal roles
+   detour through `/2fa` first (any 6 digits).
+3. **Switching live.** The topbar **"Viewing as {role}" dropdown** calls `session.setRole(...)`, which
+   rewrites the current user's role in place and navigates to the new portal — so you can jump
+   Admin → Owner → Tenant instantly without logging out. The sidebar nav, dashboard, and breadcrumbs
+   all re-derive from the new role. **This is the switcher to use when reviewing Batches 9–11.**
+   *(It's clearly labelled a dev affordance; in production it'd be gated to staff / removed.)*
+4. **Logout.** Profile menu → Logout clears the session (and `localStorage`) → `/login`.
+
+### Dashboard pages (stubs until Batches 9–11)
+`/admin`, `/owner`, `/tenant` render a `DashboardStub` (PageHeader + role-appropriate `StatCard`
+grid + a dashed "arrives in Batch N" note) so the shell + routing are fully reviewable now.
+
+### Standing-rule fix found during verification
+The Batch-2 Sidebar had `transition-[width]` on the 260↔72 collapse. In this preview that transition
+**pins the width at its old value** even though the `w-[260px]`/`w-[72px]` class flips (the class read
+`w-[260px]` while the box measured 72px) — the exact `max-height`/`grid-rows` failure class from
+Batch 7. **Removed the width transition** → the collapse now applies instantly and reliably (verified
+72 → 260 → 72 both ways). Consistent with the project rule: no `animate`/transition bound to changing
+state; prefer instant/conditional/keyed.
+
+### Verification (live DOM, 1280×900 desktop + 375 mobile)
+- **Login as owner** → session persisted (`localStorage:nexora-session`) → redirect `/owner` →
+  role-aware sidebar (7 owner nav items) → topbar "Viewing as Owner" → 4 KPI cards.
+- **Sidebar collapse** 72 ↔ 260 both ways (persisted); logo swaps icon-mark ↔ full lockup.
+- **Notification badge** shows **4** unread; avatar present; dev role-switcher renders.
+- **/notifications** — 7 filter chips, 6 paginated rows, 3 mark-read actions.
+- **Guard** — unauthenticated `(dashboard)` access redirects to `/login` (mounted-gated, no flash).
+- Build + lint **clean**; `grep lucide src/` → **0**; six-token palette + Cinzel/Montserrat held.
+
+### Notes
+- Radix dropdowns (role switcher, notification bell, profile menu) need **real pointer events** —
+  they render correctly but don't open via synthetic `.click()` in the preview (same as the Batch-3
+  mobile Sheet, which is verified to work with real input).
+- Auth is entirely client-side/mock; tokens are fake strings. Real API wiring is a later concern.
+
+---
+
 ## Asset Inventory (verified visually — not by filename)
 
 Originals in the `Nexora` root are **read-only**; copies live under `nexora-web/public/`.

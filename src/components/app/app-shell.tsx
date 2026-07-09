@@ -1,0 +1,239 @@
+"use client";
+
+import * as React from "react";
+import Link from "next/link";
+import Image from "next/image";
+import { usePathname, useRouter } from "next/navigation";
+import {
+  Bars,
+  AngleLeft,
+  AngleRight,
+  AngleDown,
+  Search,
+  Cog,
+  User,
+  ArrowRightToBracket,
+} from "flowbite-react-icons/outline";
+import { Sidebar } from "@/components/ui/sidebar";
+import { Sheet, SheetContent, SheetTitle } from "@/components/ui/sheet";
+import { Input } from "@/components/ui/input";
+import { Button } from "@/components/ui/button";
+import { Avatar, AvatarFallback } from "@/components/ui/avatar";
+import { Breadcrumb, type Crumb } from "@/components/ui/breadcrumb";
+import {
+  DropdownMenu,
+  DropdownMenuTrigger,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuLabel,
+  DropdownMenuSeparator,
+} from "@/components/ui/dropdown-menu";
+import { NotificationCenter } from "./notification-center";
+import { navForRole } from "./nav-config";
+import { useSession } from "@/lib/stores/session";
+import { useUI } from "@/lib/stores/ui";
+import { allRoles, portalForRole, roleLabels } from "@/lib/roles";
+import { cn } from "@/lib/utils";
+
+function titleCase(seg: string) {
+  return seg
+    .replace(/-/g, " ")
+    .replace(/\b\w/g, (c) => c.toUpperCase());
+}
+
+function initials(name: string) {
+  return name
+    .split(" ")
+    .map((p) => p[0])
+    .slice(0, 2)
+    .join("")
+    .toUpperCase();
+}
+
+const brandLogo = (collapsed: boolean) =>
+  collapsed ? (
+    <Image src="/brand/icon-mark.svg" alt="Nexora" width={32} height={32} className="h-8 w-8" />
+  ) : (
+    <Image src="/brand/logo-primary.svg" alt="Nexora" width={150} height={35} className="h-7 w-auto" />
+  );
+
+export function AppShell({ children }: { children: React.ReactNode }) {
+  const router = useRouter();
+  const pathname = usePathname();
+  const user = useSession((s) => s.user);
+  const logout = useSession((s) => s.logout);
+  const setRole = useSession((s) => s.setRole);
+  const collapsed = useUI((s) => s.sidebarCollapsed);
+  const toggleSidebar = useUI((s) => s.toggleSidebar);
+  const [mounted, setMounted] = React.useState(false);
+  const [drawerOpen, setDrawerOpen] = React.useState(false);
+
+  React.useEffect(() => setMounted(true), []);
+
+  // Mock auth guard — redirect to /login when unauthenticated.
+  React.useEffect(() => {
+    if (mounted && !user) router.replace("/login");
+  }, [mounted, user, router]);
+
+  React.useEffect(() => setDrawerOpen(false), [pathname]);
+
+  if (!mounted || !user) return null;
+
+  const nav = navForRole(user.role);
+  const segs = pathname.split("/").filter(Boolean);
+  const crumbs: Crumb[] = segs.map((seg, i) => ({
+    label: i === 0 ? "Dashboard" : titleCase(seg),
+    href: "/" + segs.slice(0, i + 1).join("/"),
+  }));
+
+  const collapseToggle = (
+    <button
+      type="button"
+      onClick={toggleSidebar}
+      className={cn(
+        "flex w-full items-center gap-3 rounded-md px-3 py-2 text-body font-medium text-muted transition-colors hover:bg-surface-hover hover:text-foreground",
+        collapsed && "justify-center",
+      )}
+      aria-label={collapsed ? "Expand sidebar" : "Collapse sidebar"}
+    >
+      {collapsed ? <AngleRight size={18} /> : <AngleLeft size={18} />}
+      {!collapsed && <span>Collapse</span>}
+    </button>
+  );
+
+  return (
+    <div className="flex min-h-screen bg-surface-hover">
+      {/* Desktop sidebar */}
+      <div className="hidden lg:block">
+        <Sidebar
+          items={nav}
+          activeHref={pathname}
+          collapsed={collapsed}
+          header={
+            <Link href={portalForRole(user.role)} aria-label="Nexora">
+              {brandLogo(collapsed)}
+            </Link>
+          }
+          footer={collapseToggle}
+          className="sticky top-0 h-screen"
+        />
+      </div>
+
+      {/* Mobile drawer */}
+      <Sheet open={drawerOpen} onOpenChange={setDrawerOpen}>
+        <SheetContent side="left" className="w-[260px] p-0">
+          <SheetTitle className="sr-only">Navigation</SheetTitle>
+          <Sidebar
+            items={nav}
+            activeHref={pathname}
+            header={
+              <Link href={portalForRole(user.role)} aria-label="Nexora">
+                {brandLogo(false)}
+              </Link>
+            }
+            className="h-full border-r-0"
+          />
+        </SheetContent>
+      </Sheet>
+
+      <div className="flex min-h-screen flex-1 flex-col">
+        {/* Topbar */}
+        <header className="sticky top-0 z-30 flex h-16 items-center gap-3 border-b border-border bg-background px-4 md:px-6">
+          <button
+            type="button"
+            onClick={() => setDrawerOpen(true)}
+            aria-label="Open menu"
+            className="inline-flex h-10 w-10 items-center justify-center rounded-md text-foreground transition-colors hover:bg-surface-hover lg:hidden"
+          >
+            <Bars size={24} />
+          </button>
+
+          <div className="hidden md:block">
+            <Breadcrumb items={crumbs} />
+          </div>
+
+          <div className="relative ml-auto hidden max-w-xs flex-1 sm:block">
+            <Search
+              size={18}
+              className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-muted"
+            />
+            <Input placeholder="Search…" aria-label="Search" className="h-10 pl-10" />
+          </div>
+
+          <div className={cn("flex items-center gap-1.5", "sm:ml-2")}>
+            {/* Dev role switcher */}
+            <DropdownMenu>
+              <DropdownMenuTrigger asChild>
+                <Button variant="outline" size="sm" className="hidden gap-2 sm:inline-flex">
+                  <span className="text-muted">Viewing as</span>
+                  <span className="font-medium">{roleLabels[user.role]}</span>
+                  <AngleDown size={16} />
+                </Button>
+              </DropdownMenuTrigger>
+              <DropdownMenuContent align="end">
+                <DropdownMenuLabel>Switch role (demo)</DropdownMenuLabel>
+                <DropdownMenuSeparator />
+                {allRoles.map((r) => (
+                  <DropdownMenuItem
+                    key={r}
+                    onClick={() => {
+                      setRole(r);
+                      router.push(portalForRole(r));
+                    }}
+                  >
+                    {roleLabels[r]}
+                  </DropdownMenuItem>
+                ))}
+              </DropdownMenuContent>
+            </DropdownMenu>
+
+            <NotificationCenter />
+
+            {/* Profile menu */}
+            <DropdownMenu>
+              <DropdownMenuTrigger asChild>
+                <button
+                  type="button"
+                  className="flex items-center gap-2 rounded-full p-0.5 transition-colors hover:bg-surface-hover focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary"
+                  aria-label="Account menu"
+                >
+                  <Avatar className="h-9 w-9">
+                    <AvatarFallback>{initials(user.name)}</AvatarFallback>
+                  </Avatar>
+                </button>
+              </DropdownMenuTrigger>
+              <DropdownMenuContent align="end" className="w-56">
+                <div className="px-2 py-1.5">
+                  <p className="truncate font-medium text-foreground">{user.name}</p>
+                  <p className="truncate text-caption text-muted">{roleLabels[user.role]}</p>
+                </div>
+                <DropdownMenuSeparator />
+                <DropdownMenuItem asChild>
+                  <Link href="/profile">
+                    <User size={16} /> Profile
+                  </Link>
+                </DropdownMenuItem>
+                <DropdownMenuItem asChild>
+                  <Link href="/settings">
+                    <Cog size={16} /> Settings
+                  </Link>
+                </DropdownMenuItem>
+                <DropdownMenuSeparator />
+                <DropdownMenuItem
+                  onClick={() => {
+                    logout();
+                    router.replace("/login");
+                  }}
+                >
+                  <ArrowRightToBracket size={16} /> Logout
+                </DropdownMenuItem>
+              </DropdownMenuContent>
+            </DropdownMenu>
+          </div>
+        </header>
+
+        <main className="flex-1 px-4 py-6 md:px-8 md:py-8">{children}</main>
+      </div>
+    </div>
+  );
+}
