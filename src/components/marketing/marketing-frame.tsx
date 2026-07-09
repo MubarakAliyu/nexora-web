@@ -7,6 +7,7 @@ import { pageHasHero } from "@/content/site";
 import { SiteHeader } from "./site-header";
 import { SiteFooter } from "./site-footer";
 import { WhatsAppButton } from "./whatsapp-button";
+import { Toaster } from "@/components/ui/sonner";
 
 /**
  * Marketing chrome wrapper. Reads the pathname (SSR-stable, no flash) to decide
@@ -24,6 +25,7 @@ export function MarketingFrame({ children }: { children: ReactNode }) {
       <main className={cn("flex-1", !hasHero && "pt-20")}>{children}</main>
       <SiteFooter />
       <WhatsAppButton />
+      <Toaster />
     </div>
   );
 }

@@ -435,6 +435,50 @@ enquiry card currently offers CTA + contact affordances; the full enquiry **form
 
 ---
 
+## Batch 7 — Investors, Blog, Careers, Contact + forms ✅ (+ portfolio detail Part C)
+
+**Completed.** Built to the corrected house style (light hover cards, image CTAs with legible scrims,
+glass as accent only). Committed in chunks: portfolio detail redesign, then Batch 7 pages + forms.
+
+### Portfolio detail (Part C, redone to standard) — commit `4d9cbf6`
+Sticky enquiry card is now a **light card** (not dark glass); **keyless Google Maps embed**
+(`maps.google.com/maps?q=…&output=embed`; swap for Maps Embed API + key later); highlights spec grid
+(Type/Size/Units/Status/Year/Parking), amenities chips, local-context tiles, light hover result cards,
+gallery "+N more". Verified: sections present, map embeds with correct coords, 0 broken images, no
+mobile overflow.
+
+### Batch 7 pages
+- **/investors** — image PageHero, 6 light hover "why invest" cards, 3 alternating MediaText blocks
+  (transparency / asset protection / rental income), **FAQ accordion** (click-to-expand), investor
+  consultation form, image CTA.
+- **/blog** — PageHero, **animated category-filter reflow** (7 chips, Framer `layout`), floating
+  rounded post cards, pagination. **/blog/[slug]** (8 SSG posts, `generateStaticParams` +
+  `generateMetadata`, bad slug → 404): hero, article, share buttons (FB/X/LinkedIn/WhatsApp), 3 related.
+- **/careers** — PageHero, **roles accordion** with "Apply for this role" that **prefills the position**
+  in the application form (+ CV upload), culture MediaText, benefits hover cards, CTA.
+- **/contact** — creative split: **tabbed form panel** (General / Quote / Assessment), office info card
+  (address/phone/email/WhatsApp/socials + business hours), keyless Google **office map**.
+
+### Forms (react-hook-form + zod → mocked `lib/api/leads.ts`)
+All 5 built and on-system (labels, `role="alert"` errors, loading state, sonner success/error toast):
+Contact, Quote, Assessment (tabbed on /contact), Investor Consultation (/investors), Job Application
++ CV upload (/careers). `<Toaster/>` mounted in `MarketingFrame`.
+
+### Verification (live DOM)
+- Investors FAQ + careers roles **click-to-expand reveal content** (478px), chevron rotates, prefill works.
+- Contact form: empty submit → **4 validation errors**; valid submit → **success toast** ("Message sent").
+- Blog: filter reflow (Investment → 1 post), bad slug → **404**, share buttons, 3 related, 0 broken images.
+- Build + lint clean (40 routes); `grep lucide` → 0; palette + Cinzel/Montserrat held.
+
+### Animation lesson (important)
+This preview/Chromium **cannot** animate the accordion via CSS `max-height`/`grid-rows` transitions
+**or** Framer `animate` bound to changing state (both leave the element collapsed — same class of bug
+as the Batch-4 featured-projects). The accordion uses a **conditional render + `tw-animate` fade/slide
+entrance** (`motion-safe:`) instead — reliable. Rule of thumb for this project: prefer conditional
+render / CSS opacity / keyed-remount over `animate`-on-state and height transitions.
+
+---
+
 ## Asset Inventory (verified visually — not by filename)
 
 Originals in the `Nexora` root are **read-only**; copies live under `nexora-web/public/`.
