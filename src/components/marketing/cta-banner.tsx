@@ -1,5 +1,5 @@
 import Image from "next/image";
-import { Reveal, Parallax } from "@/components/motion";
+import { Reveal } from "@/components/motion";
 import { CtaButton } from "./cta-button";
 
 interface CtaBannerProps {
@@ -11,7 +11,10 @@ interface CtaBannerProps {
   secondary?: { label: string; href: string; external?: boolean };
 }
 
-/** Reusable finale CTA band over a property image with scrim + gentle parallax. */
+/** Reusable finale CTA band over a property image with scrim + hover zoom.
+ *  The image fills the section directly (positioned by the section, which has a
+ *  definite height from the content) so it always renders; a slow group-hover
+ *  scale gives the same living-image feel as the portfolio/media cards. */
 export function CtaBanner({
   heading,
   subline,
@@ -21,12 +24,16 @@ export function CtaBanner({
   secondary,
 }: CtaBannerProps) {
   return (
-    <section className="relative overflow-hidden">
-      <Parallax offset={40} className="absolute inset-0">
-        <div className="relative h-[125%] w-full">
-          <Image src={image} alt={imageAlt} fill sizes="100vw" className="object-cover" />
-        </div>
-      </Parallax>
+    <section className="group relative overflow-hidden">
+      <div className="absolute inset-0">
+        <Image
+          src={image}
+          alt={imageAlt}
+          fill
+          sizes="100vw"
+          className="object-cover transition-transform duration-[1400ms] ease-out will-change-transform motion-safe:group-hover:scale-[1.06]"
+        />
+      </div>
       {/* Lighter scrim so the imagery reads clean — darkest behind the centred
           text (AA), lighter top/bottom so the photo shows through. */}
       <div className="absolute inset-0 bg-gradient-to-t from-foreground/45 via-foreground/78 to-foreground/45" />
