@@ -76,6 +76,6 @@ export const investorsCta = {
   subline:
     "Book a no-obligation consultation with a Nexora investor advisor and see how effortless ownership can be.",
   primary: { label: "Book a Consultation", href: "#consultation" },
-  image: "/images/properties/villa-garden-pool.jpg",
-  imageAlt: "Modern managed villa with garden and pool",
+  image: "/images/cta/cta-invest.jpg",
+  imageAlt: "Confident investor celebrating outside a modern building",
 };

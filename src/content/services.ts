@@ -306,6 +306,6 @@ export const servicesCta = {
   subline:
     "Tell us about your property and we’ll recommend the right mix — with a free, no-obligation assessment.",
   primary: { label: "Request a Free Assessment", href: "/contact" },
-  image: "/images/properties/tower-white-woodbalcony.jpg",
-  imageAlt: "Modern managed apartment tower against a blue sky",
+  image: "/images/cta/cta-services.jpg",
+  imageAlt: "Property manager reviewing plans on a tablet",
 };

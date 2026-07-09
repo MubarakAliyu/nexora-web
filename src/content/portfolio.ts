@@ -424,8 +424,8 @@ export const portfolioCta = {
   subline:
     "Join the owners who trust Nexora to protect and grow their assets — with a free, no-obligation assessment.",
   primary: { label: "Request a Free Assessment", href: "/contact" },
-  image: "/images/properties/tower-poolside.jpg",
-  imageAlt: "Poolside view of a managed residential tower",
+  image: "/images/cta/cta-portfolio.jpg",
+  imageAlt: "Architect arranging scale models of managed buildings",
 };
 
 /* --------------------------------------------------- Projects / Transformations */
