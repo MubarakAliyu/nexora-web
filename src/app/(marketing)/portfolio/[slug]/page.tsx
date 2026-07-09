@@ -10,14 +10,15 @@ import {
   Truck,
   AdjustmentsHorizontal,
   MapPin,
+  ShieldCheck,
   Phone,
+  Envelope,
   ArrowRight,
 } from "flowbite-react-icons/outline";
 import { Whatsapp } from "flowbite-react-icons/solid";
 import { Reveal, RevealGroup, RevealItem, CountUp } from "@/components/motion";
 import { PageHero } from "@/components/marketing/page-hero";
 import { PropertyGallery } from "@/components/marketing/property-gallery";
-import { GlassPanel } from "@/components/marketing/section-treatments";
 import { MapEmbed } from "@/components/marketing/map-embed";
 import { CtaBanner } from "@/components/marketing/cta-banner";
 import { CtaButton } from "@/components/marketing/cta-button";
@@ -59,13 +60,23 @@ export default async function PropertyPage({
     .map((s) => getProperty(s))
     .filter((p): p is (typeof properties)[number] => Boolean(p));
 
+  const statusValue =
+    property.details.find((d) => d.label === "Status")?.value ?? "Fully managed";
+
   const highlights = [
     { Icon: Building, label: "Type", value: property.category },
+    { Icon: AdjustmentsHorizontal, label: "Size", value: meta.size },
     { Icon: Home, label: "Units", value: String(property.units) },
-    { Icon: BadgeCheck, label: "Occupancy", value: `${property.occupancy}%` },
+    { Icon: BadgeCheck, label: "Status", value: statusValue },
     { Icon: Clock, label: "Year", value: meta.year },
     { Icon: Truck, label: "Parking", value: meta.parking },
-    { Icon: AdjustmentsHorizontal, label: "Size", value: meta.size },
+  ];
+
+  const localContext = [
+    { Icon: MapPin, label: "Neighbourhood", value: property.location },
+    { Icon: Building, label: "Nearby", value: "Shops, dining & schools" },
+    { Icon: Truck, label: "Connectivity", value: "Main roads & transport" },
+    { Icon: ShieldCheck, label: "Security", value: "Gated & patrolled" },
   ];
 
   return (
@@ -102,7 +113,7 @@ export default async function PropertyPage({
                 >
                   {highlights.map(({ Icon, label, value }) => (
                     <RevealItem key={label}>
-                      <div className="rounded-xl border border-border bg-background p-4 shadow-sm">
+                      <div className="rounded-xl border border-border bg-background p-4 shadow-sm transition-all duration-300 hover:-translate-y-1 hover:border-primary/40 hover:shadow-lg">
                         <span className="flex h-10 w-10 items-center justify-center rounded-md bg-surface-active text-primary">
                           <Icon size={20} />
                         </span>
@@ -114,6 +125,25 @@ export default async function PropertyPage({
                     </RevealItem>
                   ))}
                 </RevealGroup>
+              </div>
+
+              {/* Amenities */}
+              <div>
+                <Reveal>
+                  <h2 className="font-heading text-h2 font-semibold text-foreground">Amenities</h2>
+                </Reveal>
+                <Reveal delay={0.08}>
+                  <div className="mt-5 flex flex-wrap gap-2.5">
+                    {meta.amenities.map((a) => (
+                      <span
+                        key={a}
+                        className="rounded-full border border-border bg-background px-3.5 py-1.5 text-caption font-medium text-foreground shadow-sm transition-colors hover:border-primary hover:text-primary"
+                      >
+                        {a}
+                      </span>
+                    ))}
+                  </div>
+                </Reveal>
               </div>
 
               {/* Overview */}
@@ -143,7 +173,7 @@ export default async function PropertyPage({
                 <RevealGroup stagger={0.06} className="mt-6 grid gap-3 sm:grid-cols-2">
                   {property.scope.map((s) => (
                     <RevealItem key={s.text}>
-                      <div className="flex items-center gap-3 rounded-lg border border-border bg-background p-4">
+                      <div className="flex items-center gap-3 rounded-lg border border-border bg-background p-4 shadow-sm transition-all duration-300 hover:-translate-y-1 hover:border-primary/40 hover:shadow-lg">
                         <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-md bg-surface-active text-primary">
                           <SectionIcon name={s.icon} size={18} />
                         </span>
@@ -166,6 +196,33 @@ export default async function PropertyPage({
                 </Reveal>
               </div>
 
+              {/* Local context */}
+              <div>
+                <Reveal>
+                  <h2 className="font-heading text-h2 font-semibold text-foreground">
+                    Local context
+                  </h2>
+                </Reveal>
+                <RevealGroup
+                  stagger={0.06}
+                  className="mt-6 grid grid-cols-2 gap-4 sm:grid-cols-4"
+                >
+                  {localContext.map(({ Icon, label, value }) => (
+                    <RevealItem key={label}>
+                      <div className="h-full rounded-xl border border-border bg-background p-4 shadow-sm transition-all duration-300 hover:-translate-y-1 hover:border-primary/40 hover:shadow-lg">
+                        <span className="flex h-10 w-10 items-center justify-center rounded-md bg-surface-active text-primary">
+                          <Icon size={20} />
+                        </span>
+                        <p className="mt-3 text-caption uppercase tracking-wide text-muted">
+                          {label}
+                        </p>
+                        <p className="text-body font-medium text-foreground">{value}</p>
+                      </div>
+                    </RevealItem>
+                  ))}
+                </RevealGroup>
+              </div>
+
               {/* Results */}
               <div>
                 <Reveal>
@@ -176,7 +233,7 @@ export default async function PropertyPage({
                 <div className="mt-6 grid gap-5 sm:grid-cols-3">
                   {property.results.map((r, i) => (
                     <Reveal key={r.label} delay={i * 0.08}>
-                      <div className="rounded-xl border border-border bg-background p-6 text-center shadow-sm">
+                      <div className="rounded-2xl border border-border bg-background p-8 text-center shadow-sm transition-all duration-300 hover:-translate-y-1 hover:border-primary/40 hover:shadow-lg">
                         <div className="font-heading text-h1 font-semibold text-primary">
                           <CountUp to={r.value} prefix={r.prefix} suffix={r.suffix} />
                         </div>
@@ -190,18 +247,18 @@ export default async function PropertyPage({
               </div>
             </div>
 
-            {/* Sticky enquiry glass card */}
+            {/* Sticky light enquiry card */}
             <div className="lg:col-span-1">
               <div className="lg:sticky lg:top-24">
-                <GlassPanel tone="light" className="p-6 shadow-xl">
+                <div className="rounded-2xl border border-border bg-background p-6 shadow-xl">
                   <p className="text-caption font-medium uppercase tracking-[0.2em] text-primary">
                     Enquire
                   </p>
                   <h3 className="mt-2 font-heading text-h3 font-semibold text-foreground">
                     Request a viewing
                   </h3>
-                  <p className="mt-2 text-body text-muted">
-                    Speak to our team about {property.name} or arrange a visit.
+                  <p className="mt-1 text-body text-muted">
+                    {property.name} · {property.location}
                   </p>
                   <div className="mt-5">
                     <CtaButton href="/contact" className="w-full justify-center">
@@ -211,7 +268,7 @@ export default async function PropertyPage({
                   <div className="mt-5 space-y-3">
                     <a
                       href={`tel:${contact.phone.replace(/\s/g, "")}`}
-                      className="flex items-center gap-3 rounded-lg border border-border bg-background/70 p-3 transition-colors hover:border-primary"
+                      className="flex items-center gap-3 rounded-lg border border-border p-3 transition-colors hover:border-primary"
                     >
                       <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-md bg-surface-active text-primary">
                         <Phone size={18} />
@@ -225,7 +282,7 @@ export default async function PropertyPage({
                       href={whatsappHref}
                       target="_blank"
                       rel="noopener noreferrer"
-                      className="flex items-center gap-3 rounded-lg border border-border bg-background/70 p-3 transition-colors hover:border-primary"
+                      className="flex items-center gap-3 rounded-lg border border-border p-3 transition-colors hover:border-primary"
                     >
                       <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-md bg-surface-active text-primary">
                         <Whatsapp size={18} />
@@ -237,8 +294,22 @@ export default async function PropertyPage({
                         </span>
                       </span>
                     </a>
+                    <a
+                      href={`mailto:${contact.email}`}
+                      className="flex items-center gap-3 rounded-lg border border-border p-3 transition-colors hover:border-primary"
+                    >
+                      <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-md bg-surface-active text-primary">
+                        <Envelope size={18} />
+                      </span>
+                      <span className="min-w-0">
+                        <span className="block text-caption text-muted">Email</span>
+                        <span className="truncate font-medium text-foreground">
+                          {contact.email}
+                        </span>
+                      </span>
+                    </a>
                   </div>
-                </GlassPanel>
+                </div>
               </div>
             </div>
           </div>

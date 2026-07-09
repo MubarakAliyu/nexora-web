@@ -366,18 +366,21 @@ export interface PropertyMeta {
   year: string;
   parking: string;
   size: string;
+  amenities: string[];
 }
 
+const commonAmenities = ["24/7 Security", "Backup power", "Water reserve", "Concierge"];
+
 export const propertyMeta: Record<string, PropertyMeta> = {
-  "nakasero-heights": { address: "Nakasero Hill, Kampala, Uganda", lat: 0.33, lng: 32.58, year: "2021", parking: "2 levels", size: "6,400 m²" },
-  "munyonyo-suites": { address: "Munyonyo, Kampala, Uganda", lat: 0.2586, lng: 32.63, year: "2020", parking: "Ample", size: "8,100 m²" },
-  "entebbe-villas": { address: "Lake Victoria Rd, Entebbe, Uganda", lat: 0.0512, lng: 32.4637, year: "2019", parking: "Private", size: "5,200 m²" },
-  "kololo-court": { address: "Kololo, Kampala, Uganda", lat: 0.335, lng: 32.595, year: "2022", parking: "Basement", size: "3,600 m²" },
-  "bugolobi-lofts": { address: "Bugolobi, Kampala, Uganda", lat: 0.318, lng: 32.615, year: "2021", parking: "Secure", size: "2,800 m²" },
-  "lugogo-offices": { address: "Lugogo Bypass, Kampala, Uganda", lat: 0.333, lng: 32.605, year: "2018", parking: "Multi-level", size: "4,500 m²" },
-  "ntinda-plaza": { address: "Ntinda, Kampala, Uganda", lat: 0.362, lng: 32.618, year: "2020", parking: "Customer", size: "5,900 m²" },
-  "jinja-riverside": { address: "Nile Crescent, Jinja, Uganda", lat: 0.4244, lng: 33.2041, year: "2017", parking: "On-site", size: "9,300 m²" },
-  "kampala-facilities": { address: "Greater Kampala, Uganda", lat: 0.3476, lng: 32.5825, year: "Various", parking: "Varies", size: "25 sites" },
+  "nakasero-heights": { address: "Nakasero Hill, Kampala, Uganda", lat: 0.33, lng: 32.58, year: "2021", parking: "2 levels", size: "6,400 m²", amenities: ["Rooftop pool", "Fitness centre", ...commonAmenities, "Landscaped grounds"] },
+  "munyonyo-suites": { address: "Munyonyo, Kampala, Uganda", lat: 0.2586, lng: 32.63, year: "2020", parking: "Ample", size: "8,100 m²", amenities: ["Lakeside deck", "Infinity pool", "Housekeeping", ...commonAmenities] },
+  "entebbe-villas": { address: "Lake Victoria Rd, Entebbe, Uganda", lat: 0.0512, lng: 32.4637, year: "2019", parking: "Private", size: "5,200 m²", amenities: ["Private gardens", "Pool", "Gated estate", ...commonAmenities] },
+  "kololo-court": { address: "Kololo, Kampala, Uganda", lat: 0.335, lng: 32.595, year: "2022", parking: "Basement", size: "3,600 m²", amenities: ["Shared lounge", "Access control", ...commonAmenities] },
+  "bugolobi-lofts": { address: "Bugolobi, Kampala, Uganda", lat: 0.318, lng: 32.615, year: "2021", parking: "Secure", size: "2,800 m²", amenities: ["Loft terraces", "Fibre internet", ...commonAmenities] },
+  "lugogo-offices": { address: "Lugogo Bypass, Kampala, Uganda", lat: 0.333, lng: 32.605, year: "2018", parking: "Multi-level", size: "4,500 m²", amenities: ["High-speed lifts", "HVAC", "Fibre internet", ...commonAmenities] },
+  "ntinda-plaza": { address: "Ntinda, Kampala, Uganda", lat: 0.362, lng: 32.618, year: "2020", parking: "Customer", size: "5,900 m²", amenities: ["Retail frontage", "Ample parking", ...commonAmenities] },
+  "jinja-riverside": { address: "Nile Crescent, Jinja, Uganda", lat: 0.4244, lng: 33.2041, year: "2017", parking: "On-site", size: "9,300 m²", amenities: ["Riverside setting", "Communal grounds", "Estate security", ...commonAmenities] },
+  "kampala-facilities": { address: "Greater Kampala, Uganda", lat: 0.3476, lng: 32.5825, year: "Various", parking: "Varies", size: "25 sites", amenities: ["Managed grounds", "Preventive upkeep", ...commonAmenities] },
 };
 
 export function getPropertyMeta(slug: string): PropertyMeta {
@@ -389,6 +392,7 @@ export function getPropertyMeta(slug: string): PropertyMeta {
       year: "—",
       parking: "—",
       size: "—",
+      amenities: commonAmenities,
     }
   );
 }

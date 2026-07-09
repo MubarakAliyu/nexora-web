@@ -1,8 +1,12 @@
 import { MapPin } from "flowbite-react-icons/outline";
 
 /**
- * Embedded location map. Uses the keyless OpenStreetMap iframe embed so it works
- * without an API key — swap for a Google Maps embed + key at launch if preferred.
+ * Embedded location map. Uses the standard **keyless Google Maps embed**
+ * (`maps.google.com/maps?q=…&output=embed`) — renders a real Google map with a
+ * marker and needs no API key for a basic embed.
+ *
+ * To upgrade later: swap `src` for the Maps Embed API
+ * (`https://www.google.com/maps/embed/v1/place?key=YOUR_KEY&q=…`) and add the key.
  */
 export function MapEmbed({
   lat,
@@ -13,9 +17,7 @@ export function MapEmbed({
   lng: number;
   label: string;
 }) {
-  const d = 0.012;
-  const bbox = `${lng - d}%2C${lat - d * 0.7}%2C${lng + d}%2C${lat + d * 0.7}`;
-  const src = `https://www.openstreetmap.org/export/embed.html?bbox=${bbox}&layer=mapnik&marker=${lat}%2C${lng}`;
+  const src = `https://maps.google.com/maps?q=${lat},${lng}&z=15&hl=en&output=embed`;
 
   return (
     <div className="overflow-hidden rounded-xl border border-border shadow-sm">
@@ -23,6 +25,7 @@ export function MapEmbed({
         title={`Map showing ${label}`}
         src={src}
         loading="lazy"
+        referrerPolicy="no-referrer-when-downgrade"
         className="h-72 w-full border-0"
       />
       <div className="flex items-center gap-2 bg-background p-3 text-caption text-muted">
