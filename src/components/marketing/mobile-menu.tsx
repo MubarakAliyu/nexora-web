@@ -61,10 +61,15 @@ export function MobileMenu({ open, onOpenChange, pathname }: MobileMenuProps) {
           })}
         </nav>
 
-        <div className="mt-8 px-3">
+        <div className="mt-8 flex flex-col gap-3 px-3">
           <Button asChild className="w-full">
-            <Link href="/contact" onClick={() => onOpenChange(false)}>
+            <Link href="/request-a-quote" onClick={() => onOpenChange(false)}>
               Request a Quote
+            </Link>
+          </Button>
+          <Button asChild variant="outline" className="w-full">
+            <Link href="/login" onClick={() => onOpenChange(false)}>
+              Log in
             </Link>
           </Button>
         </div>

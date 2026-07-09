@@ -106,9 +106,20 @@ export function SiteHeader({ hasHero }: { hasHero: boolean }) {
         </nav>
 
         <div className="flex items-center gap-2">
-          <div className="hidden lg:block">
+          <div className="hidden items-center gap-1.5 lg:flex">
+            <Link
+              href="/login"
+              className={cn(
+                "rounded-md px-3.5 py-2 text-sm font-medium transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2 focus-visible:ring-offset-transparent",
+                solid
+                  ? "text-foreground hover:text-primary"
+                  : "text-background/90 hover:text-background",
+              )}
+            >
+              Log in
+            </Link>
             <Button asChild size="sm">
-              <Link href="/contact">Request a Quote</Link>
+              <Link href="/request-a-quote">Request a Quote</Link>
             </Button>
           </div>
 
