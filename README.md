@@ -1,62 +1,210 @@
 # Nexora Property Management — Web Platform
 
-Premium, motion-rich marketing website + authenticated dashboards (Admin, Owner, Tenant)
-for **Nexora Property Management** (a Groupe M-Zi Inc. company). Built by Starnova Labs.
+The official marketing website and application dashboards for **Nexora Property Management** — an integrated property management ecosystem based in Kampala, Uganda.
 
-## Tech stack
+Built as a single Next.js 15 application with two route groups: a public, motion-rich **marketing site** and an authenticated **application** (Admin, Owner, and Tenant dashboards).
 
-- **Next.js 15** (App Router, TypeScript, `src/` directory)
-- **Tailwind CSS v4** + **shadcn/ui**
-- **Framer Motion** (animation)
-- **Flowbite Icons** (`flowbite-react-icons`) — the only icon set
-- **React Query** (server state) + **Zustand** (UI state)
-- **react-hook-form** + **zod** (forms & validation)
+---
 
-## Design system (locked)
+## Tech Stack
 
-- **Fonts:** Cinzel (headings) + Montserrat (body), loaded via `<link>` in the root layout head.
-- **Palette (the only colours allowed):**
-  `--background #F5F5F5` · `--foreground #232220` · `--muted #565655` ·
-  `--primary #E08A20` · `--accent #4A4844` · `--border #D4D4D3`. Never `#000000`.
-- Tokens are defined in `src/styles/globals.css`; every component references them.
+| Layer | Technology |
+|---|---|
+| Framework | Next.js 15 (App Router, TypeScript, `src/` directory) |
+| Styling | Tailwind CSS v4 |
+| Components | shadcn/ui (Radix primitives) |
+| Animation | Framer Motion |
+| Icons | Flowbite Icons (`flowbite-react-icons`) — exclusively, no other icon set |
+| Fonts | Cinzel (headings/display) · Montserrat (body/UI) — loaded via `<link>` in the root layout |
+| Forms | react-hook-form + zod |
+| Data fetching (client) | @tanstack/react-query |
+| UI state | Zustand |
+| Charts | Recharts |
+| Toasts | Sonner |
 
-## Getting started
+> The frontend currently runs on a **typed mock data layer** (`src/lib/api/`, `src/lib/mock/`). There is no live backend yet — see [Backend integration](#backend-integration) below.
+
+---
+
+## Getting Started
+
+### Prerequisites
+
+- Node.js 20+ (developed on Node 22)
+- npm 10+
+
+### Install & run
 
 ```bash
-npm install        # install dependencies
-npm run dev        # start the dev server at http://localhost:3000
-npm run build      # production build
-npm run start      # serve the production build
-npm run lint       # eslint
+npm install
+npm run dev
 ```
 
-## Project structure
+Open [http://localhost:3000](http://localhost:3000).
+
+### Useful scripts
+
+```bash
+npm run dev        # start the dev server
+npm run build       # production build (stop the dev server first — see note below)
+npm run start        # run the production build locally
+npm run lint          # ESLint
+npx tsc --noEmit       # typecheck only, without a full build
+```
+
+> **Windows / local dev note:** running `next build` while the dev server is active can corrupt the `.next` folder (dev and prod artifacts collide). Stop `npm run dev` before running `npm run build`, then restart the dev server afterwards.
+
+---
+
+## Project Structure
 
 ```
 src/
   app/
-    (marketing)/      # public marketing site (Batches 3–7)
-    (app)/            # authenticated dashboards (Batches 8–11)
-    layout.tsx        # root layout: font <link> tags, html/body
-    page.tsx          # temporary landing (replaced in Batch 4)
+    (marketing)/        # public site: home, about, services, portfolio, projects,
+                         # investors, blog, careers, contact, request-a-quote
+    (app)/               # authenticated app: auth screens + /admin, /owner, /tenant
+    layout.tsx            # root layout — font <link> tags, metadata, favicon
   components/
-    ui/               # shadcn primitives + design-system components
-    marketing/        # marketing-only components
-    app/              # dashboard components
-    motion/           # reusable Framer Motion wrappers
-  content/            # typed marketing content (services, stats, projects…)
+    ui/                    # shadcn/Radix primitives (Button, DataTable, Dialog, …)
+    marketing/               # marketing-only sections (hero, footer, forms, …)
+    app/                       # dashboard components (sidebar, topbar, page-header, …)
+    motion/                     # reusable Framer Motion primitives (Reveal, CountUp, …)
+  content/                        # typed marketing copy (home.ts, services.ts, …)
   lib/
-    api/              # data-access layer (mocked; Django REST later)
-    utils.ts          # cn() class merge helper
+    api/                           # mock data access layer + auth
+    mock/                           # seeded mock dataset (properties, tenants, leases, …)
+    utils.ts
   styles/
-    globals.css       # design tokens live here
+    globals.css                       # design tokens (see below) + Tailwind theme
 public/
-  brand/              # logo variants + icon mark
-  images/properties/  # property & interior photography
-  images/og/          # social share images (generated in Batch 12)
+  brand/                                # logo lockups (light/white/on-orange), icon mark
+  images/properties/                     # property & interior photography
+  favicon_io/                             # favicon + web manifest
 ```
 
-## Build protocol
+`PROGRESS.md` in the project root is a running build log — each development batch is documented there with what was built and how it was verified.
 
-Work proceeds in batches **0 → 12** (see `PROGRESS.md` and the root `PROMPT.md`).
-Each batch must build clean (`npm run build` + `npm run lint`) before the next begins.
+---
+
+## Design System
+
+All visual decisions are token-driven — see `src/styles/globals.css`. Do not introduce colors, fonts, or icons outside this system.
+
+**Typography**
+- Headings / display: **Cinzel** (400/500/600)
+- Body / UI: **Montserrat** (400/500)
+
+**Color tokens** (the only colors used anywhere in the app)
+
+| Token | Hex | Usage |
+|---|---|---|
+| `--background` | `#F5F5F5` | Page background, card surfaces |
+| `--foreground` | `#232220` | Primary text, headings, icons |
+| `--muted` | `#565655` | Secondary text, placeholders |
+| `--primary` | `#E08A20` | CTAs, active states, links, accents |
+| `--accent` | `#4A4844` | Hover/pressed states |
+| `--border` | `#D4D4D3` | Dividers, input borders, card outlines |
+
+**Icons:** Flowbite Icons only (`flowbite-react-icons`) — no Lucide, Heroicons, or react-feather.
+
+**Motion:** the marketing site uses a cinematic, scroll-driven motion language (hero slider, parallax, scroll-reveal, count-up stats). The authenticated app (`(app)` route group) intentionally uses a quieter, faster motion language (150–250ms transitions) appropriate for a daily-use dashboard. Both respect `prefers-reduced-motion`.
+
+A known environment quirk: Framer Motion's `animate` prop bound to changing React state, along with CSS `max-height` / `grid-rows` / `transition-[width]` transitions, has proven unreliable in this dev setup. All interactive reveals (accordions, carousels, sidebar collapse, etc.) use **conditional rendering with mount-only animation** instead. Keep this pattern for any new interactive component.
+
+---
+
+## Authentication (demo credentials)
+
+The app currently runs on mocked authentication. Every account uses password **`123456`**, followed by a 2FA step (code **`123456`**).
+
+| Email | Role | Portal |
+|---|---|---|
+| `admin@nexora.co.ug` | Super Admin | `/admin` |
+| `manager@nexora.co.ug` | Property Manager | `/admin` |
+| `finance@nexora.co.ug` | Finance Officer | `/admin` |
+| `salim@gmail.com` | Owner | `/owner` |
+| `mubarak@gmail.com` | Tenant | `/tenant` |
+
+---
+
+## Backend Integration
+
+The frontend is built against the API contract defined in the **Nexora PRD v1.0** (endpoint registry, entity schema, and RBAC matrix). To connect a real backend:
+
+1. Implement the REST API per the PRD's endpoint registry (`/api/v1/...`).
+2. Replace the accessors in `src/lib/api/` with real HTTP calls (React Query is already wired for this — swap the mock fetch functions, keep the hooks).
+3. Replace mock auth in `src/lib/api/auth.ts` with real JWT-based auth (access + refresh token, HttpOnly cookies) per the PRD.
+4. Wire the payment gateway redirect stubs (tenant "Pay Rent" flow) to the real Flutterwave/Stripe integration.
+
+---
+
+## Deployment
+
+### Deploying to Vercel
+
+This is a standard Next.js 15 App Router project — no special configuration is required.
+
+1. **Push to GitHub** (see below), then in Vercel: **Add New → Project → Import** your repository.
+2. Vercel auto-detects Next.js. Defaults are correct:
+   - **Framework Preset:** Next.js
+   - **Build Command:** `next build`
+   - **Output Directory:** *(default — leave blank)*
+   - **Install Command:** `npm install`
+3. Add any environment variables your integration needs (see [Environment Variables](#environment-variables) below) under **Project Settings → Environment Variables**.
+4. Deploy. Every push to your main branch will trigger a new production deployment; every pull request gets a preview deployment automatically.
+
+### Environment Variables
+
+The project currently runs entirely on mock data and has **no required environment variables** to build or deploy. As real integrations are wired in, add variables here and in Vercel, for example:
+
+```bash
+# .env.local (not committed — see .gitignore)
+NEXT_PUBLIC_API_BASE_URL=
+NEXT_PUBLIC_GOOGLE_MAPS_EMBED_KEY=
+FLUTTERWAVE_SECRET_KEY=
+STRIPE_SECRET_KEY=
+```
+
+Create a `.env.local.example` alongside any real `.env.local` so collaborators know what's needed, without committing secrets.
+
+---
+
+## Pushing to GitHub
+
+If this project isn't connected to a remote yet:
+
+```bash
+git remote add origin https://github.com/<your-username>/<your-repo>.git
+git branch -M main
+git push -u origin main
+```
+
+> If you're unsure whether this repo is already connected to something else, check first:
+> `git remote -v` — it should be empty before adding a new origin.
+
+---
+
+## Project Status
+
+This project is being built in sequential batches (see `PROGRESS.md` for the full log):
+
+- [x] Batch 0 — Project setup & asset audit
+- [x] Batch 1 — Design system foundation
+- [x] Batch 2 — Core component library
+- [x] Batch 3 — Marketing layout shell (header, footer, WhatsApp)
+- [x] Batch 4 — Homepage
+- [x] Batch 5 — About & Services
+- [x] Batch 6 — Portfolio & Projects
+- [x] Batch 7 — Investors, Blog, Careers, Contact + lead forms
+- [x] Batch 8 — Authentication & app shell
+- [x] Batch 9 — Admin Dashboard
+- [ ] Batch 10 — Owner Portal
+- [ ] Batch 11 — Tenant Portal
+- [ ] Batch 12 — Motion polish, responsive QA, performance & accessibility
+
+---
+
+## License
+
+Proprietary — Nexora Property Management / Starnova Labs. Not for redistribution.
