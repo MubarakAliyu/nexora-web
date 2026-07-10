@@ -1,36 +1,57 @@
 /**
- * Mocked auth data-access layer. Simulates network latency and returns a
- * session/token shape that mirrors what the PRD's JWT auth will provide.
+ * Mocked auth data-access layer. Validates against the seeded user table in
+ * `lib/mock/db.ts` and returns a session/token shape mirroring the PRD's JWT
+ * auth. All five seed accounts use password "123456".
  */
 
 import type { Role } from "@/lib/roles";
+import { findUser, users } from "@/lib/mock/db";
+
+export interface SessionUserPayload {
+  id: string;
+  name: string;
+  email: string;
+  role: Role;
+  title?: string;
+  ownerId?: string;
+  tenantId?: string;
+}
 
 export interface AuthSession {
   token: string;
-  user: { id: string; name: string; email: string; role: Role };
+  user: SessionUserPayload;
 }
 
-const delay = (ms = 900) => new Promise((r) => setTimeout(r, ms));
+const delay = (ms = 700) => new Promise((r) => setTimeout(r, ms));
 
 function fakeToken() {
   return `mock.${Math.random().toString(36).slice(2)}.${Date.now()}`;
 }
 
-function nameFromEmail(email: string) {
-  const handle = email.split("@")[0] ?? "User";
-  return handle
-    .split(/[._-]/)
-    .map((s) => s.charAt(0).toUpperCase() + s.slice(1))
-    .join(" ");
+export class InvalidCredentialsError extends Error {
+  constructor() {
+    super("Incorrect email or password.");
+    this.name = "InvalidCredentialsError";
+  }
 }
 
-export async function login(
-  email: string,
-  _password: string,
-  role: Role = "super_admin",
-): Promise<AuthSession> {
+/** Validate email + password against the seed table. Throws on mismatch. */
+export async function login(email: string, password: string): Promise<AuthSession> {
   await delay();
-  return { token: fakeToken(), user: { id: "u_1", name: nameFromEmail(email), email, role } };
+  const u = findUser(email, password);
+  if (!u) throw new InvalidCredentialsError();
+  return {
+    token: fakeToken(),
+    user: {
+      id: u.id,
+      name: u.name,
+      email: u.email,
+      role: u.role,
+      title: u.title,
+      ownerId: u.ownerId,
+      tenantId: u.tenantId,
+    },
+  };
 }
 
 export async function register(
@@ -39,21 +60,39 @@ export async function register(
   _password: string,
 ): Promise<AuthSession> {
   await delay();
-  return { token: fakeToken(), user: { id: "u_new", name, email, role: "super_admin" } };
+  return {
+    token: fakeToken(),
+    user: { id: "u_new", name, email, role: "super_admin", title: "Super Administrator" },
+  };
 }
 
-export async function requestPasswordReset(
-  _email: string,
-): Promise<{ ok: true; token: string }> {
+/**
+ * Request a reset link. In this mock we always report success (don't leak which
+ * emails exist) but only mint a usable token for real seed accounts, and echo
+ * it back so the demo flow can continue to /reset-password?token=...
+ */
+export async function requestPasswordReset(email: string): Promise<{ ok: true; token: string }> {
   await delay();
-  return { ok: true, token: "mock-reset-token" };
+  const known = users.some((u) => u.email.toLowerCase() === email.trim().toLowerCase());
+  const token = known ? `reset.${btoa(email).replace(/=/g, "")}.${Date.now()}` : "";
+  return { ok: true, token };
 }
 
-export async function resetPassword(
-  _token: string,
-  _password: string,
-): Promise<{ ok: true }> {
+export class InvalidTokenError extends Error {
+  constructor() {
+    super("This reset link is invalid or has expired.");
+    this.name = "InvalidTokenError";
+  }
+}
+
+/** A token is valid if it looks like a minted reset token. */
+export function isValidResetToken(token: string | null | undefined): boolean {
+  return typeof token === "string" && /^reset\.[A-Za-z0-9+/]+\.\d+$/.test(token);
+}
+
+export async function resetPassword(token: string, _password: string): Promise<{ ok: true }> {
   await delay();
+  if (!isValidResetToken(token)) throw new InvalidTokenError();
   return { ok: true };
 }
 

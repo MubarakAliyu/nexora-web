@@ -8,7 +8,6 @@ import {
   Bars,
   AngleLeft,
   AngleRight,
-  AngleDown,
   Search,
   Cog,
   User,
@@ -17,7 +16,6 @@ import {
 import { Sidebar } from "@/components/ui/sidebar";
 import { Sheet, SheetContent, SheetTitle } from "@/components/ui/sheet";
 import { Input } from "@/components/ui/input";
-import { Button } from "@/components/ui/button";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { Breadcrumb, type Crumb } from "@/components/ui/breadcrumb";
 import {
@@ -25,14 +23,13 @@ import {
   DropdownMenuTrigger,
   DropdownMenuContent,
   DropdownMenuItem,
-  DropdownMenuLabel,
   DropdownMenuSeparator,
 } from "@/components/ui/dropdown-menu";
 import { NotificationCenter } from "./notification-center";
 import { navForRole } from "./nav-config";
 import { useSession } from "@/lib/stores/session";
 import { useUI } from "@/lib/stores/ui";
-import { allRoles, portalForRole, roleLabels } from "@/lib/roles";
+import { portalForRole, roleLabels } from "@/lib/roles";
 import { cn } from "@/lib/utils";
 
 function titleCase(seg: string) {
@@ -62,7 +59,6 @@ export function AppShell({ children }: { children: React.ReactNode }) {
   const pathname = usePathname();
   const user = useSession((s) => s.user);
   const logout = useSession((s) => s.logout);
-  const setRole = useSession((s) => s.setRole);
   const collapsed = useUI((s) => s.sidebarCollapsed);
   const toggleSidebar = useUI((s) => s.toggleSidebar);
   const [mounted, setMounted] = React.useState(false);
@@ -161,32 +157,6 @@ export function AppShell({ children }: { children: React.ReactNode }) {
           </div>
 
           <div className={cn("flex items-center gap-1.5", "sm:ml-2")}>
-            {/* Dev role switcher */}
-            <DropdownMenu>
-              <DropdownMenuTrigger asChild>
-                <Button variant="outline" size="sm" className="hidden gap-2 sm:inline-flex">
-                  <span className="text-muted">Viewing as</span>
-                  <span className="font-medium">{roleLabels[user.role]}</span>
-                  <AngleDown size={16} />
-                </Button>
-              </DropdownMenuTrigger>
-              <DropdownMenuContent align="end">
-                <DropdownMenuLabel>Switch role (demo)</DropdownMenuLabel>
-                <DropdownMenuSeparator />
-                {allRoles.map((r) => (
-                  <DropdownMenuItem
-                    key={r}
-                    onClick={() => {
-                      setRole(r);
-                      router.push(portalForRole(r));
-                    }}
-                  >
-                    {roleLabels[r]}
-                  </DropdownMenuItem>
-                ))}
-              </DropdownMenuContent>
-            </DropdownMenu>
-
             <NotificationCenter />
 
             {/* Profile menu */}
@@ -205,7 +175,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
               <DropdownMenuContent align="end" className="w-56">
                 <div className="px-2 py-1.5">
                   <p className="truncate font-medium text-foreground">{user.name}</p>
-                  <p className="truncate text-caption text-muted">{roleLabels[user.role]}</p>
+                  <p className="truncate text-caption text-muted">{user.title ?? roleLabels[user.role]}</p>
                 </div>
                 <DropdownMenuSeparator />
                 <DropdownMenuItem asChild>

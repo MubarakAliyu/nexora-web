@@ -9,50 +9,63 @@ import { z } from "zod";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { Checkbox } from "@/components/ui/checkbox";
-import { Field, selectClass } from "@/components/forms/field";
+import { Field } from "@/components/forms/field";
 import { Label } from "@/components/ui/label";
 import { toast } from "@/components/ui/sonner";
-import { login } from "@/lib/api/auth";
+import { login, InvalidCredentialsError } from "@/lib/api/auth";
 import { useSession } from "@/lib/stores/session";
-import { portalForRole, requires2fa, roleLabels, type Role } from "@/lib/roles";
-
-const devRoles: Role[] = ["super_admin", "property_manager", "finance_officer", "owner", "tenant"];
+import { portalForRole } from "@/lib/roles";
 
 const schema = z.object({
   email: z.string().email("Enter a valid email"),
-  password: z.string().min(6, "At least 6 characters"),
-  role: z.string(),
+  password: z.string().min(1, "Enter your password"),
 });
 type Values = z.infer<typeof schema>;
+
+/** Demo accounts for quick review — click to fill. Removed at backend integration. */
+const demoAccounts = [
+  { label: "Super Admin", email: "admin@nexora.co.ug" },
+  { label: "Property Manager", email: "manager@nexora.co.ug" },
+  { label: "Finance Officer", email: "finance@nexora.co.ug" },
+  { label: "Owner", email: "salim@gmail.com" },
+  { label: "Tenant", email: "mubarak@gmail.com" },
+];
 
 export default function LoginPage() {
   const router = useRouter();
   const setSession = useSession((s) => s.login);
-  const setPending = useSession((s) => s.setPending);
+  const [authError, setAuthError] = React.useState<string | null>(null);
   const {
     register,
     handleSubmit,
+    setValue,
     formState: { errors, isSubmitting },
   } = useForm<Values>({
     resolver: zodResolver(schema),
-    defaultValues: { email: "admin@nexora.co.ug", password: "password", role: "super_admin" },
+    defaultValues: { email: "", password: "" },
   });
 
   const onSubmit = async (v: Values) => {
+    setAuthError(null);
     try {
-      const session = await login(v.email, v.password, v.role as Role);
-      if (requires2fa(session.user.role)) {
-        setPending(session.user);
-        toast.info("Verify it's you", { description: "Enter the 6-digit code to continue." });
-        router.push("/2fa");
+      const { user } = await login(v.email, v.password);
+      setSession(user);
+      toast.success(`Welcome back, ${user.name.split(" ")[0]}`, { description: "Signing you in…" });
+      router.replace(portalForRole(user.role));
+    } catch (e) {
+      if (e instanceof InvalidCredentialsError) {
+        setAuthError("Incorrect email or password.");
+        toast.error("Sign in failed", { description: "Check your email and password." });
       } else {
-        setSession(session.user);
-        toast.success("Welcome back", { description: "Signing you in…" });
-        router.push(portalForRole(session.user.role));
+        toast.error("Something went wrong", { description: "Please try again." });
       }
-    } catch {
-      toast.error("Sign in failed", { description: "Check your details and try again." });
     }
+  };
+
+  const fill = (email: string) => {
+    setValue("email", email, { shouldValidate: true });
+    setValue("password", "123456", { shouldValidate: true });
+    setAuthError(null);
   };
 
   return (
@@ -61,21 +74,16 @@ export default function LoginPage() {
       <p className="mt-2 text-body text-muted">Welcome back to the Nexora platform.</p>
 
       <form onSubmit={handleSubmit(onSubmit)} noValidate className="mt-8 space-y-4">
+        {authError && (
+          <div role="alert" className="rounded-md border border-primary/40 bg-primary/5 px-3.5 py-2.5 text-body text-foreground">
+            {authError}
+          </div>
+        )}
         <Field label="Email" htmlFor="email" error={errors.email?.message}>
-          <Input id="email" type="email" autoComplete="email" {...register("email")} aria-invalid={!!errors.email} />
+          <Input id="email" type="email" autoComplete="email" placeholder="you@nexora.co.ug" {...register("email")} aria-invalid={!!errors.email} />
         </Field>
         <Field label="Password" htmlFor="password" error={errors.password?.message}>
           <Input id="password" type="password" autoComplete="current-password" {...register("password")} aria-invalid={!!errors.password} />
-        </Field>
-
-        <Field label="Sign in as (demo role)" htmlFor="role">
-          <select id="role" className={selectClass} {...register("role")}>
-            {devRoles.map((r) => (
-              <option key={r} value={r}>
-                {roleLabels[r]}
-              </option>
-            ))}
-          </select>
         </Field>
 
         <div className="flex items-center justify-between pt-1">
@@ -94,6 +102,23 @@ export default function LoginPage() {
           Sign in
         </Button>
       </form>
+
+      {/* Demo quick-fill — remove at backend integration */}
+      <div className="mt-8 rounded-lg border border-dashed border-border bg-surface-hover/40 p-4">
+        <p className="text-caption font-medium uppercase tracking-wide text-muted">Demo accounts · password 123456</p>
+        <div className="mt-3 flex flex-wrap gap-2">
+          {demoAccounts.map((a) => (
+            <button
+              key={a.email}
+              type="button"
+              onClick={() => fill(a.email)}
+              className="rounded-full border border-border bg-background px-3 py-1 text-caption font-medium text-foreground transition-colors hover:border-primary hover:text-primary focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary"
+            >
+              {a.label}
+            </button>
+          ))}
+        </div>
+      </div>
 
       <p className="mt-6 text-body text-muted">
         Don’t have an account?{" "}
