@@ -40,6 +40,7 @@ interface DataTableProps<T> {
   loading?: boolean;
   error?: string | null;
   onRetry?: () => void;
+  onRowClick?: (row: T) => void;
   emptyTitle?: string;
   emptyDescription?: string;
 }
@@ -57,6 +58,7 @@ export function DataTable<T>({
   loading = false,
   error = null,
   onRetry,
+  onRowClick,
   emptyTitle = "No records",
   emptyDescription = "There is nothing to show here yet.",
 }: DataTableProps<T>) {
@@ -192,9 +194,14 @@ export function DataTable<T>({
               const id = getRowId(row);
               const isSelected = selected.has(id);
               return (
-                <TableRow key={id} data-state={isSelected ? "selected" : undefined}>
+                <TableRow
+                  key={id}
+                  data-state={isSelected ? "selected" : undefined}
+                  onClick={onRowClick ? () => onRowClick(row) : undefined}
+                  className={cn(onRowClick && "cursor-pointer")}
+                >
                   {selectable && (
-                    <TableCell className="w-12">
+                    <TableCell className="w-12" onClick={(e) => e.stopPropagation()}>
                       <Checkbox
                         checked={isSelected}
                         onCheckedChange={() => toggleRow(id)}
