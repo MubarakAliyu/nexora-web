@@ -578,6 +578,115 @@ state; prefer instant/conditional/keyed.
 
 ---
 
+## Batch 9 — Admin Dashboard · PASS A ✅ (credential auth + reset + mock data + core screens)
+
+**Pass A delivered** (of a two-pass batch). Real credential login, the full reset-password flow, the
+typed mock data layer, and the first admin screens (Dashboard Home, Properties + detail, Tenants +
+detail) plus compact identity-scoped Owner/Tenant overviews so the data model is reviewable as all
+five users. **Pass B** (units, owners, leases, finance, maintenance, CRM, analytics, announcements,
+settings, staff) is queued and NOT started — awaiting review.
+
+### Part 0 — real credential login (replaces the demo role selector)
+- The demo "Sign in as (role)" `<select>` **and** the topbar "Viewing as {role}" switcher are **removed**
+  (`grep "Viewing as|setRole|devRoles"` → 0).
+- `lib/api/auth.ts` `login(email, password)` now validates against the seeded user table
+  (`lib/mock/db.ts` → `findUser`), throws `InvalidCredentialsError` on mismatch (inline alert + toast),
+  and on success sets the session (id, name, email, role, title, ownerId/tenantId) and routes via
+  `portalForRole`. **2FA:** login goes **straight to the portal for every role** (no forced /2fa
+  detour) so logout→login is one step for fast user-switching; the `/2fa` page remains available as a
+  standalone demo (any 6 digits pass).
+- **Five seed accounts — all password `123456`:**
+
+  | Email | Role | Lands on |
+  |-------|------|----------|
+  | admin@nexora.co.ug | Super Admin (Aisha Nakato) | /admin — org-wide, all 13 modules |
+  | manager@nexora.co.ug | Property Manager (David Okello) | /admin — properties/units/tenants/leases/maintenance/leads |
+  | finance@nexora.co.ug | Finance Officer (Grace Namuli) | /admin — finance/owners/analytics + revenue chart only |
+  | salim@gmail.com | Owner (Salim Kato) | /owner — his 3 properties only |
+  | mubarak@gmail.com | Tenant (Mubarak Aliyu) | /tenant — his unit/lease only |
+
+- Login page keeps clickable **demo-account quick-fill chips** (removed at backend integration).
+- Guard unchanged: unauthenticated → /login; profile-menu Logout clears session → /login.
+
+### Part 0b — reset-password flow (complete, on-brand)
+`/forgot-password` (email → "Check your email" success, mints a token for real accounts) →
+`/reset-password?token=…` (RHF+zod new-password + confirm, **live strength meter** Weak→Strong) →
+success toast → `/login`. **Invalid/missing token → a dedicated "Invalid or expired link" state**
+with a "Request a new link" action. `isValidResetToken()` gates the form. Reuses the Batch-8 split
+auth layout; conditional-render + `tw-animate` entrance (standing rule).
+
+### Part 1 — typed mock data layer (`lib/mock/`, `lib/api/admin.ts`)
+- **`lib/mock/types.ts`** — every PRD entity typed: Owner, Property→Building→Unit, Tenant, Lease,
+  Invoice, Payment, Expense, MaintenanceTicket, Lead (+activities), Staff, Activity, MockUser.
+- **`lib/mock/db.ts`** — **deterministic seeded** generator (mulberry32 + fixed `NOW` 2026-07-10) so
+  server & client produce identical data (no hydration drift). Reuses the **9 marketing/portfolio
+  properties** + 7 admin-only = **16 properties**, ~50 sampled units, ~30 tenants, leases, ~120
+  invoices across 4 monthly cycles, payments, 32 expenses, 26 tickets, 18 leads, 6 staff, activity
+  feed. **Identity wiring:** Salim owns `nakasero-heights`, `entebbe-villas`, `kira-gardens`; Mubarak
+  rents **unit A-407** in Nakasero Heights under an **active** lease (`ten_mubarak`) with real invoices/
+  payments.
+- **`lib/api/admin.ts`** — typed **async accessors with simulated latency** (real loading states) and
+  identity scoping via `{ ownerId }` / `{ tenantId }` (owner/tenant portals reuse this exact layer).
+  Every accessor takes `forceError` — pages read it from **`?debug=error`** (via `debugErrorFlag()`)
+  to demonstrate error states. `lib/use-async.ts` drives loading/error/reload.
+
+### Part 2 (Pass A screens)
+- **Dashboard Home `/admin`** — 6 KPI tiles (count-up), occupancy (area) + revenue (bar) charts,
+  recent-activity Timeline, alerts panel (lease expiries / overdue invoices / urgent tickets).
+  **Role-adaptive:** finance sees revenue chart only, PM sees occupancy only, super_admin sees both.
+- **Properties `/admin/properties`** — DataTable (search + category + status filters, sort, paginate,
+  thumbnail, occupancy bar, status badges), **add-property Dialog** (RHF+zod → toast), row→detail.
+- **Property Detail `/admin/properties/[id]`** — hero + tabs **Overview / Buildings & Floors / Units /
+  Occupancy (donut) / Documents**, quick actions.
+- **Tenants `/admin/tenants`** — DataTable (search + property + status filters), avatar cells,
+  row→detail.
+- **Tenant Detail `/admin/tenants/[id]`** — profile header + tabs **Overview (lease + activity
+  Timeline) / Payments / Invoices / Tickets / Documents**. Mubarak resolves to A-407 / Nakasero.
+- **Owner `/owner` + Tenant `/tenant`** — compact **identity-scoped** overviews (KPIs + scoped table/
+  lease) proving the data model per user; full portals arrive in Batches 10/11.
+- Shared: `components/app/status.tsx` (palette-only StatusBadge/PriorityBadge — no green/red),
+  `page-header`, `use-async`. DataTable gained an optional **`onRowClick`**.
+
+### Standing-rule fix found during verification
+`CountUp` relied on `useInView` + framer's rAF-driven `animate()`. This preview **throttles
+requestAnimationFrame**, so above-the-fold KPIs stuck at 0. Added an **`immediate`** mode (starts on
+mount, for dashboard KPIs) **and a `setTimeout` fallback that guarantees the final value** even when
+rAF never advances. Hardens every CountUp site-wide.
+
+### Verification (live DOM)
+1. All 5 logins work (admin/salim/mubarak via the real form; manager/finance role nav verified);
+   **wrong creds → "Incorrect email or password."** Each lands on the right portal.
+2. Demo selector + "Viewing as" switcher **gone** (grep clean).
+3. Reset flow end-to-end verified: forgot → token link → reset (strength "Strong") → /login; **and**
+   `/reset-password` with no token → "Invalid or expired link".
+4. Data layer typed; latency drives skeletons; **`/admin/properties?debug=error` → error state** with
+   Try-again; nonsense search → empty state.
+5. **Identity scoping:** Salim → /owner shows exactly **nakasero-heights, entebbe-villas, kira-gardens**
+   (3 props, 80 units); Mubarak → /tenant shows **A-407 · Nakasero Heights**, active lease, rent
+   UGX 2.8M, 3 payments. Verified via admin Property/Tenant detail too.
+6. Role-awareness: super_admin (13 nav + both charts), property_manager (7 nav), finance_officer
+   (4 nav + revenue chart only).
+7. Tables show loading + empty + error; detail Tabs switch (Radix — verified via keyboard, real clicks
+   work; synthetic `.click()` doesn't in preview); add-property Dialog validates + toasts.
+8. `grep lucide` → 0; Flowbite-only; six-token palette; Cinzel titles / Montserrat UI; quiet motion.
+9. `npm run build` clean (all `/admin/*`, `/owner`, `/tenant`, reset routes compiled); lint + tsc clean.
+
+### How to review (login per role — all password `123456`)
+- **admin@nexora.co.ug** → full admin (all modules, both charts)
+- **manager@nexora.co.ug** → admin scoped to properties/tenants/leases/maintenance
+- **finance@nexora.co.ug** → admin scoped to finance/owners/analytics
+- **salim@gmail.com** → Owner portal (his 3 properties)
+- **mubarak@gmail.com** → Tenant portal (his A-407 tenancy)
+- Trigger states: any admin table with **`?debug=error`** → error; search gibberish → empty; watch
+  skeletons on first load.
+
+### Deferred to Pass B (do NOT start until reviewed)
+Units, Owners (+detail), Leases, Finance (invoices/payments/expenses/reports), Maintenance board,
+CRM/Leads (+detail), Analytics, Announcements, Settings, Staff. Nav links to these exist; the pages
+are the remaining work.
+
+---
+
 ## Asset Inventory (verified visually — not by filename)
 
 Originals in the `Nexora` root are **read-only**; copies live under `nexora-web/public/`.
