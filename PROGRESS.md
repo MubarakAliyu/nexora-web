@@ -591,10 +591,14 @@ settings, staff) is queued and NOT started — awaiting review.
   (`grep "Viewing as|setRole|devRoles"` → 0).
 - `lib/api/auth.ts` `login(email, password)` now validates against the seeded user table
   (`lib/mock/db.ts` → `findUser`), throws `InvalidCredentialsError` on mismatch (inline alert + toast),
-  and on success sets the session (id, name, email, role, title, ownerId/tenantId) and routes via
-  `portalForRole`. **2FA:** login goes **straight to the portal for every role** (no forced /2fa
-  detour) so logout→login is one step for fast user-switching; the `/2fa` page remains available as a
-  standalone demo (any 6 digits pass).
+  and on success stashes the user in `session.pending` and routes to **/2fa**. **2FA (required for
+  every sign-in):** `/2fa` verifies a fixed 6-digit code (**123456**), then sets the live session and
+  routes via `portalForRole`. Guard note: the 2FA page only bounces to /login when there's no pending
+  **and** no signed-in user (so verification, which clears `pending`, doesn't self-redirect).
+- **Logout confirmation:** the profile-menu Logout opens a clean confirm Dialog ("Log out? Are you
+  sure…") — Cancel / Log out; confirming clears the session → /login.
+- **Favicon:** replaced with the Nexora logomark — `src/app/favicon.ico` + `metadata.icons`
+  (16/32/apple) + `manifest` from `public/favicon_io/`.
 - **Five seed accounts — all password `123456`:**
 
   | Email | Role | Lands on |
@@ -671,7 +675,7 @@ rAF never advances. Hardens every CountUp site-wide.
 8. `grep lucide` → 0; Flowbite-only; six-token palette; Cinzel titles / Montserrat UI; quiet motion.
 9. `npm run build` clean (all `/admin/*`, `/owner`, `/tenant`, reset routes compiled); lint + tsc clean.
 
-### How to review (login per role — all password `123456`)
+### How to review (login per role — all password `123456`, then 2FA code `123456`)
 - **admin@nexora.co.ug** → full admin (all modules, both charts)
 - **manager@nexora.co.ug** → admin scoped to properties/tenants/leases/maintenance
 - **finance@nexora.co.ug** → admin scoped to finance/owners/analytics

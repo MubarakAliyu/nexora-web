@@ -14,7 +14,6 @@ import { Label } from "@/components/ui/label";
 import { toast } from "@/components/ui/sonner";
 import { login, InvalidCredentialsError } from "@/lib/api/auth";
 import { useSession } from "@/lib/stores/session";
-import { portalForRole } from "@/lib/roles";
 
 const schema = z.object({
   email: z.string().email("Enter a valid email"),
@@ -33,7 +32,7 @@ const demoAccounts = [
 
 export default function LoginPage() {
   const router = useRouter();
-  const setSession = useSession((s) => s.login);
+  const setPending = useSession((s) => s.setPending);
   const [authError, setAuthError] = React.useState<string | null>(null);
   const {
     register,
@@ -49,9 +48,10 @@ export default function LoginPage() {
     setAuthError(null);
     try {
       const { user } = await login(v.email, v.password);
-      setSession(user);
-      toast.success(`Welcome back, ${user.name.split(" ")[0]}`, { description: "Signing you in…" });
-      router.replace(portalForRole(user.role));
+      // Every sign-in is confirmed with a 6-digit code before the session is set.
+      setPending(user);
+      toast.success("Verify it’s you", { description: "Enter your 6-digit code to continue." });
+      router.push("/2fa");
     } catch (e) {
       if (e instanceof InvalidCredentialsError) {
         setAuthError("Incorrect email or password.");

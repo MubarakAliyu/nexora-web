@@ -101,7 +101,10 @@ export async function verifyEmail(_token: string): Promise<{ ok: true }> {
   return { ok: true };
 }
 
+/** Demo 2FA — the fixed verification code for every seed account. */
+export const DEMO_2FA_CODE = "123456";
+
 export async function verifyTwoFactor(code: string): Promise<{ ok: boolean }> {
   await delay();
-  return { ok: /^\d{6}$/.test(code) };
+  return { ok: code === DEMO_2FA_CODE };
 }

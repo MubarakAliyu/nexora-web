@@ -16,6 +16,7 @@ import {
 import { Sidebar } from "@/components/ui/sidebar";
 import { Sheet, SheetContent, SheetTitle } from "@/components/ui/sheet";
 import { Input } from "@/components/ui/input";
+import { Button } from "@/components/ui/button";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { Breadcrumb, type Crumb } from "@/components/ui/breadcrumb";
 import {
@@ -25,6 +26,15 @@ import {
   DropdownMenuItem,
   DropdownMenuSeparator,
 } from "@/components/ui/dropdown-menu";
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+  DialogDescription,
+  DialogFooter,
+  DialogClose,
+} from "@/components/ui/dialog";
 import { NotificationCenter } from "./notification-center";
 import { navForRole } from "./nav-config";
 import { useSession } from "@/lib/stores/session";
@@ -63,6 +73,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
   const toggleSidebar = useUI((s) => s.toggleSidebar);
   const [mounted, setMounted] = React.useState(false);
   const [drawerOpen, setDrawerOpen] = React.useState(false);
+  const [logoutOpen, setLogoutOpen] = React.useState(false);
 
   React.useEffect(() => setMounted(true), []);
 
@@ -190,9 +201,10 @@ export function AppShell({ children }: { children: React.ReactNode }) {
                 </DropdownMenuItem>
                 <DropdownMenuSeparator />
                 <DropdownMenuItem
-                  onClick={() => {
-                    logout();
-                    router.replace("/login");
+                  onSelect={() => {
+                    // Let the menu close first, then open the confirm dialog
+                    // (avoids the Radix focus/pointer race between the two).
+                    setTimeout(() => setLogoutOpen(true), 0);
                   }}
                 >
                   <ArrowRightToBracket size={16} /> Logout
@@ -204,6 +216,32 @@ export function AppShell({ children }: { children: React.ReactNode }) {
 
         <main className="flex-1 px-4 py-6 md:px-8 md:py-8">{children}</main>
       </div>
+
+      {/* Logout confirmation */}
+      <Dialog open={logoutOpen} onOpenChange={setLogoutOpen}>
+        <DialogContent className="max-w-sm">
+          <DialogHeader>
+            <DialogTitle>Log out?</DialogTitle>
+            <DialogDescription>
+              Are you sure you want to log out? You’ll need to sign in again to access your dashboard.
+            </DialogDescription>
+          </DialogHeader>
+          <DialogFooter>
+            <DialogClose asChild>
+              <Button variant="outline">Cancel</Button>
+            </DialogClose>
+            <Button
+              onClick={() => {
+                setLogoutOpen(false);
+                logout();
+                router.replace("/login");
+              }}
+            >
+              Log out
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }
