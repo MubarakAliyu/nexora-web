@@ -578,13 +578,14 @@ state; prefer instant/conditional/keyed.
 
 ---
 
-## Batch 9 — Admin Dashboard · PASS A ✅ (credential auth + reset + mock data + core screens)
+## Batch 9 — Admin Dashboard ✅ COMPLETE (Pass A + Pass B)
 
-**Pass A delivered** (of a two-pass batch). Real credential login, the full reset-password flow, the
-typed mock data layer, and the first admin screens (Dashboard Home, Properties + detail, Tenants +
-detail) plus compact identity-scoped Owner/Tenant overviews so the data model is reviewable as all
-five users. **Pass B** (units, owners, leases, finance, maintenance, CRM, analytics, announcements,
-settings, staff) is queued and NOT started — awaiting review.
+**Both passes delivered.** Pass A: real credential login, the full reset-password flow, the typed mock
+data layer, and the core screens (Dashboard Home, Properties + detail, Tenants + detail) plus compact
+identity-scoped Owner/Tenant overviews. Pass B: the remaining ten admin modules — Units, Owners
+(+detail), Leases, Finance, Maintenance, CRM/Leads (+detail), Analytics, Announcements, Settings,
+Staff — all real and interactive. Later refinements folded in: 2FA required on every login (code
+`123456`), logout confirmation modal, and the Nexora logomark favicon. `npm run build` clean.
 
 ### Part 0 — real credential login (replaces the demo role selector)
 - The demo "Sign in as (role)" `<select>` **and** the topbar "Viewing as {role}" switcher are **removed**
@@ -684,10 +685,45 @@ rAF never advances. Hardens every CountUp site-wide.
 - Trigger states: any admin table with **`?debug=error`** → error; search gibberish → empty; watch
   skeletons on first load.
 
-### Deferred to Pass B (do NOT start until reviewed)
-Units, Owners (+detail), Leases, Finance (invoices/payments/expenses/reports), Maintenance board,
-CRM/Leads (+detail), Analytics, Announcements, Settings, Staff. Nav links to these exist; the pages
-are the remaining work.
+### Part 2 (Pass B screens) ✅
+- **Units** (`/admin/units`) — filter by property/type/status, add-unit dialog (RHF+zod), row-click →
+  detail Sheet drawer (tenant, lease, rent).
+- **Owners** (`/admin/owners` + `[id]`) — list + detail (Overview/Properties/Disbursements/Documents);
+  financial summary + monthly disbursement ledger. **Salim owns 4 properties** (Nakasero Heights,
+  Entebbe Villas, Kira Gardens, Muyenga Heights) — admin view == his `/owner` portal (same accessor).
+- **Leases** (`/admin/leases`) — filters, expiry-alert banner (`expiring` highlighted in primary),
+  create-lease dialog + renew / terminate (mutate mock state → toast, table refetches).
+- **Finance** (`/admin/finance`) — Tabs: Invoices (generate dialog, PDF stub), Payments (ledger +
+  reconcile stub), Expenses (log dialog), Reports (generator + PDF stubs). KPIs **ladder to the
+  Dashboard** — Outstanding == Dashboard outstanding == Billed − Collected == Analytics arrears.
+- **Maintenance** (`/admin/maintenance`) — board (Open/Assigned/In-progress/Completed/Closed) +
+  table toggle; ticket dialog updates status/technician/cost via `updateTicket`. Tickets tie to real
+  units/properties.
+- **CRM / Leads** (`/admin/leads` + `[id]`) — table + pipeline; detail with activity Timeline +
+  follow-up logging. **Marketing forms feed here live:** `submitLead()` now calls
+  `db.addMarketingLead()`, so a public quote/assessment/contact submission appears at the top of the
+  CRM as a `new`, `Unassigned`, web-sourced lead.
+- **Analytics** (`/admin/analytics`) — occupancy / collection / arrears / avg resolution / retention
+  stat cards + revenue-by-property, collection-trend, occupancy-by-category charts; date-range filter;
+  export stub.
+- **Announcements** (`/admin/announcements`) — broadcast composer (audience: all tenants / property /
+  owners / custom; channel chips) + sent-history table; `createAnnouncement` prepends to history.
+- **Settings** (`/admin/settings`) — Tabs: Company profile (RHF+zod), Roles overview, Notification
+  channel toggles, Integrations placeholders.
+- **Staff** (`/admin/staff`) — team list + "coming in Phase 2" banner. Added to the admin nav
+  (`UsersGroup` icon).
+- Data-layer additions: `getOwnerDetail`, `renewLease` / `terminateLease`, `updateTicket`,
+  `createInvoice` / `createExpense`, `getFinanceSummary`, `getAnalytics`, `listAnnouncements` /
+  `createAnnouncement`, `addLeadActivity`, `addMarketingLead`, `tenantOptions`. Tenancy generation
+  tuned so occupied units mostly hold current leases (retention ≈ 89%, realistic).
+- **CountUp** hardened with a `setTimeout` settle fallback (rAF is throttled in preview tabs) + an
+  `immediate` mode for above-the-fold KPIs.
+
+### How to trigger the states (review)
+- **Loading:** natural — every list has simulated latency (350–800 ms).
+- **Empty:** filter to no matches (e.g. Units search "zzz"), or an entity with no rows.
+- **Error:** append **`?debug=error`** to any admin route (e.g. `/admin/tenants?debug=error`) → the
+  table/section shows "Couldn't load…" + Try again.
 
 ---
 
