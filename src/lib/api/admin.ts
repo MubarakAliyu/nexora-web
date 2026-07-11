@@ -11,9 +11,14 @@
 import * as db from "@/lib/mock/db";
 import type {
   Activity,
+  Announcement,
+  AudienceKind,
+  BroadcastChannel,
   Expense,
+  ExpenseCategory,
   Invoice,
   Lead,
+  LeadActivity,
   Lease,
   MaintenanceTicket,
   Owner,
@@ -21,11 +26,12 @@ import type {
   Property,
   Staff,
   Tenant,
+  TicketStatus,
   Unit,
 } from "@/lib/mock/types";
 
-export type { Activity, Expense, Invoice, Lead, Lease, MaintenanceTicket, Owner, Payment, Property, Staff, Tenant, Unit };
-export type { Building, LeaseStatus, InvoiceStatus, TicketStatus, TicketPriority, UnitStatus, PropertyStatus } from "@/lib/mock/types";
+export type { Activity, Announcement, AudienceKind, BroadcastChannel, Expense, ExpenseCategory, Invoice, Lead, LeadActivity, Lease, MaintenanceTicket, Owner, Payment, Property, Staff, Tenant, Unit };
+export type { Building, LeaseStatus, InvoiceStatus, TicketStatus, TicketPriority, UnitStatus, PropertyStatus, TicketCategory, PaymentMethod } from "@/lib/mock/types";
 
 export const NOW_ISO = db.NOW_ISO;
 
@@ -291,6 +297,30 @@ export async function listPayments(scope?: Scope): Promise<Payment[]> {
   return respond(rows.sort((a, b) => (a.date < b.date ? 1 : -1)), { error: scope?.forceError });
 }
 
+export interface FinanceSummary {
+  billed: number;
+  collected: number;
+  outstanding: number;
+  expenses: number;
+}
+
+export async function getFinanceSummary(scope?: Scope): Promise<FinanceSummary> {
+  const ids = scopedPropertyIds(scope);
+  const inv = ids ? db.invoices.filter((i) => ids.has(i.propertyId)) : db.invoices;
+  const pay = ids ? db.payments.filter((p) => ids.has(p.propertyId)) : db.payments;
+  const exp = ids ? db.expenses.filter((e) => ids.has(e.propertyId)) : db.expenses;
+  return respond(
+    {
+      billed: inv.reduce((s, i) => s + i.amount, 0),
+      collected: pay.filter((p) => p.status === "completed").reduce((s, p) => s + p.amount, 0),
+      // Mirrors the Dashboard "outstanding" (pending + overdue + partial balances).
+      outstanding: inv.filter((i) => i.status !== "paid").reduce((s, i) => s + (i.amount - i.paid), 0),
+      expenses: exp.reduce((s, e) => s + e.amount, 0),
+    },
+    { error: scope?.forceError },
+  );
+}
+
 export async function listExpenses(scope?: Scope): Promise<Expense[]> {
   const ids = scopedPropertyIds(scope);
   const rows = ids ? db.expenses.filter((e) => ids.has(e.propertyId)) : [...db.expenses];
@@ -340,6 +370,10 @@ export function propertyOptions(scope?: Scope): { id: string; name: string }[] {
 export function propertyName(id: string): string {
   return db.properties.find((p) => p.id === id)?.name ?? "—";
 }
+export function tenantOptions(scope?: Scope): { id: string; name: string }[] {
+  const ids = scopedPropertyIds(scope);
+  return (ids ? db.tenants.filter((t) => ids.has(t.propertyId)) : db.tenants).map((t) => ({ id: t.id, name: t.name }));
+}
 export function ownerName(id?: string): string {
   return db.owners.find((o) => o.id === id)?.name ?? "—";
 }
@@ -348,4 +382,226 @@ export function tenantName(id?: string): string {
 }
 export function unitLabel(id?: string): string {
   return db.units.find((u) => u.id === id)?.label ?? "—";
+}
+
+/* ============================================================ owners */
+
+export interface OwnerDetail {
+  owner: Owner;
+  properties: Property[];
+  financials: { monthlyRevenue: number; ytdRevenue: number; outstanding: number; disbursed: number };
+  disbursements: { id: string; period: string; gross: number; fees: number; net: number; date: string; status: "paid" | "scheduled" }[];
+}
+
+export async function getOwnerDetail(id: string, scope?: Scope): Promise<OwnerDetail> {
+  const owner = db.owners.find((o) => o.id === id);
+  if (!owner) throw new NotFoundError(id);
+  const properties = db.properties.filter((p) => owner.propertyIds.includes(p.id));
+  const propIds = new Set(properties.map((p) => p.id));
+  const monthlyRevenue = properties.reduce((s, p) => s + p.monthlyRevenue, 0);
+  const outstanding = db.invoices
+    .filter((i) => propIds.has(i.propertyId) && i.status !== "paid")
+    .reduce((s, i) => s + (i.amount - i.paid), 0);
+  const months = ["Feb", "Mar", "Apr", "May", "Jun", "Jul"];
+  const disbursements = months.map((m, i) => {
+    const gross = Math.round(monthlyRevenue * (0.9 + i * 0.02));
+    const fees = Math.round(gross * 0.08);
+    return {
+      id: `dsb_${id}_${i}`,
+      period: `${m} 2026`,
+      gross,
+      fees,
+      net: gross - fees,
+      date: `2026-${String(i + 2).padStart(2, "0")}-05`,
+      status: (i < months.length - 1 ? "paid" : "scheduled") as "paid" | "scheduled",
+    };
+  });
+  const ytdRevenue = disbursements.reduce((s, d) => s + d.gross, 0);
+  const disbursed = disbursements.filter((d) => d.status === "paid").reduce((s, d) => s + d.net, 0);
+  return respond({ owner, properties, financials: { monthlyRevenue, ytdRevenue, outstanding, disbursed }, disbursements }, { error: scope?.forceError });
+}
+
+/* ============================================================ leases (mutations) */
+
+export async function renewLease(id: string, months = 12): Promise<Lease> {
+  await new Promise((r) => setTimeout(r, 500));
+  const lease = db.leases.find((l) => l.id === id);
+  if (!lease) throw new NotFoundError(id);
+  const end = new Date(lease.end);
+  end.setMonth(end.getMonth() + months);
+  lease.end = end.toISOString();
+  lease.status = "active";
+  const tenant = db.tenants.find((t) => t.id === lease.tenantId);
+  if (tenant && tenant.status !== "past") tenant.status = "active";
+  return lease;
+}
+
+export async function terminateLease(id: string): Promise<Lease> {
+  await new Promise((r) => setTimeout(r, 500));
+  const lease = db.leases.find((l) => l.id === id);
+  if (!lease) throw new NotFoundError(id);
+  lease.status = "terminated";
+  const unit = db.units.find((u) => u.id === lease.unitId);
+  if (unit) unit.status = "vacant";
+  const tenant = db.tenants.find((t) => t.id === lease.tenantId);
+  if (tenant) tenant.status = "past";
+  return lease;
+}
+
+/* ============================================================ maintenance (mutations) */
+
+export async function updateTicketStatus(id: string, status: TicketStatus): Promise<MaintenanceTicket> {
+  await new Promise((r) => setTimeout(r, 350));
+  const t = db.tickets.find((x) => x.id === id);
+  if (!t) throw new NotFoundError(id);
+  t.status = status;
+  t.updatedAt = db.NOW_ISO;
+  if (status !== "open" && !t.assignee) t.assignee = "James Odoi";
+  return t;
+}
+
+export async function updateTicket(
+  id: string,
+  patch: { status?: TicketStatus; assignee?: string; cost?: number },
+): Promise<MaintenanceTicket> {
+  await new Promise((r) => setTimeout(r, 400));
+  const t = db.tickets.find((x) => x.id === id);
+  if (!t) throw new NotFoundError(id);
+  if (patch.status) t.status = patch.status;
+  if (patch.assignee !== undefined) t.assignee = patch.assignee || undefined;
+  if (patch.cost !== undefined) t.cost = patch.cost || undefined;
+  if (t.status !== "open" && !t.assignee) t.assignee = "James Odoi";
+  t.updatedAt = db.NOW_ISO;
+  return t;
+}
+
+export async function assignTicket(id: string, assignee: string): Promise<MaintenanceTicket> {
+  await new Promise((r) => setTimeout(r, 350));
+  const t = db.tickets.find((x) => x.id === id);
+  if (!t) throw new NotFoundError(id);
+  t.assignee = assignee;
+  if (t.status === "open") t.status = "assigned";
+  t.updatedAt = db.NOW_ISO;
+  return t;
+}
+
+/* ============================================================ finance (mutations) */
+
+export async function createInvoice(input: { tenantId: string; amount: number; due: string; kind: Invoice["kind"] }): Promise<Invoice> {
+  await new Promise((r) => setTimeout(r, 500));
+  const tenant = db.tenants.find((t) => t.id === input.tenantId);
+  const seq = db.invoices.length + 1;
+  const inv: Invoice = {
+    id: `inv_${seq}`,
+    number: `INV-2026-${String(seq).padStart(4, "0")}`,
+    leaseId: tenant?.leaseId ?? "",
+    tenantId: input.tenantId,
+    propertyId: tenant?.propertyId ?? "",
+    kind: input.kind,
+    issued: db.NOW_ISO,
+    due: input.due,
+    amount: input.amount,
+    paid: 0,
+    status: "pending",
+  };
+  db.invoices.unshift(inv);
+  return inv;
+}
+
+export async function createExpense(input: { propertyId: string; category: ExpenseCategory; vendor: string; amount: number; description: string }): Promise<Expense> {
+  await new Promise((r) => setTimeout(r, 500));
+  const exp: Expense = {
+    id: `exp_${db.expenses.length + 1}`,
+    propertyId: input.propertyId,
+    category: input.category,
+    vendor: input.vendor,
+    description: input.description,
+    amount: input.amount,
+    date: db.NOW_ISO,
+    status: "pending",
+  };
+  db.expenses.unshift(exp);
+  return exp;
+}
+
+/* ============================================================ CRM (mutations) */
+
+export async function addLeadActivity(id: string, kind: LeadActivity["kind"], text: string): Promise<Lead> {
+  await new Promise((r) => setTimeout(r, 400));
+  const lead = db.leads.find((l) => l.id === id);
+  if (!lead) throw new NotFoundError(id);
+  lead.activities = [
+    ...lead.activities,
+    { id: `act_${id}_${lead.activities.length}`, at: db.NOW_ISO, kind, text },
+  ];
+  return lead;
+}
+
+/* ============================================================ announcements */
+
+export async function listAnnouncements(scope?: Scope): Promise<Announcement[]> {
+  return respond([...db.announcements].sort((a, b) => (a.sentAt < b.sentAt ? 1 : -1)), { error: scope?.forceError });
+}
+
+export async function createAnnouncement(input: { title: string; body: string; audience: AudienceKind; audienceLabel: string; channels: BroadcastChannel[] }): Promise<Announcement> {
+  await new Promise((r) => setTimeout(r, 600));
+  const recipients =
+    input.audience === "owners" ? db.owners.length : input.audience === "property" ? Math.round(db.tenants.length / 3) : db.tenants.length;
+  const ann: Announcement = {
+    id: `ann_${db.announcements.length + 1}`,
+    title: input.title,
+    body: input.body,
+    audience: input.audience,
+    audienceLabel: input.audienceLabel,
+    channels: input.channels,
+    recipients,
+    sentAt: db.NOW_ISO,
+    sentBy: "You",
+  };
+  db.announcements.unshift(ann);
+  return ann;
+}
+
+/* ============================================================ analytics */
+
+export interface Analytics {
+  occupancyRate: number;
+  collectionRate: number;
+  arrears: number;
+  avgResolutionDays: number;
+  retentionRate: number;
+  revenueByProperty: { name: string; value: number }[];
+  occupancyByCategory: { name: string; value: number }[];
+  collectionTrend: { label: string; value: number }[];
+}
+
+export async function getAnalytics(scope?: Scope): Promise<Analytics> {
+  const props = db.properties;
+  const occupancyRate = Math.round(props.reduce((s, p) => s + p.occupancy, 0) / props.length);
+  const invoicesDue = db.invoices.reduce((s, i) => s + i.amount, 0);
+  const invoicesPaid = db.invoices.reduce((s, i) => s + i.paid, 0);
+  const collectionRate = Math.round((invoicesPaid / invoicesDue) * 100);
+  const arrears = invoicesDue - invoicesPaid;
+  const completed = db.tickets.filter((t) => t.status === "completed" || t.status === "closed");
+  const avgResolutionDays = Math.round(
+    completed.reduce((s, t) => s + Math.max(1, (new Date(t.updatedAt).getTime() - new Date(t.createdAt).getTime()) / 86_400_000), 0) /
+      Math.max(1, completed.length),
+  );
+  const retentionRate = 100 - Math.round((db.tenants.filter((t) => t.status === "past").length / db.tenants.length) * 100);
+  const revenueByProperty = [...props]
+    .sort((a, b) => b.monthlyRevenue - a.monthlyRevenue)
+    .slice(0, 8)
+    .map((p) => ({ name: p.name, value: Math.round(p.monthlyRevenue / 1_000_000) }));
+  const cats = ["Residential", "Commercial", "Condominiums", "Institutional", "Managed Facilities"];
+  const occupancyByCategory = cats
+    .map((c) => {
+      const inCat = props.filter((p) => p.category === c);
+      return { name: c, value: inCat.length ? Math.round(inCat.reduce((s, p) => s + p.occupancy, 0) / inCat.length) : 0 };
+    })
+    .filter((x) => x.value > 0);
+  const collectionTrend = ["Feb", "Mar", "Apr", "May", "Jun", "Jul"].map((m, i) => ({ label: m, value: Math.min(99, 82 + i * 2 + (i % 2)) }));
+  return respond(
+    { occupancyRate, collectionRate, arrears, avgResolutionDays, retentionRate, revenueByProperty, occupancyByCategory, collectionTrend },
+    { error: scope?.forceError },
+  );
 }

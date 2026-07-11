@@ -13,6 +13,7 @@ import {
   Bullhorn,
   Bell,
   Cog,
+  UsersGroup,
 } from "flowbite-react-icons/outline";
 import type { SidebarItem } from "@/components/ui/sidebar";
 import type { Role } from "@/lib/roles";
@@ -59,6 +60,7 @@ export function navForRole(role: Role): SidebarItem[] {
     leads: { label: "CRM / Leads", href: "/admin/leads", icon: <ClipboardList size={sz} /> },
     analytics: { label: "Analytics", href: "/admin/analytics", icon: <ChartLineUp size={sz} /> },
     announcements: { label: "Announcements", href: "/admin/announcements", icon: <Bullhorn size={sz} /> },
+    staff: { label: "Staff", href: "/admin/staff", icon: <UsersGroup size={sz} /> },
     settings: { label: "Settings", href: "/admin/settings", icon: <Cog size={sz} /> },
   };
 
@@ -67,7 +69,7 @@ export function navForRole(role: Role): SidebarItem[] {
     ops_manager: Object.keys(all),
     property_manager: ["dashboard", "properties", "units", "tenants", "leases", "maintenance", "leads"],
     maintenance_officer: ["dashboard", "maintenance", "properties"],
-    finance_officer: ["dashboard", "finance", "owners", "analytics"],
+    finance_officer: ["dashboard", "finance", "owners", "analytics", "announcements"],
     owner: [],
     tenant: [],
   };

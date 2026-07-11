@@ -245,6 +245,23 @@ export interface Staff {
   since: string;
 }
 
+/* ------------------------------------------------------ announcements */
+
+export type AudienceKind = "all_tenants" | "property" | "owners" | "custom";
+export type BroadcastChannel = "email" | "sms" | "in_app";
+
+export interface Announcement {
+  id: string;
+  title: string;
+  body: string;
+  audience: AudienceKind;
+  audienceLabel: string;
+  channels: BroadcastChannel[];
+  recipients: number;
+  sentAt: string; // ISO
+  sentBy: string;
+}
+
 /* -------------------------------------------------- activity feed */
 
 export interface Activity {

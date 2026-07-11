@@ -14,6 +14,7 @@
 import { properties as portfolio } from "@/content/portfolio";
 import type {
   Activity,
+  Announcement,
   Building,
   Expense,
   ExpenseCategory,
@@ -95,7 +96,7 @@ export const owners: Owner[] = [
 
 const extraProps: Array<Omit<Property, "buildings" | "monthlyRevenue" | "since"> & { since?: string }> = [
   { id: "kira-gardens", name: "Kira Gardens", location: "Kira, Wakiso", category: "Residential", image: "/images/properties/villa-garden-pool.jpg", ownerId: "own_salim", status: "managed", units: 20, occupancy: 90 },
-  { id: "muyenga-heights", name: "Muyenga Heights", location: "Muyenga, Kampala", category: "Residential", image: "/images/properties/tower-white-woodbalcony.jpg", ownerId: "own_rehema", status: "managed", units: 36, occupancy: 89 },
+  { id: "muyenga-heights", name: "Muyenga Heights", location: "Muyenga, Kampala", category: "Residential", image: "/images/properties/tower-white-woodbalcony.jpg", ownerId: "own_salim", status: "managed", units: 36, occupancy: 89 },
   { id: "naguru-view", name: "Naguru View Apartments", location: "Naguru, Kampala", category: "Residential", image: "/images/properties/apartment-facade.jpg", ownerId: "own_patrick", status: "managed", units: 28, occupancy: 93 },
   { id: "nakawa-business-park", name: "Nakawa Business Park", location: "Nakawa, Kampala", category: "Commercial", image: "/images/properties/twin-towers-dusk.jpg", ownerId: "own_sarah", status: "managed", units: 22, occupancy: 86 },
   { id: "garden-city-retail", name: "Garden City Retail", location: "Central, Kampala", category: "Commercial", image: "/images/properties/aerial-neighbourhood.jpg", ownerId: "own_ivan", status: "onboarding", units: 34, occupancy: 78 },
@@ -217,8 +218,11 @@ const leaseStatusFromDates = (endMs: number): LeaseStatus => {
 
 function createTenancy(unit: Unit, opts?: { id?: string; name?: string; email?: string; active?: boolean }) {
   const t = int(0, 1);
-  const startMs = opts?.active ? NOW.getTime() - 210 * DAY : NOW.getTime() - int(60, 900) * DAY;
-  const term = opts?.active ? 365 : pick([180, 365, 365, 730]);
+  // Occupied units mostly hold current tenancies (a minority have lapsed leases),
+  // so occupancy, the tenants list and retention read realistically.
+  const current = opts?.active ?? chance(0.86);
+  const startMs = current ? NOW.getTime() - int(20, 320) * DAY : NOW.getTime() - int(430, 820) * DAY;
+  const term = pick([365, 365, 730]);
   const endMs = startMs + term * DAY;
   const tenantId = opts?.id ?? `ten_${tenants.length + 1}`;
   const leaseId = `lse_${leases.length + 1}`;
@@ -453,6 +457,55 @@ export const users: MockUser[] = [
   { id: "stf_finance", name: "Grace Namuli", email: "finance@nexora.co.ug", password: "123456", role: "finance_officer", staffId: "stf_finance", title: "Finance Officer" },
 ];
 
+/* ------------------------------------------------------- announcements */
+
+export const announcements: Announcement[] = [
+  {
+    id: "ann_1",
+    title: "Scheduled water maintenance — Nakasero Heights",
+    body: "Water supply will be interrupted on Saturday 09:00–13:00 for tank cleaning. We apologise for the inconvenience.",
+    audience: "property",
+    audienceLabel: "Nakasero Heights",
+    channels: ["email", "in_app"],
+    recipients: 47,
+    sentAt: daysAgo(3),
+    sentBy: "David Okello",
+  },
+  {
+    id: "ann_2",
+    title: "New online rent payment options",
+    body: "You can now pay rent via mobile money and card directly from your tenant portal. Faster receipts, instant confirmation.",
+    audience: "all_tenants",
+    audienceLabel: "All tenants",
+    channels: ["email", "sms", "in_app"],
+    recipients: 30,
+    sentAt: daysAgo(11),
+    sentBy: "Aisha Nakato",
+  },
+  {
+    id: "ann_3",
+    title: "Q2 owner statements now available",
+    body: "Your Q2 financial statements and disbursement summaries are ready to download from the Owner portal.",
+    audience: "owners",
+    audienceLabel: "All owners",
+    channels: ["email"],
+    recipients: 6,
+    sentAt: daysAgo(19),
+    sentBy: "Grace Namuli",
+  },
+  {
+    id: "ann_4",
+    title: "Festive season security advisory",
+    body: "Please keep entrances locked and report suspicious activity to the front desk over the holiday period.",
+    audience: "all_tenants",
+    audienceLabel: "All tenants",
+    channels: ["in_app"],
+    recipients: 30,
+    sentAt: daysAgo(34),
+    sentBy: "Moses Nsubuga",
+  },
+];
+
 /* --------------------------------------------------------- activity feed */
 
 export const activities: Activity[] = [
@@ -475,6 +528,39 @@ export const activities: Activity[] = [
 /* ------------------------------------------------------------ helpers */
 
 export const NOW_ISO = NOW.toISOString();
+
+/**
+ * Append a lead captured by a marketing-site form (quote / assessment / investor
+ * / contact) into the shared registry, so public submissions surface live in the
+ * admin CRM. Runtime-only (user action), so no hydration concern.
+ */
+export function addMarketingLead(input: {
+  name: string;
+  email: string;
+  phone?: string;
+  message?: string;
+  source: string;
+  service: string;
+}): Lead {
+  const lead: Lead = {
+    id: `lead_web_${Date.now()}`,
+    name: input.name,
+    email: input.email,
+    phone: input.phone || "—",
+    source: input.source,
+    service: input.service,
+    status: "new",
+    value: int(2, 20) * 500_000,
+    createdAt: new Date().toISOString(),
+    owner: "Unassigned",
+    activities: input.message
+      ? [{ id: `act_web_${Date.now()}`, at: new Date().toISOString(), kind: "note", text: input.message }]
+      : [],
+  };
+  leads.unshift(lead);
+  return lead;
+}
+
 export function findUser(email: string, password: string): MockUser | undefined {
   const e = email.trim().toLowerCase();
   return users.find((u) => u.email.toLowerCase() === e && u.password === password);
