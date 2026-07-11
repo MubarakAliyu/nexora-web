@@ -1,0 +1,331 @@
+"use client";
+
+import * as React from "react";
+import { useForm } from "react-hook-form";
+import { zodResolver } from "@hookform/resolvers/zod";
+import { z } from "zod";
+import { Plus, Cash, Receipt, ChartLineUp, FileLines, Download } from "flowbite-react-icons/outline";
+import { PageHeader } from "@/components/app/page-header";
+import { StatusBadge } from "@/components/app/status";
+import { Card } from "@/components/ui/card";
+import { StatCard } from "@/components/ui/stat-card";
+import { DataTable, type Column } from "@/components/ui/data-table";
+import { Input } from "@/components/ui/input";
+import { Button } from "@/components/ui/button";
+import { Field, selectClass } from "@/components/forms/field";
+import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
+import { Skeleton } from "@/components/ui/skeleton";
+import { EmptyState } from "@/components/ui/empty-state";
+import {
+  Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter, DialogClose,
+} from "@/components/ui/dialog";
+import { toast } from "@/components/ui/sonner";
+import { useAsync, debugErrorFlag } from "@/lib/use-async";
+import { formatUGX, formatUGXFull, formatDate } from "@/lib/format";
+import {
+  listInvoices, listPayments, listExpenses, getFinanceSummary, createInvoice, createExpense,
+  propertyName, tenantName, tenantOptions, propertyOptions,
+  type Invoice, type Payment, type Expense, type ExpenseCategory, type Scope,
+} from "@/lib/api/admin";
+
+const EXPENSE_CATS: ExpenseCategory[] = ["maintenance", "utilities", "security", "cleaning", "admin", "insurance"];
+
+/* ------------------------------------------------------------ invoices */
+
+const invSchema = z.object({
+  tenantId: z.string().min(1, "Choose a tenant"),
+  kind: z.string().min(1),
+  amount: z.number().int().min(10000, "Enter an amount"),
+  due: z.string().min(1, "Choose a due date"),
+});
+type InvValues = z.infer<typeof invSchema>;
+
+function GenerateInvoiceDialog({ onDone }: { onDone: () => void }) {
+  const [open, setOpen] = React.useState(false);
+  const tenants = React.useMemo(() => tenantOptions(), []);
+  const { register, handleSubmit, reset, formState: { errors, isSubmitting } } = useForm<InvValues>({
+    resolver: zodResolver(invSchema), defaultValues: { tenantId: "", kind: "rent" },
+  });
+  const onSubmit = async (v: InvValues) => {
+    await createInvoice({ tenantId: v.tenantId, amount: v.amount, due: new Date(v.due).toISOString(), kind: v.kind as Invoice["kind"] });
+    toast.success("Invoice generated", { description: `${formatUGX(v.amount)} billed to ${tenantName(v.tenantId)}.` });
+    reset(); setOpen(false); onDone();
+  };
+  return (
+    <Dialog open={open} onOpenChange={setOpen}>
+      <Button onClick={() => setOpen(true)} className="gap-2"><Plus size={18} /> Generate invoice</Button>
+      <DialogContent>
+        <DialogHeader><DialogTitle>Generate an invoice</DialogTitle><DialogDescription>Bill a tenant for rent or services.</DialogDescription></DialogHeader>
+        <form onSubmit={handleSubmit(onSubmit)} noValidate className="space-y-4">
+          <Field label="Tenant" htmlFor="gi-tenant" error={errors.tenantId?.message}>
+            <select id="gi-tenant" className={selectClass} {...register("tenantId")} aria-invalid={!!errors.tenantId}>
+              <option value="">Select…</option>
+              {tenants.map((t) => <option key={t.id} value={t.id}>{t.name}</option>)}
+            </select>
+          </Field>
+          <div className="grid gap-4 sm:grid-cols-2">
+            <Field label="Type" htmlFor="gi-kind">
+              <select id="gi-kind" className={selectClass} {...register("kind")}>
+                <option value="rent">Rent</option><option value="service">Service</option>
+                <option value="deposit">Deposit</option><option value="utility">Utility</option>
+              </select>
+            </Field>
+            <Field label="Amount (UGX)" htmlFor="gi-amount" error={errors.amount?.message}>
+              <Input id="gi-amount" type="number" {...register("amount", { valueAsNumber: true })} aria-invalid={!!errors.amount} />
+            </Field>
+          </div>
+          <Field label="Due date" htmlFor="gi-due" error={errors.due?.message}>
+            <Input id="gi-due" type="date" {...register("due")} aria-invalid={!!errors.due} />
+          </Field>
+          <DialogFooter>
+            <DialogClose asChild><Button type="button" variant="outline">Cancel</Button></DialogClose>
+            <Button type="submit" loading={isSubmitting}>Generate</Button>
+          </DialogFooter>
+        </form>
+      </DialogContent>
+    </Dialog>
+  );
+}
+
+function InvoicesTab() {
+  const [status, setStatus] = React.useState("all");
+  const scope: Scope = React.useMemo(() => ({ forceError: debugErrorFlag() }), []);
+  const { data, loading, error, reload } = useAsync(() => listInvoices({ status }, scope), [status, scope]);
+  const columns: Column<Invoice>[] = [
+    { key: "number", header: "Invoice", sortable: true, render: (i) => <span className="font-medium text-foreground">{i.number}</span> },
+    { key: "tenantId", header: "Tenant", sortValue: (i) => tenantName(i.tenantId), render: (i) => tenantName(i.tenantId) },
+    { key: "kind", header: "Type", render: (i) => <span className="capitalize">{i.kind}</span> },
+    { key: "issued", header: "Issued", sortable: true, render: (i) => formatDate(i.issued) },
+    { key: "due", header: "Due", sortable: true, render: (i) => formatDate(i.due) },
+    { key: "amount", header: "Amount", sortable: true, align: "right", render: (i) => formatUGX(i.amount) },
+    { key: "status", header: "Status", sortable: true, render: (i) => <StatusBadge status={i.status} /> },
+    { key: "pdf", header: "", align: "right", render: () => <Button variant="ghost" size="sm" onClick={(e) => { e.stopPropagation(); toast.info("View PDF", { description: "PDF rendering is mocked in this build." }); }}>PDF</Button> },
+  ];
+  return (
+    <div>
+      <div className="mb-4 flex items-center justify-between gap-3">
+        <select className={`${selectClass} w-44`} value={status} onChange={(e) => setStatus(e.target.value)} aria-label="Filter invoices by status">
+          <option value="all">All statuses</option><option value="paid">Paid</option>
+          <option value="pending">Pending</option><option value="overdue">Overdue</option><option value="partial">Partial</option>
+        </select>
+        <GenerateInvoiceDialog onDone={reload} />
+      </div>
+      <DataTable columns={columns} data={data ?? []} getRowId={(i) => i.id} loading={loading} error={error} onRetry={reload}
+        emptyTitle="No invoices" emptyDescription="Generated invoices will appear here." pageSize={10} />
+    </div>
+  );
+}
+
+/* ------------------------------------------------------------ payments */
+
+function PaymentsTab() {
+  const scope: Scope = React.useMemo(() => ({ forceError: debugErrorFlag() }), []);
+  const { data, loading, error, reload } = useAsync(() => listPayments(scope), [scope]);
+  const total = (data ?? []).reduce((s, p) => s + p.amount, 0);
+  const columns: Column<Payment>[] = [
+    { key: "date", header: "Date", sortable: true, render: (p) => formatDate(p.date) },
+    { key: "tenantId", header: "Tenant", sortValue: (p) => tenantName(p.tenantId), render: (p) => tenantName(p.tenantId) },
+    { key: "propertyId", header: "Property", render: (p) => propertyName(p.propertyId) },
+    { key: "amount", header: "Amount", sortable: true, align: "right", render: (p) => formatUGX(p.amount) },
+    { key: "method", header: "Method", render: (p) => <span className="capitalize">{p.method.replace("_", " ")}</span> },
+    { key: "reference", header: "Reference", render: (p) => <span className="text-muted">{p.reference}</span> },
+    { key: "status", header: "Status", render: (p) => <StatusBadge status={p.status} /> },
+  ];
+  return (
+    <div>
+      <Card className="mb-4 flex flex-wrap items-center justify-between gap-3 p-4">
+        <div>
+          <p className="text-caption uppercase tracking-wide text-muted">Total received (reconciled)</p>
+          <p className="mt-1 font-heading text-h2 font-semibold text-foreground">{formatUGXFull(total)}</p>
+        </div>
+        <Button variant="outline" className="gap-2" onClick={() => toast.info("Reconcile", { description: "Bank reconciliation is mocked in this build." })}>
+          <Cash size={18} /> Reconcile
+        </Button>
+      </Card>
+      <DataTable columns={columns} data={data ?? []} getRowId={(p) => p.id} loading={loading} error={error} onRetry={reload}
+        emptyTitle="No payments" emptyDescription="Received payments will appear here." pageSize={10} />
+    </div>
+  );
+}
+
+/* ------------------------------------------------------------ expenses */
+
+const expSchema = z.object({
+  propertyId: z.string().min(1, "Choose a property"),
+  category: z.string().min(1),
+  vendor: z.string().min(2, "Enter a vendor"),
+  amount: z.number().int().min(1000, "Enter an amount"),
+  description: z.string().min(2, "Enter a description"),
+});
+type ExpValues = z.infer<typeof expSchema>;
+
+function LogExpenseDialog({ onDone }: { onDone: () => void }) {
+  const [open, setOpen] = React.useState(false);
+  const props = React.useMemo(() => propertyOptions(), []);
+  const { register, handleSubmit, reset, formState: { errors, isSubmitting } } = useForm<ExpValues>({
+    resolver: zodResolver(expSchema), defaultValues: { propertyId: "", category: "maintenance" },
+  });
+  const onSubmit = async (v: ExpValues) => {
+    await createExpense({ propertyId: v.propertyId, category: v.category as ExpenseCategory, vendor: v.vendor, amount: v.amount, description: v.description });
+    toast.success("Expense logged", { description: `${formatUGX(v.amount)} — ${v.vendor}.` });
+    reset(); setOpen(false); onDone();
+  };
+  return (
+    <Dialog open={open} onOpenChange={setOpen}>
+      <Button onClick={() => setOpen(true)} className="gap-2"><Plus size={18} /> Log expense</Button>
+      <DialogContent>
+        <DialogHeader><DialogTitle>Log an expense</DialogTitle><DialogDescription>Record a cost against a property.</DialogDescription></DialogHeader>
+        <form onSubmit={handleSubmit(onSubmit)} noValidate className="space-y-4">
+          <Field label="Property" htmlFor="le-prop" error={errors.propertyId?.message}>
+            <select id="le-prop" className={selectClass} {...register("propertyId")} aria-invalid={!!errors.propertyId}>
+              <option value="">Select…</option>
+              {props.map((o) => <option key={o.id} value={o.id}>{o.name}</option>)}
+            </select>
+          </Field>
+          <div className="grid gap-4 sm:grid-cols-2">
+            <Field label="Category" htmlFor="le-cat">
+              <select id="le-cat" className={`${selectClass} capitalize`} {...register("category")}>
+                {EXPENSE_CATS.map((c) => <option key={c} value={c}>{c}</option>)}
+              </select>
+            </Field>
+            <Field label="Amount (UGX)" htmlFor="le-amount" error={errors.amount?.message}>
+              <Input id="le-amount" type="number" {...register("amount", { valueAsNumber: true })} aria-invalid={!!errors.amount} />
+            </Field>
+          </div>
+          <Field label="Vendor" htmlFor="le-vendor" error={errors.vendor?.message}>
+            <Input id="le-vendor" {...register("vendor")} aria-invalid={!!errors.vendor} />
+          </Field>
+          <Field label="Description" htmlFor="le-desc" error={errors.description?.message}>
+            <Input id="le-desc" {...register("description")} aria-invalid={!!errors.description} />
+          </Field>
+          <DialogFooter>
+            <DialogClose asChild><Button type="button" variant="outline">Cancel</Button></DialogClose>
+            <Button type="submit" loading={isSubmitting}>Log expense</Button>
+          </DialogFooter>
+        </form>
+      </DialogContent>
+    </Dialog>
+  );
+}
+
+function ExpensesTab() {
+  const scope: Scope = React.useMemo(() => ({ forceError: debugErrorFlag() }), []);
+  const { data, loading, error, reload } = useAsync(() => listExpenses(scope), [scope]);
+  const columns: Column<Expense>[] = [
+    { key: "date", header: "Date", sortable: true, render: (e) => formatDate(e.date) },
+    { key: "propertyId", header: "Property", sortValue: (e) => propertyName(e.propertyId), render: (e) => propertyName(e.propertyId) },
+    { key: "category", header: "Category", sortable: true, render: (e) => <span className="capitalize">{e.category}</span> },
+    { key: "vendor", header: "Vendor", render: (e) => e.vendor },
+    { key: "amount", header: "Amount", sortable: true, align: "right", render: (e) => formatUGX(e.amount) },
+    { key: "status", header: "Status", render: (e) => <StatusBadge status={e.status} /> },
+  ];
+  return (
+    <div>
+      <div className="mb-4 flex justify-end"><LogExpenseDialog onDone={reload} /></div>
+      <DataTable columns={columns} data={data ?? []} getRowId={(e) => e.id} loading={loading} error={error} onRetry={reload}
+        emptyTitle="No expenses" emptyDescription="Logged expenses will appear here." pageSize={10} />
+    </div>
+  );
+}
+
+/* ------------------------------------------------------------- reports */
+
+function ReportsTab() {
+  const [type, setType] = React.useState("rent-roll");
+  const [from, setFrom] = React.useState("2026-01-01");
+  const [to, setTo] = React.useState("2026-07-01");
+  const [busy, setBusy] = React.useState(false);
+  const generate = async () => {
+    setBusy(true);
+    await new Promise((r) => setTimeout(r, 900));
+    setBusy(false);
+    toast.success("Report ready", { description: "Your PDF export is mocked in this build." });
+  };
+  const recent = [
+    { name: "Rent roll — Jun 2026", date: "1 Jul 2026" },
+    { name: "Collections — Q2 2026", date: "1 Jul 2026" },
+    { name: "Owner statements — May 2026", date: "3 Jun 2026" },
+  ];
+  return (
+    <div className="grid gap-4 lg:grid-cols-3">
+      <Card className="p-6 lg:col-span-2">
+        <h3 className="font-heading text-h3 font-semibold text-foreground">Generate a report</h3>
+        <div className="mt-4 grid gap-4 sm:grid-cols-2">
+          <Field label="Report type" htmlFor="rp-type">
+            <select id="rp-type" className={selectClass} value={type} onChange={(e) => setType(e.target.value)}>
+              <option value="rent-roll">Rent roll</option>
+              <option value="collections">Collections</option>
+              <option value="arrears">Arrears</option>
+              <option value="owner-statements">Owner statements</option>
+              <option value="expenses">Expense report</option>
+            </select>
+          </Field>
+          <div />
+          <Field label="From" htmlFor="rp-from"><Input id="rp-from" type="date" value={from} onChange={(e) => setFrom(e.target.value)} /></Field>
+          <Field label="To" htmlFor="rp-to"><Input id="rp-to" type="date" value={to} onChange={(e) => setTo(e.target.value)} /></Field>
+        </div>
+        <Button className="mt-5 gap-2" onClick={generate} loading={busy}><Download size={18} /> Generate PDF</Button>
+      </Card>
+      <Card className="p-6">
+        <h3 className="mb-4 font-heading text-h3 font-semibold text-foreground">Recent reports</h3>
+        <ul className="space-y-2">
+          {recent.map((r) => (
+            <li key={r.name}>
+              <button type="button" onClick={() => toast.info("Download", { description: "PDF download is mocked in this build." })}
+                className="flex w-full items-center gap-3 rounded-lg border border-border p-3 text-left transition-colors hover:border-primary/40 hover:bg-surface-hover">
+                <FileLines size={18} className="text-muted" />
+                <span className="flex-1"><span className="block text-body text-foreground">{r.name}</span><span className="block text-caption text-muted">{r.date}</span></span>
+                <Download size={16} className="text-muted" />
+              </button>
+            </li>
+          ))}
+        </ul>
+      </Card>
+    </div>
+  );
+}
+
+/* --------------------------------------------------------------- page */
+
+export default function FinancePage() {
+  const scope: Scope = React.useMemo(() => ({ forceError: debugErrorFlag() }), []);
+  const summary = useAsync(() => getFinanceSummary(scope), [scope]);
+
+  return (
+    <div>
+      <PageHeader title="Finance" subtitle="Invoices, payments, expenses and reports" />
+
+      {summary.loading ? (
+        <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-4">
+          {Array.from({ length: 4 }).map((_, i) => <Card key={i} className="p-6"><Skeleton className="h-4 w-24" /><Skeleton className="mt-3 h-8 w-28" /></Card>)}
+        </div>
+      ) : summary.error ? (
+        <EmptyState title="Couldn’t load finance summary" description={summary.error} action={<Button variant="outline" size="sm" onClick={summary.reload}>Try again</Button>} />
+      ) : summary.data ? (
+        <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-4">
+          <StatCard label="Billed" value={formatUGX(summary.data.billed)} icon={<Receipt size={22} />} />
+          <StatCard label="Collected" value={formatUGX(summary.data.collected)} icon={<Cash size={22} />} />
+          <StatCard label="Outstanding" value={formatUGX(summary.data.outstanding)} icon={<ChartLineUp size={22} />} hint="pending + overdue" />
+          <StatCard label="Expenses" value={formatUGX(summary.data.expenses)} icon={<FileLines size={22} />} />
+        </div>
+      ) : null}
+
+      <div className="mt-6">
+        <Tabs defaultValue="invoices">
+          <div className="overflow-x-auto">
+            <TabsList>
+              <TabsTrigger value="invoices">Invoices</TabsTrigger>
+              <TabsTrigger value="payments">Payments</TabsTrigger>
+              <TabsTrigger value="expenses">Expenses</TabsTrigger>
+              <TabsTrigger value="reports">Reports</TabsTrigger>
+            </TabsList>
+          </div>
+          <TabsContent value="invoices"><InvoicesTab /></TabsContent>
+          <TabsContent value="payments"><PaymentsTab /></TabsContent>
+          <TabsContent value="expenses"><ExpensesTab /></TabsContent>
+          <TabsContent value="reports"><ReportsTab /></TabsContent>
+        </Tabs>
+      </div>
+    </div>
+  );
+}
