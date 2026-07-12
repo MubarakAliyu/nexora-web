@@ -14,7 +14,7 @@ import {
   ArrowRightToBracket,
 } from "flowbite-react-icons/outline";
 import { Sidebar } from "@/components/ui/sidebar";
-import { Sheet, SheetContent, SheetTitle } from "@/components/ui/sheet";
+import { Sheet, SheetContent, SheetTitle, SheetHeader } from "@/components/ui/sheet";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
@@ -77,6 +77,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
   const [mounted, setMounted] = React.useState(false);
   const [drawerOpen, setDrawerOpen] = React.useState(false);
   const [logoutOpen, setLogoutOpen] = React.useState(false);
+  const [searchOpen, setSearchOpen] = React.useState(false);
 
   React.useEffect(() => setMounted(true), []);
 
@@ -159,31 +160,38 @@ export function AppShell({ children }: { children: React.ReactNode }) {
         </SheetContent>
       </Sheet>
 
-      <div className="flex min-h-screen flex-1 flex-col">
+      <div className="flex min-h-screen min-w-0 flex-1 flex-col">
         {/* Topbar */}
-        <header className="sticky top-0 z-30 flex h-16 items-center gap-3 border-b border-border bg-background px-4 md:px-6">
+        <header className="sticky top-0 z-30 flex h-16 items-center gap-2 border-b border-border bg-background px-3 sm:px-4 md:px-6">
           <button
             type="button"
             onClick={() => setDrawerOpen(true)}
             aria-label="Open menu"
-            className="inline-flex h-10 w-10 items-center justify-center rounded-md text-foreground transition-colors hover:bg-surface-hover lg:hidden"
+            className="inline-flex h-10 w-10 shrink-0 items-center justify-center rounded-md text-foreground transition-colors hover:bg-surface-hover lg:hidden"
           >
             <Bars size={24} />
           </button>
 
-          <div className="hidden md:block">
+          {/* Breadcrumb — always visible, fills space, truncates on mobile */}
+          <div className="min-w-0 flex-1">
             <Breadcrumb items={crumbs} />
           </div>
 
-          <div className="relative ml-auto hidden max-w-xs flex-1 sm:block">
-            <Search
-              size={18}
-              className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-muted"
-            />
-            <Input placeholder="Search…" aria-label="Search" className="h-10 pl-10" />
-          </div>
+          {/* Right group — flush right at every breakpoint */}
+          <div className="flex shrink-0 items-center gap-1 sm:gap-2">
+            <div className="relative hidden w-48 md:block lg:w-64">
+              <Search size={18} className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-muted" />
+              <Input placeholder="Search…" aria-label="Search" className="h-10 pl-10" />
+            </div>
+            <button
+              type="button"
+              onClick={() => setSearchOpen(true)}
+              aria-label="Search"
+              className="inline-flex h-10 w-10 items-center justify-center rounded-md text-foreground transition-colors hover:bg-surface-hover md:hidden"
+            >
+              <Search size={20} />
+            </button>
 
-          <div className={cn("flex items-center gap-1.5", "sm:ml-2")}>
             <NotificationCenter />
 
             {/* Profile menu */}
@@ -232,6 +240,19 @@ export function AppShell({ children }: { children: React.ReactNode }) {
 
         <main className="flex-1 px-4 py-6 md:px-8 md:py-8">{children}</main>
       </div>
+
+      {/* Mobile search */}
+      <Sheet open={searchOpen} onOpenChange={setSearchOpen}>
+        <SheetContent side="top" className="p-4">
+          <SheetHeader>
+            <SheetTitle className="sr-only">Search</SheetTitle>
+          </SheetHeader>
+          <div className="relative mt-2">
+            <Search size={18} className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-muted" />
+            <Input autoFocus placeholder="Search…" aria-label="Search" className="h-11 pl-10" />
+          </div>
+        </SheetContent>
+      </Sheet>
 
       {/* Logout confirmation */}
       <Dialog open={logoutOpen} onOpenChange={setLogoutOpen}>
