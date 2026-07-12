@@ -23,6 +23,11 @@ export interface AppNotification {
   status: "sent" | "read";
   sent_at: string;
   read_at: string | null;
+  /** Present on notifications generated live by an action. */
+  entityType?: string;
+  entityId?: string;
+  action?: string;
+  actor?: string;
 }
 
 export type NotificationAudience = "admin" | "owner" | "tenant";

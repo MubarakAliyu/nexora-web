@@ -24,11 +24,21 @@ export function NotificationCenter() {
 
   const unread = items.filter((n) => n.status !== "read").length;
 
+  // Ring the bell (keyed remount → CSS animation) when a new notification arrives.
+  const prevUnread = React.useRef(unread);
+  const [ring, setRing] = React.useState(0);
+  React.useEffect(() => {
+    if (unread > prevUnread.current) setRing((r) => r + 1);
+    prevUnread.current = unread;
+  }, [unread]);
+
   return (
     <DropdownMenu>
       <DropdownMenuTrigger asChild>
         <Button variant="ghost" size="icon" aria-label="Notifications" className="relative">
-          <Bell size={20} />
+          <span key={ring} className={cn("inline-block origin-top", ring > 0 && "motion-safe:animate-bell-ring")}>
+            <Bell size={20} />
+          </span>
           {mounted && unread > 0 && (
             <span className="absolute right-1.5 top-1.5 flex h-4 min-w-4 items-center justify-center rounded-full bg-primary px-1 text-[10px] font-semibold text-primary-foreground">
               {unread > 9 ? "9+" : unread}

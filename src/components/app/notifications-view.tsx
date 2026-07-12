@@ -67,7 +67,7 @@ export function NotificationsView({ title = "Notifications", subtitle }: { title
               "shrink-0 rounded-full border px-3.5 py-1.5 text-caption font-medium transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary",
               filter === c.k
                 ? "border-primary bg-primary text-primary-foreground"
-                : "border-border bg-background text-foreground hover:border-primary hover:text-primary",
+                : "border-border bg-surface-elevated text-foreground hover:border-primary hover:text-primary",
             )}
           >
             {c.l}
@@ -80,7 +80,7 @@ export function NotificationsView({ title = "Notifications", subtitle }: { title
           <div
             key={n.id}
             className={cn(
-              "flex items-start gap-4 rounded-xl border bg-background p-4 shadow-sm",
+              "flex items-start gap-4 rounded-xl border bg-surface-elevated p-4 shadow-sm",
               n.status !== "read" ? "border-primary/30" : "border-border",
             )}
           >
@@ -105,7 +105,7 @@ export function NotificationsView({ title = "Notifications", subtitle }: { title
           </div>
         ))}
         {shown.length === 0 && (
-          <div className="rounded-xl border border-dashed border-border bg-background p-8 text-center text-body text-muted">
+          <div className="rounded-xl border border-dashed border-border bg-surface-elevated p-8 text-center text-body text-muted">
             No notifications to show.
           </div>
         )}

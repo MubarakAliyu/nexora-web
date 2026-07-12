@@ -34,7 +34,7 @@ const TECHS = ["James Odoi", "Fred Wanyama", "Peter Ssemakula", "Alex Mugume"];
 function TicketCard({ t, onClick }: { t: MaintenanceTicket; onClick: () => void }) {
   return (
     <button type="button" onClick={onClick}
-      className="w-full rounded-lg border border-border bg-background p-3 text-left transition-all hover:-translate-y-0.5 hover:border-primary/40 hover:shadow-md focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary">
+      className="w-full rounded-lg border border-border bg-surface-elevated p-3 text-left transition-all hover:-translate-y-0.5 hover:border-primary/40 hover:shadow-md focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary">
       <div className="flex items-center justify-between gap-2">
         <span className="text-caption font-medium text-muted">{t.ref}</span>
         <PriorityBadge priority={t.priority} />

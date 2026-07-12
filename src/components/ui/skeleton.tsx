@@ -27,7 +27,7 @@ export function SkeletonText({ lines = 3, className }: { lines?: number; classNa
 /** Card skeleton. */
 export function SkeletonCard({ className }: { className?: string }) {
   return (
-    <div className={cn("rounded-lg border border-border bg-background p-6", className)}>
+    <div className={cn("rounded-lg border border-border bg-surface-elevated p-6", className)}>
       <Skeleton className="mb-4 h-40 w-full" />
       <Skeleton className="mb-2 h-5 w-1/2" />
       <SkeletonText lines={2} />
@@ -58,7 +58,7 @@ export function SkeletonTable({ rows = 5, cols = 4 }: { rows?: number; cols?: nu
 /** Chart skeleton. */
 export function SkeletonChart({ className }: { className?: string }) {
   return (
-    <div className={cn("rounded-lg border border-border bg-background p-6", className)}>
+    <div className={cn("rounded-lg border border-border bg-surface-elevated p-6", className)}>
       <Skeleton className="mb-4 h-4 w-1/3" />
       <div className="flex h-48 items-end gap-2">
         {[60, 80, 45, 90, 70, 55, 85].map((h, i) => (

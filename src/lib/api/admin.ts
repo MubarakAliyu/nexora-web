@@ -9,6 +9,7 @@
  */
 
 import * as db from "@/lib/mock/db";
+import { recordMutation } from "@/lib/api/actions";
 import type {
   Activity,
   Announcement,
@@ -185,6 +186,105 @@ export async function getPropertyUnits(id: string, scope?: Scope): Promise<Unit[
 
 export async function getPropertyTenants(id: string, scope?: Scope): Promise<Tenant[]> {
   return respond(db.tenants.filter((t) => t.propertyId === id), { error: scope?.forceError });
+}
+
+/* ----------------------------------------------------- property mutations */
+
+function slugify(name: string): string {
+  const base = name.toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/^-|-$/g, "");
+  let id = base || `property`;
+  let n = 2;
+  while (db.properties.some((p) => p.id === id)) id = `${base}-${n++}`;
+  return id;
+}
+
+export interface PropertyInput {
+  name: string;
+  location: string;
+  category: Property["category"];
+  units: number;
+  ownerId?: string;
+  status?: Property["status"];
+  image?: string;
+}
+
+export async function createProperty(input: PropertyInput): Promise<Property> {
+  await new Promise((r) => setTimeout(r, 500));
+  const id = slugify(input.name);
+  const property: Property = {
+    id,
+    name: input.name,
+    location: input.location,
+    category: input.category,
+    image: input.image ?? "/images/properties/apartment-facade.jpg",
+    ownerId: input.ownerId ?? db.owners[0]?.id ?? "own_salim",
+    status: input.status ?? "onboarding",
+    units: input.units,
+    occupancy: 0,
+    monthlyRevenue: 0,
+    buildings: [{ id: `bld_${id}_1`, name: "Main Block", floors: Math.max(1, Math.ceil(input.units / 4)), units: input.units }],
+    since: db.NOW_ISO,
+  };
+  db.properties.unshift(property);
+  const owner = db.owners.find((o) => o.id === property.ownerId);
+  if (owner) owner.propertyIds.push(id);
+  recordMutation({
+    entityType: "property",
+    entityId: id,
+    entityName: property.name,
+    action: "created",
+    summary: `Added property "${property.name}" (${input.units} units) in ${property.location}`,
+    after: { name: property.name, units: property.units, status: property.status },
+    notify: { type: "system", title: "Property added", body: `${property.name} was added to the portfolio.` },
+  });
+  return property;
+}
+
+export async function updateProperty(id: string, patch: Partial<PropertyInput>): Promise<Property> {
+  await new Promise((r) => setTimeout(r, 500));
+  const property = db.properties.find((p) => p.id === id);
+  if (!property) throw new NotFoundError(id);
+  const before = { name: property.name, location: property.location, status: property.status, units: property.units };
+  Object.assign(property, {
+    name: patch.name ?? property.name,
+    location: patch.location ?? property.location,
+    category: patch.category ?? property.category,
+    units: patch.units ?? property.units,
+    status: patch.status ?? property.status,
+  });
+  recordMutation({
+    entityType: "property",
+    entityId: id,
+    entityName: property.name,
+    action: "updated",
+    summary: `Updated property "${property.name}"`,
+    before,
+    after: { name: property.name, location: property.location, status: property.status, units: property.units },
+    notify: { type: "system", title: "Property updated", body: `${property.name} details were updated.` },
+  });
+  return property;
+}
+
+export async function deleteProperty(id: string): Promise<{ ok: true }> {
+  await new Promise((r) => setTimeout(r, 500));
+  const idx = db.properties.findIndex((p) => p.id === id);
+  if (idx === -1) throw new NotFoundError(id);
+  const [removed] = db.properties.splice(idx, 1);
+  // Cascade: remove this property's units and terminate its leases.
+  for (let i = db.units.length - 1; i >= 0; i--) if (db.units[i].propertyId === id) db.units.splice(i, 1);
+  db.leases.forEach((l) => { if (l.propertyId === id) l.status = "terminated"; });
+  const owner = db.owners.find((o) => o.propertyIds.includes(id));
+  if (owner) owner.propertyIds = owner.propertyIds.filter((p) => p !== id);
+  recordMutation({
+    entityType: "property",
+    entityId: id,
+    entityName: removed.name,
+    action: "deleted",
+    summary: `Deleted property "${removed.name}" and its units`,
+    before: { name: removed.name, units: removed.units },
+    notify: { type: "system", title: "Property deleted", body: `${removed.name} was removed from the portfolio.` },
+  });
+  return { ok: true };
 }
 
 /* ----------------------------------------------------------------- units */
@@ -511,6 +611,14 @@ export async function renewLease(id: string, months = 12): Promise<Lease> {
   lease.status = "active";
   const tenant = db.tenants.find((t) => t.id === lease.tenantId);
   if (tenant && tenant.status !== "past") tenant.status = "active";
+  recordMutation({
+    entityType: "lease",
+    entityId: id,
+    entityName: tenant?.name ?? id,
+    action: "renewed",
+    summary: `Renewed lease for ${tenant?.name ?? "tenant"} by ${months} months`,
+    notify: { type: "lease", title: "Lease renewed", body: `${tenant?.name ?? "A tenant"}'s lease was renewed for ${months} months.` },
+  });
   return lease;
 }
 
@@ -523,6 +631,14 @@ export async function terminateLease(id: string): Promise<Lease> {
   if (unit) unit.status = "vacant";
   const tenant = db.tenants.find((t) => t.id === lease.tenantId);
   if (tenant) tenant.status = "past";
+  recordMutation({
+    entityType: "lease",
+    entityId: id,
+    entityName: tenant?.name ?? id,
+    action: "terminated",
+    summary: `Terminated lease for ${tenant?.name ?? "tenant"}; unit ${unit?.label ?? ""} released`,
+    notify: { type: "lease", title: "Lease terminated", body: `${tenant?.name ?? "A tenant"}'s lease was terminated.` },
+  });
   return lease;
 }
 
@@ -545,11 +661,22 @@ export async function updateTicket(
   await new Promise((r) => setTimeout(r, 400));
   const t = db.tickets.find((x) => x.id === id);
   if (!t) throw new NotFoundError(id);
+  const before = { status: t.status, assignee: t.assignee, cost: t.cost };
   if (patch.status) t.status = patch.status;
   if (patch.assignee !== undefined) t.assignee = patch.assignee || undefined;
   if (patch.cost !== undefined) t.cost = patch.cost || undefined;
   if (t.status !== "open" && !t.assignee) t.assignee = "James Odoi";
   t.updatedAt = db.NOW_ISO;
+  recordMutation({
+    entityType: "ticket",
+    entityId: id,
+    entityName: t.ref,
+    action: "status_changed",
+    summary: `Ticket ${t.ref} → ${t.status.replace("_", " ")}${t.assignee ? ` (${t.assignee})` : ""}`,
+    before,
+    after: { status: t.status, assignee: t.assignee, cost: t.cost },
+    notify: { type: "maintenance", title: "Ticket updated", body: `${t.ref} — ${t.title} is now ${t.status.replace("_", " ")}.` },
+  });
   return t;
 }
 
@@ -583,6 +710,15 @@ export async function createInvoice(input: { tenantId: string; amount: number; d
     status: "pending",
   };
   db.invoices.unshift(inv);
+  recordMutation({
+    entityType: "invoice",
+    entityId: inv.id,
+    entityName: inv.number,
+    action: "created",
+    summary: `Generated ${inv.number} for ${tenant?.name ?? "tenant"} — ${inv.amount.toLocaleString("en-UG")} UGX`,
+    after: { number: inv.number, amount: inv.amount, status: inv.status },
+    notify: { type: "payment", title: "Invoice generated", body: `${inv.number} was raised for ${tenant?.name ?? "a tenant"}.` },
+  });
   return inv;
 }
 
@@ -599,6 +735,15 @@ export async function createExpense(input: { propertyId: string; category: Expen
     status: "pending",
   };
   db.expenses.unshift(exp);
+  recordMutation({
+    entityType: "expense",
+    entityId: exp.id,
+    entityName: exp.vendor,
+    action: "created",
+    summary: `Logged ${exp.category} expense — ${exp.amount.toLocaleString("en-UG")} UGX (${exp.vendor})`,
+    after: { category: exp.category, amount: exp.amount, vendor: exp.vendor },
+    notify: { type: "system", title: "Expense logged", body: `${exp.amount.toLocaleString("en-UG")} UGX logged for ${propertyName(exp.propertyId)}.` },
+  });
   return exp;
 }
 
@@ -612,6 +757,14 @@ export async function addLeadActivity(id: string, kind: LeadActivity["kind"], te
     ...lead.activities,
     { id: `act_${id}_${lead.activities.length}`, at: db.NOW_ISO, kind, text },
   ];
+  recordMutation({
+    entityType: "lead",
+    entityId: id,
+    entityName: lead.name,
+    action: "updated",
+    summary: `Logged ${kind} on lead ${lead.name}`,
+    notify: false,
+  });
   return lead;
 }
 
@@ -637,6 +790,15 @@ export async function createAnnouncement(input: { title: string; body: string; a
     sentBy: "You",
   };
   db.announcements.unshift(ann);
+  recordMutation({
+    entityType: "announcement",
+    entityId: ann.id,
+    entityName: ann.title,
+    action: "sent",
+    summary: `Sent announcement "${ann.title}" to ${ann.audienceLabel} (${ann.recipients} recipients)`,
+    after: { audience: ann.audienceLabel, recipients: ann.recipients },
+    notify: { type: "announcement", title: "Announcement sent", body: `"${ann.title}" was broadcast to ${ann.audienceLabel}.` },
+  });
   return ann;
 }
 

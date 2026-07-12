@@ -29,7 +29,7 @@ export const CHART_PALETTE = [
 ];
 
 const tooltipStyle: React.CSSProperties = {
-  backgroundColor: "var(--background)",
+  backgroundColor: "var(--surface-elevated)",
   border: "1px solid var(--border)",
   borderRadius: 8,
   color: "var(--foreground)",
@@ -155,7 +155,7 @@ export function DonutChart({ data, height = 280, colors = CHART_PALETTE }: Donut
           innerRadius="60%"
           outerRadius="85%"
           paddingAngle={2}
-          stroke="var(--background)"
+          stroke="var(--surface-elevated)"
         >
           {data.map((entry, i) => (
             <Cell key={entry.name} fill={colors[i % colors.length]} />

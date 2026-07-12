@@ -25,7 +25,7 @@ import {
 import { toast } from "@/components/ui/sonner";
 import { useAsync, debugErrorFlag } from "@/lib/use-async";
 import { formatUGX } from "@/lib/format";
-import { listProperties, type Property, type Scope } from "@/lib/api/admin";
+import { listProperties, createProperty, type Property, type Scope } from "@/lib/api/admin";
 import { categories } from "@/content/portfolio";
 
 const schema = z.object({
@@ -46,11 +46,15 @@ function AddPropertyDialog({ onAdded }: { onAdded: () => void }) {
   } = useForm<Values>({ resolver: zodResolver(schema), defaultValues: { category: "" } });
 
   const onSubmit = async (v: Values) => {
-    await new Promise((r) => setTimeout(r, 700));
-    toast.success("Property added", { description: `${v.name} is now onboarding.` });
-    reset();
-    setOpen(false);
-    onAdded();
+    try {
+      await createProperty({ name: v.name, location: v.location, category: v.category as Property["category"], units: v.units });
+      toast.success("Property added", { description: `${v.name} is now onboarding.` });
+      reset();
+      setOpen(false);
+      onAdded();
+    } catch {
+      toast.error("Couldn’t add property", { description: "Please try again." });
+    }
   };
 
   return (

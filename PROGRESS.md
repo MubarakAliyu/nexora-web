@@ -578,6 +578,37 @@ state; prefer instant/conditional/keyed.
 
 ---
 
+## Admin Live Upgrade (post-Batch-10) — Pass 1 ✅ (dark mode + sidebar polish + live state engine)
+
+Pre-work first: **`fix: dashboard mobile responsiveness + topbar layout`** — root cause of page
+overflow was the content column being `flex-1` without `min-w-0`; added it so tables/charts scroll
+internally. Topbar right-group flush-right + mobile search Sheet; breadcrumb visible on all viewports
+with mobile ellipsis. Verified at 375px across admin + owner.
+
+**Pass 1 delivered:**
+- **1A Dark mode** — class-strategy (`.dark` on `<html>`, scoped to dashboard routes by AppShell so
+  marketing stays light-only; anti-flash `<script>` in `<head>`). Base tokens overridden in `.dark`;
+  new `--surface-elevated` (cards/overlays/bars lift off the darker page) + `--surface-sunken` (page).
+  In LIGHT `--surface-elevated == --background` so light is unchanged. Store `lib/stores/theme.ts`
+  (persist `nexora-theme`, system default). Toggle in the sidebar footer + Settings (animated sun/moon
+  via CSS transform). Charts re-theme (tooltip/donut use `--surface-elevated`). Verified: cards
+  `#2D2B28` on page `#1A1A1A`, muted-on-card 5.58:1 + fg 12.95:1 (AA), marketing stays `#F5F5F5`.
+- **1B Sidebar polish** — collapsed items get portaled Radix tooltips (escape the overflow clip);
+  labels fade/slide in on expand (mount animation); logo crossfade + content-width adjust confirmed.
+- **1C Live state engine** — `lib/stores/live.ts` `revision` signal; **`useAsync` subscribes to it**,
+  so every mutation re-fetches every list/detail/dashboard/chart at once (no rewrite of pages).
+  Property create/update/delete added; all existing mutations (lease renew/terminate, ticket update,
+  invoice/expense create, announcement send, lead activity, **marketing lead feed**) route through one
+  `recordMutation()` path.
+- **1D System notifications + audit** — `recordMutation()` bumps revision **+** writes an audit entry
+  (`lib/stores/audit.ts`) **+** pushes a live system notification (`pushSystem`, bell +1). Bell rings
+  (keyed-remount CSS `bell-ring`) on new notifications. Toast fired by the caller.
+- **Gate demo verified:** Add Property → properties list 16→**17** + bell 4→**5** + toast, then SPA-nav
+  to dashboard → Properties KPI **17**; the "Property added" notification tops the (elevated) bell
+  dropdown. lint + tsc clean. **Audit viewer arrives in Pass 3.**
+
+---
+
 ## Batch 10 — Owner Portal ✅ COMPLETE
 
 Salim Kato's read-first investor portal — calmer than the Admin dashboard, reusing the **same

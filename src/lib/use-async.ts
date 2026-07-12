@@ -1,6 +1,7 @@
 "use client";
 
 import * as React from "react";
+import { useLive } from "@/lib/stores/live";
 
 export interface AsyncState<T> {
   data: T | null;
@@ -19,6 +20,9 @@ export function useAsync<T>(fn: () => Promise<T>, deps: React.DependencyList): A
   const [loading, setLoading] = React.useState(true);
   const [error, setError] = React.useState<string | null>(null);
   const [nonce, setNonce] = React.useState(0);
+  // Any data mutation bumps the live revision → every useAsync re-fetches, so
+  // lists / detail / dashboard / charts stay in sync with the store.
+  const revision = useLive((s) => s.revision);
   const fnRef = React.useRef(fn);
   fnRef.current = fn;
 
@@ -44,7 +48,7 @@ export function useAsync<T>(fn: () => Promise<T>, deps: React.DependencyList): A
       alive = false;
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [...deps, nonce]);
+  }, [...deps, nonce, revision]);
 
   const reload = React.useCallback(() => setNonce((n) => n + 1), []);
   return { data, loading, error, reload };

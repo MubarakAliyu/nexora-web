@@ -5,6 +5,7 @@ import { PageHeader } from "@/components/app/page-header";
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Switch } from "@/components/ui/switch";
+import { ThemeToggle } from "@/components/app/theme-toggle";
 import { selectClass } from "@/components/forms/field";
 import { Label } from "@/components/ui/label";
 import { toast } from "@/components/ui/sonner";
@@ -66,6 +67,13 @@ export default function OwnerSettingsPage() {
 
       <Card className="p-6">
         <h2 className="font-heading text-h3 font-semibold text-foreground">Display</h2>
+        <div className="mt-4 flex items-center justify-between gap-4 border-b border-border pb-4">
+          <div>
+            <p className="text-body font-medium text-foreground">Appearance</p>
+            <p className="text-caption text-muted">Switch between light and dark mode.</p>
+          </div>
+          <ThemeToggle variant="icon" />
+        </div>
         <div className="mt-4 grid gap-4 sm:grid-cols-2">
           <div>
             <Label htmlFor="cur" className="mb-1.5 block text-body font-medium text-foreground">Currency</Label>

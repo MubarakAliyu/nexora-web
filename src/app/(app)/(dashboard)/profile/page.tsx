@@ -65,7 +65,7 @@ export default function ProfilePage() {
       <PageHeader title="Profile" subtitle="Manage your personal details and password" />
 
       {/* Personal details */}
-      <div className="rounded-xl border border-border bg-background p-6 shadow-sm md:p-8">
+      <div className="rounded-xl border border-border bg-surface-elevated p-6 shadow-sm md:p-8">
         <div className="flex items-center gap-4">
           <Avatar className="h-16 w-16">
             <AvatarFallback className="text-h3">{initials(user?.name ?? "U")}</AvatarFallback>
@@ -101,7 +101,7 @@ export default function ProfilePage() {
       </div>
 
       {/* Password */}
-      <div className="mt-6 rounded-xl border border-border bg-background p-6 shadow-sm md:p-8">
+      <div className="mt-6 rounded-xl border border-border bg-surface-elevated p-6 shadow-sm md:p-8">
         <h2 className="font-heading text-h3 font-semibold text-foreground">Change password</h2>
         <form onSubmit={passwordForm.handleSubmit(onChangePassword)} noValidate className="mt-6 space-y-4">
           <Field label="Current password" htmlFor="cur" error={passwordForm.formState.errors.current?.message}>

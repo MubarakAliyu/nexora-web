@@ -14,7 +14,7 @@ export function OwnerPropertyCard({ property: p }: { property: Property }) {
   return (
     <Link
       href={`/owner/properties/${p.id}`}
-      className="group block overflow-hidden rounded-xl border border-border bg-background transition-all duration-200 hover:-translate-y-0.5 hover:border-primary/40 hover:shadow-lg focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary"
+      className="group block overflow-hidden rounded-xl border border-border bg-surface-elevated transition-all duration-200 hover:-translate-y-0.5 hover:border-primary/40 hover:shadow-lg focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary"
     >
       <div className="relative h-40 w-full overflow-hidden bg-surface-active">
         <Image

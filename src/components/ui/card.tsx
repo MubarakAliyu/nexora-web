@@ -3,7 +3,7 @@ import { cva, type VariantProps } from "class-variance-authority";
 import { cn } from "@/lib/utils";
 
 const cardVariants = cva(
-  "rounded-lg border border-border bg-background text-foreground",
+  "rounded-lg border border-border bg-surface-elevated text-foreground",
   {
     variants: {
       variant: {

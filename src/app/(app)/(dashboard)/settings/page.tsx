@@ -47,7 +47,7 @@ export default function SettingsPage() {
     <div className="mx-auto max-w-3xl">
       <PageHeader title="Settings" subtitle="Choose how you'd like to be notified" />
 
-      <div className="rounded-xl border border-border bg-background shadow-sm">
+      <div className="rounded-xl border border-border bg-surface-elevated shadow-sm">
         <div className="hidden items-center justify-between border-b border-border p-5 sm:flex">
           <span className="text-caption uppercase tracking-wide text-muted">Notification</span>
           <div className="flex gap-6">

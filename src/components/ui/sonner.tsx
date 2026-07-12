@@ -10,12 +10,12 @@ export function Toaster(props: React.ComponentProps<typeof SonnerToaster>) {
       toastOptions={{
         classNames: {
           toast:
-            "!bg-background !border !border-border !text-foreground !rounded-md !shadow-lg !font-sans",
+            "!bg-surface-elevated !border !border-border !text-foreground !rounded-md !shadow-lg !font-sans",
           title: "!text-foreground !font-medium",
           description: "!text-muted",
           actionButton: "!bg-primary !text-primary-foreground !rounded-md",
           cancelButton: "!bg-surface-active !text-foreground !rounded-md",
-          closeButton: "!bg-background !border-border !text-muted",
+          closeButton: "!bg-surface-elevated !border-border !text-muted",
         },
       }}
       {...props}

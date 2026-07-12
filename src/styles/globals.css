@@ -1,6 +1,10 @@
 @import "tailwindcss";
 @import "tw-animate-css";
 
+/* Dark mode uses the class strategy (user-controlled), scoped to app routes by
+   AppShell toggling `.dark` on <html>. Marketing stays light-only. */
+@custom-variant dark (&:where(.dark, .dark *));
+
 /* ============================================================================
    NEXORA DESIGN SYSTEM — locked tokens (single source of truth)
    Palette: the ONLY six colours allowed. Never #000000 (#232220 is darkest).
@@ -20,6 +24,27 @@
      no new hue). Used for ghost/secondary hovers, hover rows, dropdown items, skeletons. */
   --surface-hover: color-mix(in oklab, var(--foreground) 6%, var(--background));
   --surface-active: color-mix(in oklab, var(--foreground) 10%, var(--background));
+
+  /* Elevation model (works in both themes). In LIGHT these resolve so nothing
+     changes; DARK re-maps them below to lift cards off a darker page. */
+  --surface-elevated: var(--background); /* cards, dialogs, sheets, bars, toasts */
+  --surface-sunken: var(--surface-hover); /* the app page background (recessed) */
+}
+
+/* ---- Dark theme (app routes only; <html class="dark">) ------------------- */
+.dark {
+  --background: #1a1a1a; /* page base */
+  --foreground: #f5f5f5; /* primary text */
+  --muted: #a3a3a0; /* secondary text — AA on dark surfaces */
+  --primary: #e08a20; /* orange pops on dark, unchanged */
+  --accent: #c4c0b8; /* warm light grey for deep emphasis on dark */
+  --border: #3a3836; /* dividers, outlines */
+
+  --surface-elevated: #2d2b28; /* cards/overlays lift off the page */
+  --surface-sunken: #1a1a1a; /* page bg == base in dark */
+  /* Hover/active read as *lighter* than the elevated surface in dark */
+  --surface-hover: #2f2c28;
+  --surface-active: #3a3733;
 }
 
 @keyframes kenburns {
@@ -31,9 +56,20 @@
   }
 }
 
+/* Subtle bell ring when a new notification arrives (keyed remount re-triggers). */
+@keyframes bell-ring {
+  0%, 100% { transform: rotate(0); }
+  15% { transform: rotate(12deg); }
+  30% { transform: rotate(-10deg); }
+  45% { transform: rotate(8deg); }
+  60% { transform: rotate(-6deg); }
+  75% { transform: rotate(3deg); }
+}
+
 @theme {
   /* Slow Ken-Burns drift for hero-band imagery */
   --animate-kenburns: kenburns 22s ease-out infinite alternate;
+  --animate-bell-ring: bell-ring 0.7s ease-in-out;
 
   /* Remove ALL default Tailwind colours so only the Nexora palette is reachable
      (no blue-500 / gray-400 / #000 leaking into usage). */
@@ -57,6 +93,8 @@
   --color-ring: var(--primary);
   --color-surface-hover: var(--surface-hover);
   --color-surface-active: var(--surface-active);
+  --color-surface-elevated: var(--surface-elevated);
+  --color-surface-sunken: var(--surface-sunken);
 
   /* shadcn/ui semantic tokens — all mapped to the palette (no new hues) */
   --color-card: var(--background);

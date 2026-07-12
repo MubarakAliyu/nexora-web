@@ -51,6 +51,7 @@ export async function submitLead(payload: LeadPayload): Promise<LeadResponse> {
   }
 
   const { addMarketingLead } = await import("@/lib/mock/db");
+  const { recordMutation } = await import("@/lib/api/actions");
   const service = (payload.meta?.service as string | undefined) ?? serviceByType[payload.type];
   const lead = addMarketingLead({
     name: payload.name,
@@ -59,6 +60,17 @@ export async function submitLead(payload: LeadPayload): Promise<LeadResponse> {
     message: payload.message,
     source: sourceByType[payload.type],
     service,
+  });
+
+  // Feed the CRM live: bump revision + notify staff + audit.
+  recordMutation({
+    entityType: "lead",
+    entityId: lead.id,
+    entityName: lead.name,
+    action: "created",
+    summary: `New ${sourceByType[payload.type]} lead — ${lead.name} (${service})`,
+    after: { name: lead.name, source: lead.source, service },
+    notify: { type: "system", title: "New lead", body: `${lead.name} enquired via ${sourceByType[payload.type]}.` },
   });
 
   return { ok: true, id: lead.id };

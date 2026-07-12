@@ -92,7 +92,7 @@ export default function LeadsPage() {
                 <div className="space-y-2.5">
                   {items.length === 0 ? <p className="px-1 py-6 text-center text-caption text-muted">Empty</p> : items.map((l) => (
                     <button key={l.id} type="button" onClick={() => router.push(`/admin/leads/${l.id}`)}
-                      className="w-full rounded-lg border border-border bg-background p-3 text-left transition-all hover:-translate-y-0.5 hover:border-primary/40 hover:shadow-md focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary">
+                      className="w-full rounded-lg border border-border bg-surface-elevated p-3 text-left transition-all hover:-translate-y-0.5 hover:border-primary/40 hover:shadow-md focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary">
                       <p className="text-body font-medium text-foreground">{l.name}</p>
                       <p className="mt-0.5 text-caption text-muted">{l.service}</p>
                       <div className="mt-2 flex items-center justify-between">

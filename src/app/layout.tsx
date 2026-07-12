@@ -32,6 +32,14 @@ export default function RootLayout({
   return (
     <html lang="en">
       <head>
+        {/* Apply the persisted theme before paint on dashboard routes only, so a
+            hard reload doesn't flash light→dark (marketing stays light-only). */}
+        <script
+          dangerouslySetInnerHTML={{
+            __html:
+              "(function(){try{var p=location.pathname;if(!/^\\/(admin|owner|tenant|profile|settings|notifications)(\\/|$)/.test(p))return;var d;var s=localStorage.getItem('nexora-theme');if(s){d=JSON.parse(s).state.theme==='dark';}else{d=window.matchMedia&&window.matchMedia('(prefers-color-scheme: dark)').matches;}if(d)document.documentElement.classList.add('dark');}catch(e){}})();",
+          }}
+        />
         {/* Design-system fonts — loaded via <link> (NOT CSS @import: Tailwind v4 /
             Lightning CSS cannot resolve remote @import and would fall back to system fonts). */}
         <link rel="preconnect" href="https://fonts.googleapis.com" />

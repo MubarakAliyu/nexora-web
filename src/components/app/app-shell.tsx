@@ -36,9 +36,11 @@ import {
   DialogClose,
 } from "@/components/ui/dialog";
 import { NotificationCenter } from "./notification-center";
+import { ThemeToggle } from "./theme-toggle";
 import { navForRole } from "./nav-config";
 import { useSession } from "@/lib/stores/session";
 import { useUI } from "@/lib/stores/ui";
+import { useTheme } from "@/lib/stores/theme";
 import { useNotifications } from "@/lib/stores/notifications";
 import { portalForRole, roleLabels } from "@/lib/roles";
 import type { NotificationAudience } from "@/lib/api/notifications";
@@ -72,6 +74,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
   const user = useSession((s) => s.user);
   const logout = useSession((s) => s.logout);
   const setAudience = useNotifications((s) => s.setAudience);
+  const theme = useTheme((s) => s.theme);
   const collapsed = useUI((s) => s.sidebarCollapsed);
   const toggleSidebar = useUI((s) => s.toggleSidebar);
   const [mounted, setMounted] = React.useState(false);
@@ -87,6 +90,15 @@ export function AppShell({ children }: { children: React.ReactNode }) {
   }, [mounted, user, router]);
 
   React.useEffect(() => setDrawerOpen(false), [pathname]);
+
+  // Apply dark theme to <html> — scoped to dashboard routes (AppShell only
+  // mounts here), so the marketing site stays light-only. Cleared on unmount.
+  React.useEffect(() => {
+    const el = document.documentElement;
+    if (theme === "dark") el.classList.add("dark");
+    else el.classList.remove("dark");
+    return () => el.classList.remove("dark");
+  }, [theme]);
 
   // Point notifications at the right portal audience for the signed-in role.
   React.useEffect(() => {
@@ -110,23 +122,26 @@ export function AppShell({ children }: { children: React.ReactNode }) {
     href: "/" + segs.slice(0, i + 1).join("/"),
   }));
 
-  const collapseToggle = (
-    <button
-      type="button"
-      onClick={toggleSidebar}
-      className={cn(
-        "flex w-full items-center gap-3 rounded-md px-3 py-2 text-body font-medium text-muted transition-colors hover:bg-surface-hover hover:text-foreground",
-        collapsed && "justify-center",
-      )}
-      aria-label={collapsed ? "Expand sidebar" : "Collapse sidebar"}
-    >
-      {collapsed ? <AngleRight size={18} /> : <AngleLeft size={18} />}
-      {!collapsed && <span>Collapse</span>}
-    </button>
+  const sidebarFooter = (collapsedState: boolean) => (
+    <div className="space-y-1">
+      <ThemeToggle collapsed={collapsedState} />
+      <button
+        type="button"
+        onClick={toggleSidebar}
+        className={cn(
+          "flex w-full items-center gap-3 rounded-md px-3 py-2 text-body font-medium text-muted transition-colors hover:bg-surface-hover hover:text-foreground",
+          collapsedState && "justify-center",
+        )}
+        aria-label={collapsedState ? "Expand sidebar" : "Collapse sidebar"}
+      >
+        {collapsedState ? <AngleRight size={18} /> : <AngleLeft size={18} />}
+        {!collapsedState && <span>Collapse</span>}
+      </button>
+    </div>
   );
 
   return (
-    <div className="flex min-h-screen bg-surface-hover">
+    <div className="flex min-h-screen bg-surface-sunken">
       {/* Desktop sidebar */}
       <div className="hidden lg:block">
         <Sidebar
@@ -138,7 +153,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
               {brandLogo(collapsed)}
             </Link>
           }
-          footer={collapseToggle}
+          footer={sidebarFooter(collapsed)}
           className="sticky top-0 h-screen"
         />
       </div>
@@ -155,6 +170,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
                 {brandLogo(false)}
               </Link>
             }
+            footer={sidebarFooter(false)}
             className="h-full border-r-0"
           />
         </SheetContent>
@@ -162,7 +178,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
 
       <div className="flex min-h-screen min-w-0 flex-1 flex-col">
         {/* Topbar */}
-        <header className="sticky top-0 z-30 flex h-16 items-center gap-2 border-b border-border bg-background px-3 sm:px-4 md:px-6">
+        <header className="sticky top-0 z-30 flex h-16 items-center gap-2 border-b border-border bg-surface-elevated px-3 sm:px-4 md:px-6">
           <button
             type="button"
             onClick={() => setDrawerOpen(true)}

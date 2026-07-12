@@ -13,6 +13,7 @@ import { Badge } from "@/components/ui/badge";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Field } from "@/components/forms/field";
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
+import { ThemeToggle } from "@/components/app/theme-toggle";
 import { toast } from "@/components/ui/sonner";
 import { roleLabels, adminRoles } from "@/lib/roles";
 
@@ -33,6 +34,13 @@ function CompanyTab() {
   const onSubmit = async (_v: CompanyValues) => { await new Promise((r) => setTimeout(r, 600)); toast.success("Company profile saved"); };
   return (
     <Card className="max-w-2xl p-6">
+      <div className="mb-6 flex items-center justify-between gap-4 border-b border-border pb-5">
+        <div>
+          <p className="text-body font-medium text-foreground">Appearance</p>
+          <p className="text-caption text-muted">Toggle light or dark mode for the dashboard.</p>
+        </div>
+        <ThemeToggle variant="icon" />
+      </div>
       <form onSubmit={handleSubmit(onSubmit)} noValidate className="space-y-4">
         <Field label="Company name" htmlFor="co-name" error={errors.name?.message}><Input id="co-name" {...register("name")} aria-invalid={!!errors.name} /></Field>
         <div className="grid gap-4 sm:grid-cols-2">
