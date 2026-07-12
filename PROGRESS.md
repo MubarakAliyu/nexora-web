@@ -578,6 +578,53 @@ state; prefer instant/conditional/keyed.
 
 ---
 
+## Batch 10 — Owner Portal ✅ COMPLETE
+
+Salim Kato's read-first investor portal — calmer than the Admin dashboard, reusing the **same
+owner-scoped accessors** proven in the Admin Owners detail. `npm run build` clean; lint + tsc clean.
+
+### Screens (all `/owner/*`)
+- **Dashboard** (`/owner`) — 5 KPI count-up tiles (properties, units, blended occupancy, this-month
+  revenue, outstanding), revenue + occupancy charts, owner-scoped activity Timeline, and a "your
+  properties" hover-lift card row. Verified: 4 properties, UGX 259M/mo, 92% occupancy.
+- **My Properties** (`/owner/properties`) — hover-lift cards with subtle thumbnail zoom (CSS transform,
+  not Ken-Burns); the 4 owned properties (Nakasero Heights, Entebbe Villas, Kira Gardens, Muyenga
+  Heights). Click → detail.
+- **Property Detail** (`/owner/properties/[slug]`) — **read-only** (verified: zero edit/assign/add
+  controls): hero, occupancy KPIs, unit list, read-only maintenance Timeline. Owner may only view their
+  own properties (ownership guard → "not part of your portfolio").
+- **Financials** (`/owner/financials`) — **reconciles with admin Owner Detail**: gross revenue
+  **UGX 259.5M** (identical), outstanding UGX 40.1M (== dashboard). Fee breakdown 259.488M − 20.759M
+  (8%) − 9.35M expenses = **net disbursement UGX 229.4M**. Revenue-vs-expenses chart, date-range
+  filter, per-property table, disbursement history.
+- **Reports** (`/owner/reports`) — monthly / quarterly / annual statements grouped; Download → toast.
+- **Documents** (`/owner/documents`) — property-tied docs (management agreement, title deed, insurance,
+  lease) with Flowbite type icons, search/filter, download stubs.
+- **Notifications** (`/owner/notifications`) — shared `NotificationsView`, **owner-scoped audience**
+  (statements, disbursements, alerts on his properties — no admin noise; bell badge = 3).
+- **Profile** (`/owner/profile`) — personal + **sensitive disbursement/bank details**; account number
+  is `password`-masked with a show/hide toggle ("•••• •••• 5678"). RHF+zod → toast.
+- **Settings** (`/owner/settings`) — notification + delivery-channel **Switch** toggles + display prefs.
+
+### Plumbing
+- **Notifications are now audience-scoped.** `notifications.ts` → `notificationsByAudience`
+  (admin/owner/tenant); the store gained `setAudience`, which the app shell calls from the signed-in
+  role, so the shared topbar bell shows the right set per portal. `NotificationsView` extracted and
+  reused by `/notifications` + `/owner/notifications`.
+- App-shell profile menu links are role-aware (owner → `/owner/profile`, `/owner/settings`).
+- Owner nav Notifications/Settings repointed to `/owner/*`. Sidebar shows exactly the 7 owner sections.
+- New accessors: `getOwnerActivity`, `getOwnerFinancials` (both derive from the same property revenue
+  + 8% fee as `getOwnerDetail`, so figures reconcile). New primitive used: existing Radix `Switch`.
+- Trigger states: loading = latency; empty = filter to none; **error = `?debug=error`** (verified on
+  `/owner/documents?debug=error`).
+
+**Review:** log in as `salim@gmail.com` / `123456` → 2FA `123456` → lands on `/owner`. Routes:
+`/owner`, `/owner/properties`, `/owner/properties/[slug]`, `/owner/financials`, `/owner/reports`,
+`/owner/documents`, `/owner/notifications`, `/owner/profile`, `/owner/settings`. Dev server on **:3007**
+(port 3000 was taken by another project this session).
+
+---
+
 ## Batch 9 — Admin Dashboard ✅ COMPLETE (Pass A + Pass B)
 
 **Both passes delivered.** Pass A: real credential login, the full reset-password flow, the typed mock
