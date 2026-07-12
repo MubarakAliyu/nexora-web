@@ -10,12 +10,15 @@ import {
 } from "@/components/ui/dropdown-menu";
 import { Button } from "@/components/ui/button";
 import { useNotifications } from "@/lib/stores/notifications";
+import { useSession } from "@/lib/stores/session";
 import { cn } from "@/lib/utils";
 
 export function NotificationCenter() {
   const items = useNotifications((s) => s.items);
   const markRead = useNotifications((s) => s.markRead);
   const markAllRead = useNotifications((s) => s.markAllRead);
+  const role = useSession((s) => s.user?.role);
+  const allHref = role === "owner" ? "/owner/notifications" : "/notifications";
   const [mounted, setMounted] = React.useState(false);
   React.useEffect(() => setMounted(true), []);
 
@@ -70,7 +73,7 @@ export function NotificationCenter() {
         </div>
         <div className="p-2">
           <Link
-            href="/notifications"
+            href={allHref}
             className="block rounded-md p-2 text-center text-body font-medium text-primary transition-colors hover:bg-surface-hover"
           >
             View all

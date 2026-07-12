@@ -30,8 +30,8 @@ export function navForRole(role: Role): SidebarItem[] {
       { label: "Financials", href: "/owner/financials", icon: <Cash size={sz} /> },
       { label: "Reports", href: "/owner/reports", icon: <FileLines size={sz} /> },
       { label: "Documents", href: "/owner/documents", icon: <FileLines size={sz} /> },
-      { label: "Notifications", href: "/notifications", icon: <Bell size={sz} /> },
-      { label: "Settings", href: "/settings", icon: <Cog size={sz} /> },
+      { label: "Notifications", href: "/owner/notifications", icon: <Bell size={sz} /> },
+      { label: "Settings", href: "/owner/settings", icon: <Cog size={sz} /> },
     ];
   }
 

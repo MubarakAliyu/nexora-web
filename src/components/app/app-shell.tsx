@@ -39,7 +39,9 @@ import { NotificationCenter } from "./notification-center";
 import { navForRole } from "./nav-config";
 import { useSession } from "@/lib/stores/session";
 import { useUI } from "@/lib/stores/ui";
+import { useNotifications } from "@/lib/stores/notifications";
 import { portalForRole, roleLabels } from "@/lib/roles";
+import type { NotificationAudience } from "@/lib/api/notifications";
 import { cn } from "@/lib/utils";
 
 function titleCase(seg: string) {
@@ -69,6 +71,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
   const pathname = usePathname();
   const user = useSession((s) => s.user);
   const logout = useSession((s) => s.logout);
+  const setAudience = useNotifications((s) => s.setAudience);
   const collapsed = useUI((s) => s.sidebarCollapsed);
   const toggleSidebar = useUI((s) => s.toggleSidebar);
   const [mounted, setMounted] = React.useState(false);
@@ -84,7 +87,20 @@ export function AppShell({ children }: { children: React.ReactNode }) {
 
   React.useEffect(() => setDrawerOpen(false), [pathname]);
 
+  // Point notifications at the right portal audience for the signed-in role.
+  React.useEffect(() => {
+    if (!user) return;
+    const audience: NotificationAudience =
+      user.role === "owner" ? "owner" : user.role === "tenant" ? "tenant" : "admin";
+    setAudience(audience);
+  }, [user, setAudience]);
+
   if (!mounted || !user) return null;
+
+  // Owner has its own profile/settings routes (Batch 10); admin + tenant use the
+  // shared ones until the Tenant portal (Batch 11) adds its own.
+  const profileHref = user.role === "owner" ? "/owner/profile" : "/profile";
+  const settingsHref = user.role === "owner" ? "/owner/settings" : "/settings";
 
   const nav = navForRole(user.role);
   const segs = pathname.split("/").filter(Boolean);
@@ -190,12 +206,12 @@ export function AppShell({ children }: { children: React.ReactNode }) {
                 </div>
                 <DropdownMenuSeparator />
                 <DropdownMenuItem asChild>
-                  <Link href="/profile">
+                  <Link href={profileHref}>
                     <User size={16} /> Profile
                   </Link>
                 </DropdownMenuItem>
                 <DropdownMenuItem asChild>
-                  <Link href="/settings">
+                  <Link href={settingsHref}>
                     <Cog size={16} /> Settings
                   </Link>
                 </DropdownMenuItem>

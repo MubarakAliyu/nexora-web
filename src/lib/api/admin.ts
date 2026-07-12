@@ -421,6 +421,84 @@ export async function getOwnerDetail(id: string, scope?: Scope): Promise<OwnerDe
   return respond({ owner, properties, financials: { monthlyRevenue, ytdRevenue, outstanding, disbursed }, disbursements }, { error: scope?.forceError });
 }
 
+const toM = (n: number) => `${(n / 1_000_000).toFixed(1)}M`;
+
+/** Activity feed scoped to a single owner's properties (payments, completed
+ *  maintenance, lease renewals) — read-only, for the Owner portal. */
+export async function getOwnerActivity(ownerId: string, scope?: Scope): Promise<Activity[]> {
+  const owner = db.owners.find((o) => o.id === ownerId);
+  const propIds = new Set(owner?.propertyIds ?? []);
+  const acts: Activity[] = [];
+  db.payments
+    .filter((p) => propIds.has(p.propertyId) && p.status === "completed")
+    .slice(0, 6)
+    .forEach((p, i) => {
+      const t = db.tenants.find((x) => x.id === p.tenantId);
+      acts.push({ id: `oa_pay_${i}`, at: p.date, kind: "payment", text: `Rent received — UGX ${toM(p.amount)} from ${t?.name ?? "tenant"} (${propertyName(p.propertyId)})` });
+    });
+  db.tickets
+    .filter((tk) => propIds.has(tk.propertyId) && (tk.status === "completed" || tk.status === "closed"))
+    .slice(0, 4)
+    .forEach((tk, i) => {
+      acts.push({ id: `oa_tkt_${i}`, at: tk.updatedAt, kind: "ticket", text: `Maintenance completed — ${tk.title} (${propertyName(tk.propertyId)})` });
+    });
+  db.leases
+    .filter((l) => propIds.has(l.propertyId) && l.status === "active")
+    .slice(0, 3)
+    .forEach((l, i) => {
+      const t = db.tenants.find((x) => x.id === l.tenantId);
+      acts.push({ id: `oa_lse_${i}`, at: l.start, kind: "lease", text: `Lease active — ${t?.name ?? "tenant"} at ${propertyName(l.propertyId)}` });
+    });
+  return respond(acts.sort((a, b) => (a.at < b.at ? 1 : -1)).slice(0, 8), { error: scope?.forceError });
+}
+
+export interface OwnerFinancials {
+  series: { label: string; revenue: number; expenses: number; net: number }[];
+  feeBreakdown: { grossRevenue: number; feeRate: number; managementFee: number; otherDeductions: number; netDisbursement: number };
+  perProperty: { id: string; name: string; revenue: number; fee: number; expenses: number; net: number }[];
+  totals: { revenue: number; expenses: number; fee: number; net: number };
+}
+
+const FEE_RATE = 0.08; // Nexora management fee — matches getOwnerDetail disbursements.
+
+/** Owner financials: revenue vs expenses over time, management-fee breakdown,
+ *  net disbursement and a per-property table. Derives from the same property
+ *  revenue + 8% fee as getOwnerDetail, so the headline numbers reconcile. */
+export async function getOwnerFinancials(ownerId: string, scope?: Scope): Promise<OwnerFinancials> {
+  const owner = db.owners.find((o) => o.id === ownerId);
+  if (!owner) throw new NotFoundError(ownerId);
+  const properties = db.properties.filter((p) => owner.propertyIds.includes(p.id));
+
+  const perProperty = properties.map((p) => {
+    const revenue = p.monthlyRevenue;
+    const fee = Math.round(revenue * FEE_RATE);
+    const expenses = db.expenses.filter((e) => e.propertyId === p.id).reduce((s, e) => s + e.amount, 0);
+    return { id: p.id, name: p.name, revenue, fee, expenses, net: revenue - fee - expenses };
+  });
+
+  const grossRevenue = perProperty.reduce((s, p) => s + p.revenue, 0);
+  const totalExpenses = perProperty.reduce((s, p) => s + p.expenses, 0);
+  const managementFee = Math.round(grossRevenue * FEE_RATE);
+  const netDisbursement = grossRevenue - managementFee - totalExpenses;
+
+  const months = ["Feb", "Mar", "Apr", "May", "Jun", "Jul"];
+  const series = months.map((m, i) => {
+    const revenue = Math.round(grossRevenue * (0.9 + i * 0.02));
+    const expenses = Math.round((totalExpenses / months.length) * (0.85 + i * 0.05));
+    return { label: m, revenue, expenses, net: revenue - Math.round(revenue * FEE_RATE) - expenses };
+  });
+
+  return respond(
+    {
+      series,
+      feeBreakdown: { grossRevenue, feeRate: FEE_RATE, managementFee, otherDeductions: totalExpenses, netDisbursement },
+      perProperty,
+      totals: { revenue: grossRevenue, expenses: totalExpenses, fee: managementFee, net: netDisbursement },
+    },
+    { error: scope?.forceError },
+  );
+}
+
 /* ============================================================ leases (mutations) */
 
 export async function renewLease(id: string, months = 12): Promise<Lease> {
