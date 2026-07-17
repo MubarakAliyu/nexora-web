@@ -4,9 +4,11 @@ import * as React from "react";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
-import { Plus, Cash, Receipt, ChartLineUp, FileLines, Download } from "flowbite-react-icons/outline";
+import { Plus, Cash, Receipt, ChartLineUp, FileLines, Download, PenNib, TrashBin } from "flowbite-react-icons/outline";
 import { PageHeader } from "@/components/app/page-header";
 import { StatusBadge } from "@/components/app/status";
+import { RowActions } from "@/components/app/row-actions";
+import { DeleteConfirmation } from "@/components/app/delete-confirmation";
 import { Card } from "@/components/ui/card";
 import { StatCard } from "@/components/ui/stat-card";
 import { DataTable, type Column } from "@/components/ui/data-table";
@@ -23,9 +25,10 @@ import { toast } from "@/components/ui/sonner";
 import { useAsync, debugErrorFlag } from "@/lib/use-async";
 import { formatUGX, formatUGXFull, formatDate } from "@/lib/format";
 import {
-  listInvoices, listPayments, listExpenses, getFinanceSummary, createInvoice, createExpense,
+  listInvoices, listPayments, listExpenses, getFinanceSummary, createInvoice, updateInvoice, deleteInvoice,
+  createExpense, updateExpense, deleteExpense,
   propertyName, tenantName, tenantOptions, propertyOptions,
-  type Invoice, type Payment, type Expense, type ExpenseCategory, type Scope,
+  type Invoice, type InvoiceStatus, type Payment, type Expense, type ExpenseCategory, type Scope,
 } from "@/lib/api/admin";
 
 const EXPENSE_CATS: ExpenseCategory[] = ["maintenance", "utilities", "security", "cleaning", "admin", "insurance"];
@@ -87,8 +90,44 @@ function GenerateInvoiceDialog({ onDone }: { onDone: () => void }) {
   );
 }
 
+function InvoiceEditDialog({ invoice, onOpenChange, onDone }: { invoice: Invoice | null; onOpenChange: (o: boolean) => void; onDone: () => void }) {
+  const [status, setStatus] = React.useState<InvoiceStatus>("pending");
+  const [busy, setBusy] = React.useState(false);
+  React.useEffect(() => { if (invoice) setStatus(invoice.status); }, [invoice]);
+  const save = async () => {
+    if (!invoice) return;
+    setBusy(true);
+    try { await updateInvoice(invoice.id, { status }); toast.success("Invoice updated", { description: `${invoice.number} → ${status}.` }); onOpenChange(false); onDone(); }
+    catch { toast.error("Couldn’t update invoice"); }
+    finally { setBusy(false); }
+  };
+  return (
+    <Dialog open={!!invoice} onOpenChange={onOpenChange}>
+      <DialogContent>
+        {invoice && (
+          <>
+            <DialogHeader><DialogTitle>Edit {invoice.number}</DialogTitle><DialogDescription>{tenantName(invoice.tenantId)} · {formatUGX(invoice.amount)}</DialogDescription></DialogHeader>
+            <Field label="Status" htmlFor="ie-status">
+              <select id="ie-status" className={selectClass} value={status} onChange={(e) => setStatus(e.target.value as InvoiceStatus)}>
+                <option value="pending">Pending</option><option value="paid">Paid</option>
+                <option value="partial">Partially paid</option><option value="overdue">Overdue</option>
+              </select>
+            </Field>
+            <DialogFooter>
+              <DialogClose asChild><Button type="button" variant="outline">Cancel</Button></DialogClose>
+              <Button onClick={save} loading={busy}>Save</Button>
+            </DialogFooter>
+          </>
+        )}
+      </DialogContent>
+    </Dialog>
+  );
+}
+
 function InvoicesTab() {
   const [status, setStatus] = React.useState("all");
+  const [editing, setEditing] = React.useState<Invoice | null>(null);
+  const [deleting, setDeleting] = React.useState<Invoice | null>(null);
   const scope: Scope = React.useMemo(() => ({ forceError: debugErrorFlag() }), []);
   const { data, loading, error, reload } = useAsync(() => listInvoices({ status }, scope), [status, scope]);
   const columns: Column<Invoice>[] = [
@@ -99,7 +138,16 @@ function InvoicesTab() {
     { key: "due", header: "Due", sortable: true, render: (i) => formatDate(i.due) },
     { key: "amount", header: "Amount", sortable: true, align: "right", render: (i) => formatUGX(i.amount) },
     { key: "status", header: "Status", sortable: true, render: (i) => <StatusBadge status={i.status} /> },
-    { key: "pdf", header: "", align: "right", render: () => <Button variant="ghost" size="sm" onClick={(e) => { e.stopPropagation(); toast.info("View PDF", { description: "PDF rendering is mocked in this build." }); }}>PDF</Button> },
+    {
+      key: "actions", header: "", align: "right",
+      render: (i) => (
+        <RowActions actions={[
+          { label: "View PDF", icon: <FileLines size={16} />, onClick: () => toast.info("View PDF", { description: "PDF rendering is mocked in this build." }) },
+          { label: "Edit status", icon: <PenNib size={16} />, onClick: () => setEditing(i) },
+          { label: "Delete", icon: <TrashBin size={16} />, onClick: () => setDeleting(i), danger: true, separatorBefore: true },
+        ]} />
+      ),
+    },
   ];
   return (
     <div>
@@ -112,6 +160,9 @@ function InvoicesTab() {
       </div>
       <DataTable columns={columns} data={data ?? []} getRowId={(i) => i.id} loading={loading} error={error} onRetry={reload}
         emptyTitle="No invoices" emptyDescription="Generated invoices will appear here." pageSize={10} />
+      <InvoiceEditDialog invoice={editing} onOpenChange={(o) => { if (!o) setEditing(null); }} onDone={reload} />
+      <DeleteConfirmation open={!!deleting} onOpenChange={(o) => !o && setDeleting(null)} entityLabel="invoice" entityName={deleting?.number ?? ""}
+        onConfirm={async () => { if (!deleting) return; try { await deleteInvoice(deleting.id); toast.success("Invoice deleted"); reload(); } catch { toast.error("Couldn’t delete invoice"); } }} />
     </div>
   );
 }
@@ -159,22 +210,30 @@ const expSchema = z.object({
 });
 type ExpValues = z.infer<typeof expSchema>;
 
-function LogExpenseDialog({ onDone }: { onDone: () => void }) {
-  const [open, setOpen] = React.useState(false);
+function ExpenseFormDialog({ open, onOpenChange, editing, onDone }: {
+  open: boolean; onOpenChange: (o: boolean) => void; editing: Expense | null; onDone: () => void;
+}) {
+  const isEdit = !!editing;
   const props = React.useMemo(() => propertyOptions(), []);
   const { register, handleSubmit, reset, formState: { errors, isSubmitting } } = useForm<ExpValues>({
-    resolver: zodResolver(expSchema), defaultValues: { propertyId: "", category: "maintenance" },
+    resolver: zodResolver(expSchema), defaultValues: { propertyId: "", category: "maintenance", vendor: "", amount: 100000, description: "" },
   });
+  React.useEffect(() => {
+    if (open) reset(editing
+      ? { propertyId: editing.propertyId, category: editing.category, vendor: editing.vendor, amount: editing.amount, description: editing.description }
+      : { propertyId: "", category: "maintenance", vendor: "", amount: 100000, description: "" });
+  }, [open, editing, reset]);
   const onSubmit = async (v: ExpValues) => {
-    await createExpense({ propertyId: v.propertyId, category: v.category as ExpenseCategory, vendor: v.vendor, amount: v.amount, description: v.description });
-    toast.success("Expense logged", { description: `${formatUGX(v.amount)} — ${v.vendor}.` });
-    reset(); setOpen(false); onDone();
+    try {
+      if (isEdit && editing) { await updateExpense(editing.id, { propertyId: v.propertyId, category: v.category as ExpenseCategory, vendor: v.vendor, amount: v.amount, description: v.description }); toast.success("Expense updated", { description: `${v.vendor} saved.` }); }
+      else { await createExpense({ propertyId: v.propertyId, category: v.category as ExpenseCategory, vendor: v.vendor, amount: v.amount, description: v.description }); toast.success("Expense logged", { description: `${formatUGX(v.amount)} — ${v.vendor}.` }); }
+      onOpenChange(false); onDone();
+    } catch { toast.error(isEdit ? "Couldn’t update expense" : "Couldn’t log expense"); }
   };
   return (
-    <Dialog open={open} onOpenChange={setOpen}>
-      <Button onClick={() => setOpen(true)} className="gap-2"><Plus size={18} /> Log expense</Button>
+    <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent>
-        <DialogHeader><DialogTitle>Log an expense</DialogTitle><DialogDescription>Record a cost against a property.</DialogDescription></DialogHeader>
+        <DialogHeader><DialogTitle>{isEdit ? "Edit expense" : "Log an expense"}</DialogTitle><DialogDescription>Record a cost against a property.</DialogDescription></DialogHeader>
         <form onSubmit={handleSubmit(onSubmit)} noValidate className="space-y-4">
           <Field label="Property" htmlFor="le-prop" error={errors.propertyId?.message}>
             <select id="le-prop" className={selectClass} {...register("propertyId")} aria-invalid={!!errors.propertyId}>
@@ -200,7 +259,7 @@ function LogExpenseDialog({ onDone }: { onDone: () => void }) {
           </Field>
           <DialogFooter>
             <DialogClose asChild><Button type="button" variant="outline">Cancel</Button></DialogClose>
-            <Button type="submit" loading={isSubmitting}>Log expense</Button>
+            <Button type="submit" loading={isSubmitting}>{isEdit ? "Save changes" : "Log expense"}</Button>
           </DialogFooter>
         </form>
       </DialogContent>
@@ -209,6 +268,9 @@ function LogExpenseDialog({ onDone }: { onDone: () => void }) {
 }
 
 function ExpensesTab() {
+  const [formOpen, setFormOpen] = React.useState(false);
+  const [editing, setEditing] = React.useState<Expense | null>(null);
+  const [deleting, setDeleting] = React.useState<Expense | null>(null);
   const scope: Scope = React.useMemo(() => ({ forceError: debugErrorFlag() }), []);
   const { data, loading, error, reload } = useAsync(() => listExpenses(scope), [scope]);
   const columns: Column<Expense>[] = [
@@ -218,12 +280,24 @@ function ExpensesTab() {
     { key: "vendor", header: "Vendor", render: (e) => e.vendor },
     { key: "amount", header: "Amount", sortable: true, align: "right", render: (e) => formatUGX(e.amount) },
     { key: "status", header: "Status", render: (e) => <StatusBadge status={e.status} /> },
+    {
+      key: "actions", header: "", align: "right",
+      render: (e) => (
+        <RowActions actions={[
+          { label: "Edit", icon: <PenNib size={16} />, onClick: () => { setEditing(e); setFormOpen(true); } },
+          { label: "Delete", icon: <TrashBin size={16} />, onClick: () => setDeleting(e), danger: true, separatorBefore: true },
+        ]} />
+      ),
+    },
   ];
   return (
     <div>
-      <div className="mb-4 flex justify-end"><LogExpenseDialog onDone={reload} /></div>
+      <div className="mb-4 flex justify-end"><Button onClick={() => { setEditing(null); setFormOpen(true); }} className="gap-2"><Plus size={18} /> Log expense</Button></div>
       <DataTable columns={columns} data={data ?? []} getRowId={(e) => e.id} loading={loading} error={error} onRetry={reload}
         emptyTitle="No expenses" emptyDescription="Logged expenses will appear here." pageSize={10} />
+      <ExpenseFormDialog open={formOpen} onOpenChange={setFormOpen} editing={editing} onDone={reload} />
+      <DeleteConfirmation open={!!deleting} onOpenChange={(o) => !o && setDeleting(null)} entityLabel="expense" entityName={deleting ? `${deleting.vendor} — ${formatUGX(deleting.amount)}` : ""}
+        onConfirm={async () => { if (!deleting) return; try { await deleteExpense(deleting.id); toast.success("Expense deleted"); reload(); } catch { toast.error("Couldn’t delete expense"); } }} />
     </div>
   );
 }

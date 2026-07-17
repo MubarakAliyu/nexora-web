@@ -595,6 +595,10 @@ export function tenantOptions(scope?: Scope): { id: string; name: string }[] {
   const ids = scopedPropertyIds(scope);
   return (ids ? db.tenants.filter((t) => ids.has(t.propertyId)) : db.tenants).map((t) => ({ id: t.id, name: t.name }));
 }
+export function unitOptions(opts?: { vacantOnly?: boolean }): { id: string; label: string; property: string; rent: number }[] {
+  const rows = opts?.vacantOnly ? db.units.filter((u) => u.status === "vacant" || !u.tenantId) : db.units;
+  return rows.map((u) => ({ id: u.id, label: `${u.label} · ${db.properties.find((p) => p.id === u.propertyId)?.name ?? ""}`, property: u.propertyId, rent: u.rent }));
+}
 export function ownerName(id?: string): string {
   return db.owners.find((o) => o.id === id)?.name ?? "—";
 }
