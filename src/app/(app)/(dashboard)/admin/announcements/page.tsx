@@ -4,8 +4,10 @@ import * as React from "react";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
-import { Bullhorn, Envelope } from "flowbite-react-icons/outline";
+import { Bullhorn, Envelope, TrashBin } from "flowbite-react-icons/outline";
 import { PageHeader } from "@/components/app/page-header";
+import { RowActions } from "@/components/app/row-actions";
+import { DeleteConfirmation } from "@/components/app/delete-confirmation";
 import { Card } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -16,7 +18,7 @@ import { toast } from "@/components/ui/sonner";
 import { useAsync, debugErrorFlag } from "@/lib/use-async";
 import { formatDate } from "@/lib/format";
 import {
-  listAnnouncements, createAnnouncement, propertyOptions,
+  listAnnouncements, createAnnouncement, deleteAnnouncement, propertyOptions,
   type Announcement, type AudienceKind, type BroadcastChannel, type Scope,
 } from "@/lib/api/admin";
 
@@ -36,6 +38,7 @@ const schema = z.object({
 type Values = z.infer<typeof schema>;
 
 export default function AnnouncementsPage() {
+  const [deleting, setDeleting] = React.useState<Announcement | null>(null);
   const scope: Scope = React.useMemo(() => ({ forceError: debugErrorFlag() }), []);
   const props = React.useMemo(() => propertyOptions(), []);
   const { data, loading, error, reload } = useAsync(() => listAnnouncements(scope), [scope]);
@@ -70,6 +73,10 @@ export default function AnnouncementsPage() {
     { key: "channels", header: "Channels", render: (a) => <span className="capitalize text-muted">{a.channels.map((c) => c.replace("_", "-")).join(", ")}</span> },
     { key: "recipients", header: "Recipients", align: "right", render: (a) => a.recipients },
     { key: "sentAt", header: "Sent", sortable: true, align: "right", render: (a) => formatDate(a.sentAt) },
+    {
+      key: "actions", header: "", align: "right",
+      render: (a) => <RowActions actions={[{ label: "Delete", icon: <TrashBin size={16} />, onClick: () => setDeleting(a), danger: true }]} />,
+    },
   ];
 
   return (
@@ -127,6 +134,9 @@ export default function AnnouncementsPage() {
             emptyTitle="No announcements yet" emptyDescription="Broadcasts you send will appear here." pageSize={8} />
         </div>
       </div>
+
+      <DeleteConfirmation open={!!deleting} onOpenChange={(o) => !o && setDeleting(null)} entityLabel="announcement" entityName={deleting?.title ?? ""}
+        onConfirm={async () => { if (!deleting) return; try { await deleteAnnouncement(deleting.id); toast.success("Announcement deleted"); reload(); } catch { toast.error("Couldn’t delete announcement"); } }} />
     </div>
   );
 }

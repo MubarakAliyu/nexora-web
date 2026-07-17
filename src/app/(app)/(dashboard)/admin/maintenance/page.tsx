@@ -1,9 +1,14 @@
 "use client";
 
 import * as React from "react";
-import { Grid, ClipboardList, MapPin, UserCircle } from "flowbite-react-icons/outline";
+import { Grid, ClipboardList, MapPin, UserCircle, Plus, PenNib, TrashBin, CheckCircle } from "flowbite-react-icons/outline";
+import { useForm } from "react-hook-form";
+import { zodResolver } from "@hookform/resolvers/zod";
+import { z } from "zod";
 import { PageHeader } from "@/components/app/page-header";
 import { StatusBadge, PriorityBadge } from "@/components/app/status";
+import { RowActions } from "@/components/app/row-actions";
+import { DeleteConfirmation } from "@/components/app/delete-confirmation";
 import { DataTable, type Column } from "@/components/ui/data-table";
 import { Button } from "@/components/ui/button";
 import { Field, selectClass } from "@/components/forms/field";
@@ -17,8 +22,8 @@ import { toast } from "@/components/ui/sonner";
 import { useAsync, debugErrorFlag } from "@/lib/use-async";
 import { formatUGX, formatDate } from "@/lib/format";
 import {
-  listTickets, updateTicket, propertyName, unitLabel, tenantName, propertyOptions,
-  type MaintenanceTicket, type TicketStatus, type Scope,
+  listTickets, createTicket, updateTicket, closeTicket, deleteTicket, propertyName, unitLabel, tenantName, propertyOptions, unitOptions,
+  type MaintenanceTicket, type TicketStatus, type TicketCategory, type TicketPriority, type Scope,
 } from "@/lib/api/admin";
 import { cn } from "@/lib/utils";
 
@@ -30,6 +35,59 @@ const COLUMNS: { status: TicketStatus; label: string }[] = [
   { status: "closed", label: "Closed" },
 ];
 const TECHS = ["James Odoi", "Fred Wanyama", "Peter Ssemakula", "Alex Mugume"];
+const TICKET_CATS: TicketCategory[] = ["plumbing", "electrical", "hvac", "appliance", "structural", "cleaning", "security", "other"];
+const PRIORITIES: TicketPriority[] = ["low", "medium", "high", "urgent"];
+
+const createSchema = z.object({
+  unitId: z.string().min(1, "Choose a unit"),
+  title: z.string().min(3, "Enter a title"),
+  description: z.string().min(5, "Describe the issue"),
+  category: z.string().min(1),
+  priority: z.string().min(1),
+});
+type CreateValues = z.infer<typeof createSchema>;
+
+function CreateTicketDialog({ open, onOpenChange, onDone }: { open: boolean; onOpenChange: (o: boolean) => void; onDone: () => void }) {
+  const units = React.useMemo(() => unitOptions(), []);
+  const { register, handleSubmit, reset, formState: { errors, isSubmitting } } = useForm<CreateValues>({
+    resolver: zodResolver(createSchema), defaultValues: { unitId: "", title: "", description: "", category: "plumbing", priority: "medium" },
+  });
+  React.useEffect(() => { if (open) reset({ unitId: "", title: "", description: "", category: "plumbing", priority: "medium" }); }, [open, reset]);
+  const onSubmit = async (v: CreateValues) => {
+    try {
+      await createTicket({ unitId: v.unitId, title: v.title, description: v.description, category: v.category as TicketCategory, priority: v.priority as TicketPriority });
+      toast.success("Ticket created", { description: v.title });
+      onOpenChange(false); onDone();
+    } catch { toast.error("Couldn’t create ticket"); }
+  };
+  return (
+    <Dialog open={open} onOpenChange={onOpenChange}>
+      <DialogContent>
+        <DialogHeader><DialogTitle>Create a ticket</DialogTitle><DialogDescription>Log a maintenance issue for a unit.</DialogDescription></DialogHeader>
+        <form onSubmit={handleSubmit(onSubmit)} noValidate className="space-y-4">
+          <Field label="Unit" htmlFor="ct-unit" error={errors.unitId?.message}>
+            <select id="ct-unit" className={selectClass} {...register("unitId")} aria-invalid={!!errors.unitId}>
+              <option value="">Select…</option>
+              {units.map((u) => <option key={u.id} value={u.id}>{u.label}</option>)}
+            </select>
+          </Field>
+          <Field label="Title" htmlFor="ct-title" error={errors.title?.message}><Input id="ct-title" {...register("title")} aria-invalid={!!errors.title} /></Field>
+          <Field label="Description" htmlFor="ct-desc" error={errors.description?.message}>
+            <textarea id="ct-desc" rows={3} className={`${selectClass} h-auto py-2`} {...register("description")} aria-invalid={!!errors.description} />
+          </Field>
+          <div className="grid gap-4 sm:grid-cols-2">
+            <Field label="Category" htmlFor="ct-cat"><select id="ct-cat" className={`${selectClass} capitalize`} {...register("category")}>{TICKET_CATS.map((c) => <option key={c} value={c}>{c}</option>)}</select></Field>
+            <Field label="Priority" htmlFor="ct-pri"><select id="ct-pri" className={`${selectClass} capitalize`} {...register("priority")}>{PRIORITIES.map((p) => <option key={p} value={p}>{p}</option>)}</select></Field>
+          </div>
+          <DialogFooter>
+            <DialogClose asChild><Button type="button" variant="outline">Cancel</Button></DialogClose>
+            <Button type="submit" loading={isSubmitting}>Create ticket</Button>
+          </DialogFooter>
+        </form>
+      </DialogContent>
+    </Dialog>
+  );
+}
 
 function TicketCard({ t, onClick }: { t: MaintenanceTicket; onClick: () => void }) {
   return (
@@ -51,6 +109,8 @@ export default function MaintenancePage() {
   const [property, setProperty] = React.useState("all");
   const [priority, setPriority] = React.useState("all");
   const [selected, setSelected] = React.useState<MaintenanceTicket | null>(null);
+  const [createOpen, setCreateOpen] = React.useState(false);
+  const [deleting, setDeleting] = React.useState<MaintenanceTicket | null>(null);
   const scope: Scope = React.useMemo(() => ({ forceError: debugErrorFlag() }), []);
   const options = React.useMemo(() => propertyOptions(), []);
 
@@ -70,6 +130,15 @@ export default function MaintenancePage() {
     { key: "status", header: "Status", sortable: true, render: (t) => <StatusBadge status={t.status} /> },
     { key: "assignee", header: "Technician", render: (t) => t.assignee ?? <span className="text-muted">Unassigned</span> },
     { key: "cost", header: "Cost", align: "right", render: (t) => (t.cost ? formatUGX(t.cost) : "—") },
+    {
+      key: "actions", header: "", align: "right",
+      render: (t) => (
+        <RowActions actions={[
+          { label: "Update", icon: <PenNib size={16} />, onClick: () => setSelected(t) },
+          { label: "Delete", icon: <TrashBin size={16} />, onClick: () => setDeleting(t), danger: true, separatorBefore: true },
+        ]} />
+      ),
+    },
   ];
 
   const filters = (
@@ -100,7 +169,8 @@ export default function MaintenancePage() {
 
   return (
     <div>
-      <PageHeader title="Maintenance" subtitle="Track and resolve maintenance tickets" />
+      <PageHeader title="Maintenance" subtitle="Track and resolve maintenance tickets"
+        actions={<Button onClick={() => setCreateOpen(true)} className="gap-2"><Plus size={18} /> Create ticket</Button>} />
       {filters}
 
       {loading ? (
@@ -135,34 +205,51 @@ export default function MaintenancePage() {
           emptyTitle="No tickets" emptyDescription="Maintenance tickets will appear here." pageSize={10} />
       )}
 
-      <TicketDialog ticket={selected} onClose={() => setSelected(null)} onSaved={reload} />
+      <TicketDialog ticket={selected} onClose={() => setSelected(null)} onSaved={reload} onDelete={(t) => { setSelected(null); setDeleting(t); }} />
+      <CreateTicketDialog open={createOpen} onOpenChange={setCreateOpen} onDone={reload} />
+      <DeleteConfirmation open={!!deleting} onOpenChange={(o) => !o && setDeleting(null)} entityLabel="ticket" entityName={deleting?.ref ?? ""}
+        onConfirm={async () => { if (!deleting) return; try { await deleteTicket(deleting.id); toast.success("Ticket deleted"); reload(); } catch { toast.error("Couldn’t delete ticket"); } }} />
     </div>
   );
 }
 
-function TicketDialog({ ticket, onClose, onSaved }: { ticket: MaintenanceTicket | null; onClose: () => void; onSaved: () => void }) {
+function TicketDialog({ ticket, onClose, onSaved, onDelete }: { ticket: MaintenanceTicket | null; onClose: () => void; onSaved: () => void; onDelete: (t: MaintenanceTicket) => void }) {
   const [status, setStatus] = React.useState<TicketStatus>("open");
   const [assignee, setAssignee] = React.useState("");
   const [cost, setCost] = React.useState("");
-  const [busy, setBusy] = React.useState(false);
+  const [resolution, setResolution] = React.useState("");
+  const [busy, setBusy] = React.useState<null | "save" | "close">(null);
 
   React.useEffect(() => {
     if (ticket) {
       setStatus(ticket.status);
       setAssignee(ticket.assignee ?? "");
       setCost(ticket.cost ? String(ticket.cost) : "");
+      setResolution(ticket.resolution ?? "");
     }
   }, [ticket]);
 
   const save = async () => {
     if (!ticket) return;
-    setBusy(true);
+    setBusy("save");
     try {
       await updateTicket(ticket.id, { status, assignee, cost: cost ? Number(cost) : undefined });
       toast.success("Ticket updated", { description: `${ticket.ref} → ${status.replace("_", " ")}.` });
       onSaved(); onClose();
     } catch { toast.error("Couldn’t update ticket"); }
-    finally { setBusy(false); }
+    finally { setBusy(null); }
+  };
+
+  const close = async () => {
+    if (!ticket) return;
+    if (!resolution.trim()) { toast.error("Resolution required", { description: "Add a resolution summary to close the ticket." }); return; }
+    setBusy("close");
+    try {
+      await closeTicket(ticket.id, resolution.trim());
+      toast.success("Ticket closed", { description: `${ticket.ref} resolved.` });
+      onSaved(); onClose();
+    } catch { toast.error("Couldn’t close ticket"); }
+    finally { setBusy(null); }
   };
 
   return (
@@ -199,9 +286,15 @@ function TicketDialog({ ticket, onClose, onSaved }: { ticket: MaintenanceTicket 
                 <Input id="tk-cost" type="number" value={cost} onChange={(e) => setCost(e.target.value)} placeholder="0" />
               </Field>
             </div>
-            <DialogFooter>
-              <DialogClose asChild><Button type="button" variant="outline">Cancel</Button></DialogClose>
-              <Button onClick={save} loading={busy}>Save changes</Button>
+            <Field label="Resolution summary (required to close)" htmlFor="tk-res">
+              <textarea id="tk-res" rows={2} className={`${selectClass} h-auto py-2`} value={resolution} onChange={(e) => setResolution(e.target.value)} placeholder="What was done to resolve it…" />
+            </Field>
+            <DialogFooter className="sm:justify-between">
+              <Button type="button" variant="outline" className="gap-2 text-primary" onClick={() => onDelete(ticket)}><TrashBin size={16} /> Delete</Button>
+              <div className="flex flex-col-reverse gap-2 sm:flex-row">
+                <Button type="button" variant="outline" className="gap-2" onClick={close} loading={busy === "close"} disabled={ticket.status === "closed"}><CheckCircle size={16} /> Close ticket</Button>
+                <Button onClick={save} loading={busy === "save"}>Save changes</Button>
+              </div>
             </DialogFooter>
           </>
         )}
