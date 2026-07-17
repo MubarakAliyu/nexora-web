@@ -15,6 +15,7 @@ import type {
   Announcement,
   AudienceKind,
   BroadcastChannel,
+  CommLog,
   Expense,
   ExpenseCategory,
   Invoice,
@@ -29,10 +30,17 @@ import type {
   Tenant,
   TicketStatus,
   Unit,
+  UnitStatus,
+  UnitType,
 } from "@/lib/mock/types";
 
-export type { Activity, Announcement, AudienceKind, BroadcastChannel, Expense, ExpenseCategory, Invoice, Lead, LeadActivity, Lease, MaintenanceTicket, Owner, Payment, Property, Staff, Tenant, Unit };
-export type { Building, LeaseStatus, InvoiceStatus, TicketStatus, TicketPriority, UnitStatus, PropertyStatus, TicketCategory, PaymentMethod } from "@/lib/mock/types";
+export type { Activity, Announcement, AudienceKind, BroadcastChannel, CommLog, Expense, ExpenseCategory, Invoice, Lead, LeadActivity, Lease, MaintenanceTicket, Owner, Payment, Property, Staff, Tenant, Unit };
+export type { Building, LeaseStatus, InvoiceStatus, TicketStatus, TicketPriority, UnitStatus, UnitType, PropertyStatus, TicketCategory, PaymentMethod, LeadStatus } from "@/lib/mock/types";
+
+const BEDROOMS_BY_TYPE: Record<UnitType, number> = {
+  Studio: 0, "1 Bedroom": 1, "2 Bedroom": 2, "3 Bedroom": 3, Penthouse: 4, Office: 0, Retail: 0,
+};
+const mDelay = () => new Promise((r) => setTimeout(r, 450));
 
 export const NOW_ISO = db.NOW_ISO;
 
@@ -285,6 +293,112 @@ export async function deleteProperty(id: string): Promise<{ ok: true }> {
     notify: { type: "system", title: "Property deleted", body: `${removed.name} was removed from the portfolio.` },
   });
   return { ok: true };
+}
+
+/* ============================================================ unit mutations */
+
+export interface UnitInput {
+  propertyId: string;
+  label: string;
+  type: UnitType;
+  floor: number;
+  sizeSqm: number;
+  rent: number;
+  status: UnitStatus;
+  amenities?: string[];
+}
+
+export async function createUnit(input: UnitInput): Promise<Unit> {
+  await mDelay();
+  const property = db.properties.find((p) => p.id === input.propertyId);
+  const unit: Unit = {
+    id: `unit_${input.propertyId}_${Date.now()}`,
+    label: input.label,
+    propertyId: input.propertyId,
+    buildingId: property?.buildings[0]?.id ?? `bld_${input.propertyId}_1`,
+    floor: input.floor,
+    type: input.type,
+    bedrooms: BEDROOMS_BY_TYPE[input.type],
+    sizeSqm: input.sizeSqm,
+    rent: input.rent,
+    status: input.status,
+    amenities: input.amenities,
+  };
+  db.units.unshift(unit);
+  if (property) property.units += 1;
+  recordMutation({
+    entityType: "unit", entityId: unit.id, entityName: unit.label, action: "created",
+    summary: `Added unit ${unit.label} to ${propertyName(unit.propertyId)}`,
+    after: { label: unit.label, type: unit.type, rent: unit.rent, status: unit.status },
+    notify: { type: "system", title: "Unit added", body: `Unit ${unit.label} was added to ${propertyName(unit.propertyId)}.` },
+  });
+  return unit;
+}
+
+export async function updateUnit(id: string, patch: Partial<UnitInput>): Promise<Unit> {
+  await mDelay();
+  const unit = db.units.find((u) => u.id === id);
+  if (!unit) throw new NotFoundError(id);
+  const before = { label: unit.label, type: unit.type, rent: unit.rent, status: unit.status };
+  Object.assign(unit, {
+    label: patch.label ?? unit.label,
+    type: patch.type ?? unit.type,
+    bedrooms: patch.type ? BEDROOMS_BY_TYPE[patch.type] : unit.bedrooms,
+    floor: patch.floor ?? unit.floor,
+    sizeSqm: patch.sizeSqm ?? unit.sizeSqm,
+    rent: patch.rent ?? unit.rent,
+    status: patch.status ?? unit.status,
+    amenities: patch.amenities ?? unit.amenities,
+  });
+  recordMutation({
+    entityType: "unit", entityId: id, entityName: unit.label, action: "updated",
+    summary: `Updated unit ${unit.label}`, before, after: { label: unit.label, type: unit.type, rent: unit.rent, status: unit.status },
+    notify: { type: "system", title: "Unit updated", body: `Unit ${unit.label} was updated.` },
+  });
+  return unit;
+}
+
+export async function deleteUnit(id: string): Promise<{ ok: true }> {
+  await mDelay();
+  const idx = db.units.findIndex((u) => u.id === id);
+  if (idx === -1) throw new NotFoundError(id);
+  const [removed] = db.units.splice(idx, 1);
+  if (removed.leaseId) {
+    const lease = db.leases.find((l) => l.id === removed.leaseId);
+    if (lease) lease.status = "terminated";
+    const tenant = db.tenants.find((t) => t.id === removed.tenantId);
+    if (tenant) tenant.status = "past";
+  }
+  const property = db.properties.find((p) => p.id === removed.propertyId);
+  if (property && property.units > 0) property.units -= 1;
+  recordMutation({
+    entityType: "unit", entityId: id, entityName: removed.label, action: "deleted",
+    summary: `Deleted unit ${removed.label} from ${propertyName(removed.propertyId)}`,
+    notify: { type: "system", title: "Unit deleted", body: `Unit ${removed.label} was removed.` },
+  });
+  return { ok: true };
+}
+
+export interface UnitDetail {
+  unit: Unit;
+  tenant: Tenant | undefined;
+  lease: Lease | undefined;
+  property: Property | undefined;
+  tickets: MaintenanceTicket[];
+  outstanding: number;
+}
+
+export async function getUnitDetail(id: string, scope?: Scope): Promise<UnitDetail> {
+  const unit = db.units.find((u) => u.id === id);
+  if (!unit) throw new NotFoundError(id);
+  const tenant = db.tenants.find((t) => t.id === unit.tenantId);
+  const lease = db.leases.find((l) => l.id === unit.leaseId);
+  const property = db.properties.find((p) => p.id === unit.propertyId);
+  const tickets = db.tickets.filter((t) => t.unitId === id).sort((a, b) => (a.createdAt < b.createdAt ? 1 : -1));
+  const outstanding = db.invoices
+    .filter((i) => i.tenantId === unit.tenantId && i.status !== "paid")
+    .reduce((s, i) => s + (i.amount - i.paid), 0);
+  return respond({ unit, tenant, lease, property, tickets, outstanding }, { error: scope?.forceError });
 }
 
 /* ----------------------------------------------------------------- units */
@@ -845,3 +959,5 @@ export async function getAnalytics(scope?: Scope): Promise<Analytics> {
     { error: scope?.forceError },
   );
 }
+
+export * from "./admin-mutations";

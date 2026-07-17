@@ -36,6 +36,17 @@ export interface Owner {
   phone: string;
   since: string; // ISO date
   propertyIds: string[];
+  company?: string;
+  nationality?: string;
+  bankName?: string;
+  accountNumber?: string;
+}
+
+export interface CommLog {
+  id: string;
+  at: string; // ISO
+  channel: "email" | "call" | "meeting" | "sms" | "note";
+  summary: string;
 }
 
 /* --------------------------------------------------------- properties */
@@ -89,6 +100,7 @@ export interface Unit {
   status: UnitStatus;
   tenantId?: string;
   leaseId?: string;
+  amenities?: string[];
 }
 
 /* ------------------------------------------------------------ tenants */
@@ -106,6 +118,9 @@ export interface Tenant {
   leaseId: string;
   status: TenantStatus;
   since: string;
+  nin?: string;
+  employer?: string;
+  emergencyContact?: string;
 }
 
 /* ------------------------------------------------------------- leases */
@@ -123,6 +138,8 @@ export interface Lease {
   deposit: number;
   status: LeaseStatus;
   frequency: "monthly" | "quarterly" | "annually";
+  dueDay?: number;
+  gracePeriod?: number;
 }
 
 /* ------------------------------------------------------ finance */
@@ -205,6 +222,7 @@ export interface MaintenanceTicket {
   status: TicketStatus;
   assignee?: string;
   cost?: number;
+  resolution?: string;
   createdAt: string; // ISO
   updatedAt: string; // ISO
 }
@@ -243,6 +261,7 @@ export interface Staff {
   role: Role;
   status: "active" | "invited" | "suspended";
   since: string;
+  department?: string;
 }
 
 /* ------------------------------------------------------ announcements */
