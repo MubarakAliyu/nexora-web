@@ -4,21 +4,23 @@ import * as React from "react";
 import Link from "next/link";
 import Image from "next/image";
 import { useParams, useRouter } from "next/navigation";
-import { Phone, Envelope, Cash, ChartLineUp, Receipt, Building, FileLines, UserCircle } from "flowbite-react-icons/outline";
+import { Phone, Envelope, Cash, ChartLineUp, Receipt, Building, FileLines, UserCircle, PenNib, Home, Clock } from "flowbite-react-icons/outline";
 import { PageHeader } from "@/components/app/page-header";
 import { StatusBadge } from "@/components/app/status";
+import { OwnerFormDialog } from "@/components/admin/owner-form-dialog";
 import { Card } from "@/components/ui/card";
 import { StatCard } from "@/components/ui/stat-card";
 import { Button } from "@/components/ui/button";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
 import { DataTable, type Column } from "@/components/ui/data-table";
+import { Timeline, TimelineItem } from "@/components/ui/timeline";
 import { EmptyState } from "@/components/ui/empty-state";
 import { Skeleton, SkeletonText } from "@/components/ui/skeleton";
 import { toast } from "@/components/ui/sonner";
 import { useAsync, debugErrorFlag } from "@/lib/use-async";
-import { formatUGX, formatDate } from "@/lib/format";
-import { getOwnerDetail, type OwnerDetail, type Property, type Scope } from "@/lib/api/admin";
+import { formatUGX, formatDate, fromNow } from "@/lib/format";
+import { getOwnerDetail, NOW_ISO, type OwnerDetail, type Property, type Scope } from "@/lib/api/admin";
 
 function initials(name: string) {
   return name.split(" ").map((p) => p[0]).slice(0, 2).join("").toUpperCase();
@@ -29,8 +31,9 @@ type Disbursement = OwnerDetail["disbursements"][number];
 export default function OwnerDetailPage() {
   const params = useParams<{ id: string }>();
   const router = useRouter();
+  const [editOpen, setEditOpen] = React.useState(false);
   const scope: Scope = React.useMemo(() => ({ forceError: debugErrorFlag() }), []);
-  const { data, loading, error } = useAsync(() => getOwnerDetail(params.id, scope), [params.id, scope]);
+  const { data, loading, error, reload } = useAsync(() => getOwnerDetail(params.id, scope), [params.id, scope]);
 
   if (loading) {
     return <div><Skeleton className="h-6 w-40" /><Skeleton className="mt-4 h-24 w-full rounded-xl" /><SkeletonText className="mt-6" lines={3} /></div>;
@@ -42,7 +45,7 @@ export default function OwnerDetailPage() {
     );
   }
 
-  const { owner, properties, financials, disbursements } = data;
+  const { owner, properties, financials, disbursements, communications, units, occupancy } = data;
 
   const propColumns: Column<Property>[] = [
     {
@@ -72,7 +75,12 @@ export default function OwnerDetailPage() {
   return (
     <div>
       <PageHeader title={owner.name} subtitle="Property owner"
-        actions={<Button className="gap-2" onClick={() => toast.info("Message owner", { description: "Messaging is mocked in this build." })}><Envelope size={18} /> Message</Button>} />
+        actions={
+          <div className="flex gap-2">
+            <Button variant="outline" className="gap-2" onClick={() => setEditOpen(true)}><PenNib size={18} /> Edit</Button>
+            <Button className="gap-2" onClick={() => toast.info("Message owner", { description: "Messaging is mocked in this build." })}><Envelope size={18} /> Message</Button>
+          </div>
+        } />
 
       <Card className="mb-6 p-6">
         <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
@@ -97,16 +105,19 @@ export default function OwnerDetailPage() {
             <TabsTrigger value="overview">Overview</TabsTrigger>
             <TabsTrigger value="properties">Properties</TabsTrigger>
             <TabsTrigger value="disbursements">Disbursements</TabsTrigger>
+            <TabsTrigger value="communication">Communication</TabsTrigger>
             <TabsTrigger value="documents">Documents</TabsTrigger>
           </TabsList>
         </div>
 
         <TabsContent value="overview">
-          <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-4">
+          <div className="grid grid-cols-2 gap-4 sm:grid-cols-3 xl:grid-cols-6">
+            <StatCard label="Properties" value={properties.length} icon={<Building size={22} />} />
+            <StatCard label="Units" value={units} icon={<Home size={22} />} />
+            <StatCard label="Occupancy" value={`${occupancy}%`} icon={<ChartLineUp size={22} />} />
             <StatCard label="Revenue / mo" value={formatUGX(financials.monthlyRevenue)} icon={<Cash size={22} />} />
-            <StatCard label="YTD revenue" value={formatUGX(financials.ytdRevenue)} icon={<ChartLineUp size={22} />} />
-            <StatCard label="Disbursed" value={formatUGX(financials.disbursed)} icon={<Cash size={22} />} hint="net paid out" />
-            <StatCard label="Outstanding" value={formatUGX(financials.outstanding)} icon={<Receipt size={22} />} hint={financials.outstanding > 0 ? "in arrears" : "all settled"} />
+            <StatCard label="Disbursed" value={formatUGX(financials.disbursed)} icon={<Cash size={22} />} hint="net YTD" />
+            <StatCard label="Outstanding" value={formatUGX(financials.outstanding)} icon={<Receipt size={22} />} hint={financials.outstanding > 0 ? "in arrears" : "settled"} />
           </div>
           <Card className="mt-4 p-6">
             <h3 className="font-heading text-h3 font-semibold text-foreground">Portfolio summary</h3>
@@ -129,12 +140,31 @@ export default function OwnerDetailPage() {
             emptyTitle="No disbursements" emptyDescription="Payouts will appear here." pageSize={8} />
         </TabsContent>
 
+        <TabsContent value="communication">
+          <Card className="p-6">
+            <h3 className="mb-5 font-heading text-h3 font-semibold text-foreground">Communication log</h3>
+            {communications.length > 0 ? (
+              <Timeline>
+                {communications.map((c) => (
+                  <TimelineItem key={c.id} title={c.summary} time={fromNow(c.at, NOW_ISO)} icon={<Clock size={11} />}>
+                    <span className="capitalize text-caption text-muted">{c.channel}</span>
+                  </TimelineItem>
+                ))}
+              </Timeline>
+            ) : (
+              <EmptyState title="No communication yet" description="Emails, calls and meetings will appear here." />
+            )}
+          </Card>
+        </TabsContent>
+
         <TabsContent value="documents">
           <EmptyState icon={<FileLines size={22} />} title="No documents yet"
             description="Ownership agreements, statements and tax documents will live here."
             action={<Button variant="outline" onClick={() => toast.info("Upload document", { description: "Document upload is mocked in this build." })}>Upload document</Button>} />
         </TabsContent>
       </Tabs>
+
+      <OwnerFormDialog open={editOpen} onOpenChange={setEditOpen} editing={owner} onDone={reload} />
 
       <div className="mt-8"><Link href="/admin/owners" className="text-body font-medium text-primary transition-colors hover:text-accent">← Back to owners</Link></div>
     </div>

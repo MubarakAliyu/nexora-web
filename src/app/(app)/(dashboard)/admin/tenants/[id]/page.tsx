@@ -12,9 +12,13 @@ import {
   CreditCardPlus,
   AdjustmentsHorizontal,
   Users,
+  PenNib,
+  Clock,
+  Receipt,
 } from "flowbite-react-icons/outline";
 import { PageHeader } from "@/components/app/page-header";
 import { StatusBadge, PriorityBadge } from "@/components/app/status";
+import { TenantFormDialog } from "@/components/admin/tenant-form-dialog";
 import { Card } from "@/components/ui/card";
 import { StatCard } from "@/components/ui/stat-card";
 import { Button } from "@/components/ui/button";
@@ -44,8 +48,9 @@ function initials(name: string) {
 export default function TenantDetailPage() {
   const params = useParams<{ id: string }>();
   const router = useRouter();
+  const [editOpen, setEditOpen] = React.useState(false);
   const scope: Scope = React.useMemo(() => ({ forceError: debugErrorFlag() }), []);
-  const { data, loading, error } = useAsync(() => getTenant(params.id, scope), [params.id, scope]);
+  const { data, loading, error, reload } = useAsync(() => getTenant(params.id, scope), [params.id, scope]);
 
   if (loading) {
     return (
@@ -67,8 +72,8 @@ export default function TenantDetailPage() {
     );
   }
 
-  const { tenant, lease, unit, invoices, payments, tickets } = data;
-  const outstanding = invoices.filter((i) => i.status !== "paid").reduce((s, i) => s + (i.amount - i.paid), 0);
+  const { tenant, lease, unit, invoices, payments, tickets, communications, totals } = data;
+  const outstanding = totals.outstanding;
 
   const invoiceNo = (id: string) => invoices.find((i) => i.id === id)?.number ?? "—";
 
@@ -111,9 +116,12 @@ export default function TenantDetailPage() {
         title={tenant.name}
         subtitle={`Tenant · ${propertyName(tenant.propertyId)}`}
         actions={
-          <Button className="gap-2" onClick={() => toast.info("Message tenant", { description: "Messaging is mocked in this build." })}>
-            <Envelope size={18} /> Message
-          </Button>
+          <div className="flex gap-2">
+            <Button variant="outline" className="gap-2" onClick={() => setEditOpen(true)}><PenNib size={18} /> Edit</Button>
+            <Button className="gap-2" onClick={() => toast.info("Message tenant", { description: "Messaging is mocked in this build." })}>
+              <Envelope size={18} /> Message
+            </Button>
+          </div>
         }
       />
 
@@ -147,15 +155,17 @@ export default function TenantDetailPage() {
             <TabsTrigger value="payments">Payments</TabsTrigger>
             <TabsTrigger value="invoices">Invoices</TabsTrigger>
             <TabsTrigger value="tickets">Tickets</TabsTrigger>
+            <TabsTrigger value="communication">Communication</TabsTrigger>
             <TabsTrigger value="documents">Documents</TabsTrigger>
           </TabsList>
         </div>
 
         {/* Overview */}
         <TabsContent value="overview">
-          <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-4">
+          <div className="grid grid-cols-2 gap-4 sm:grid-cols-3 xl:grid-cols-5">
             <StatCard label="Monthly rent" value={lease ? formatUGX(lease.rent) : "—"} icon={<Cash size={22} />} />
             <StatCard label="Deposit" value={lease ? formatUGX(lease.deposit) : "—"} icon={<CreditCardPlus size={22} />} />
+            <StatCard label="Paid to date" value={formatUGX(totals.paid)} icon={<Receipt size={22} />} />
             <StatCard label="Outstanding" value={formatUGX(outstanding)} icon={<FileLines size={22} />} hint={outstanding > 0 ? "action needed" : "all settled"} />
             <StatCard label="Open tickets" value={tickets.filter((t) => t.status !== "closed" && t.status !== "completed").length} icon={<AdjustmentsHorizontal size={22} />} />
           </div>
@@ -208,6 +218,29 @@ export default function TenantDetailPage() {
           <DataTable columns={ticketColumns} data={tickets} getRowId={(t) => t.id} emptyTitle="No tickets" emptyDescription="Maintenance requests from this tenant will appear here." pageSize={8} />
         </TabsContent>
 
+        <TabsContent value="communication">
+          <div className="grid gap-4 lg:grid-cols-3">
+            <Card className="p-6 lg:col-span-2">
+              <h3 className="mb-5 font-heading text-h3 font-semibold text-foreground">Communication log</h3>
+              {communications.length > 0 ? (
+                <Timeline>
+                  {communications.map((c) => (
+                    <TimelineItem key={c.id} title={c.summary} time={fromNow(c.at, NOW_ISO)} icon={<Clock size={11} />}>
+                      <span className="capitalize text-caption text-muted">{c.channel}</span>
+                    </TimelineItem>
+                  ))}
+                </Timeline>
+              ) : (
+                <EmptyState title="No communication yet" description="Emails, calls and messages will appear here." />
+              )}
+            </Card>
+            <Card className="p-6">
+              <h3 className="mb-4 font-heading text-h3 font-semibold text-foreground">Complaints</h3>
+              <EmptyState title="No open complaints" description="Formal complaints raised by this tenant will appear here." />
+            </Card>
+          </div>
+        </TabsContent>
+
         <TabsContent value="documents">
           <EmptyState
             icon={<FileLines size={22} />}
@@ -217,6 +250,8 @@ export default function TenantDetailPage() {
           />
         </TabsContent>
       </Tabs>
+
+      <TenantFormDialog open={editOpen} onOpenChange={setEditOpen} editing={tenant} onDone={reload} />
 
       <div className="mt-8">
         <Link href="/admin/tenants" className="text-body font-medium text-primary transition-colors hover:text-accent">

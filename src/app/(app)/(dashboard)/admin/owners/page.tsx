@@ -2,10 +2,13 @@
 
 import * as React from "react";
 import { useRouter } from "next/navigation";
-import { Search } from "flowbite-react-icons/outline";
+import { Search, Plus, PenNib } from "flowbite-react-icons/outline";
 import { PageHeader } from "@/components/app/page-header";
+import { RowActions } from "@/components/app/row-actions";
+import { OwnerFormDialog } from "@/components/admin/owner-form-dialog";
 import { DataTable, type Column } from "@/components/ui/data-table";
 import { Input } from "@/components/ui/input";
+import { Button } from "@/components/ui/button";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { useAsync, debugErrorFlag } from "@/lib/use-async";
 import { formatDate } from "@/lib/format";
@@ -18,6 +21,8 @@ function initials(name: string) {
 export default function OwnersPage() {
   const router = useRouter();
   const [q, setQ] = React.useState("");
+  const [formOpen, setFormOpen] = React.useState(false);
+  const [editing, setEditing] = React.useState<Owner | null>(null);
   const scope: Scope = React.useMemo(() => ({ forceError: debugErrorFlag() }), []);
   const { data, loading, error, reload } = useAsync(() => listOwners(scope), [scope]);
 
@@ -44,11 +49,24 @@ export default function OwnersPage() {
     { key: "phone", header: "Phone", render: (o) => <span className="text-muted">{o.phone}</span> },
     { key: "properties", header: "Properties", sortable: true, align: "right", sortValue: (o) => o.propertyIds.length, render: (o) => o.propertyIds.length },
     { key: "since", header: "Owner since", sortable: true, align: "right", render: (o) => formatDate(o.since) },
+    {
+      key: "actions", header: "", align: "right",
+      render: (o) => (
+        <RowActions actions={[
+          { label: "View", icon: <Search size={16} />, onClick: () => router.push(`/admin/owners/${o.id}`) },
+          { label: "Edit", icon: <PenNib size={16} />, onClick: () => { setEditing(o); setFormOpen(true); } },
+        ]} />
+      ),
+    },
   ];
 
   return (
     <div>
-      <PageHeader title="Owners" subtitle="Property owners in the Nexora portfolio" />
+      <PageHeader
+        title="Owners"
+        subtitle="Property owners in the Nexora portfolio"
+        actions={<Button onClick={() => { setEditing(null); setFormOpen(true); }} className="gap-2"><Plus size={18} /> Add owner</Button>}
+      />
       <div className="mb-4 sm:max-w-xs">
         <div className="relative">
           <Search size={18} className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-muted" />
@@ -61,6 +79,8 @@ export default function OwnersPage() {
         onRowClick={(o) => router.push(`/admin/owners/${o.id}`)}
         emptyTitle="No owners found" emptyDescription="Owners will appear here." pageSize={8}
       />
+
+      <OwnerFormDialog open={formOpen} onOpenChange={setFormOpen} editing={editing} onDone={reload} />
     </div>
   );
 }

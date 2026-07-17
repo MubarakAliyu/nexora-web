@@ -463,6 +463,8 @@ export interface TenantDetail {
   invoices: Invoice[];
   payments: Payment[];
   tickets: MaintenanceTicket[];
+  communications: CommLog[];
+  totals: { paid: number; outstanding: number };
 }
 
 export async function getTenant(id: string, scope?: Scope): Promise<TenantDetail> {
@@ -474,7 +476,12 @@ export async function getTenant(id: string, scope?: Scope): Promise<TenantDetail
   const invoices = db.invoices.filter((i) => i.tenantId === id).sort((a, b) => (a.issued < b.issued ? 1 : -1));
   const payments = db.payments.filter((p) => p.tenantId === id).sort((a, b) => (a.date < b.date ? 1 : -1));
   const tickets = db.tickets.filter((t) => t.tenantId === id).sort((a, b) => (a.createdAt < b.createdAt ? 1 : -1));
-  return respond({ tenant, lease, unit, property, invoices, payments, tickets }, { error: scope?.forceError });
+  const paid = payments.filter((p) => p.status === "completed").reduce((s, p) => s + p.amount, 0);
+  const outstanding = invoices.filter((i) => i.status !== "paid").reduce((s, i) => s + (i.amount - i.paid), 0);
+  return respond(
+    { tenant, lease, unit, property, invoices, payments, tickets, communications: commsFor("tenant", id), totals: { paid, outstanding } },
+    { error: scope?.forceError },
+  );
 }
 
 /* ---------------------------------------------------------------- leases */
@@ -600,11 +607,33 @@ export function unitLabel(id?: string): string {
 
 /* ============================================================ owners */
 
+const DAY_MS = 86_400_000;
+function commsFor(kind: "owner" | "tenant", id: string): CommLog[] {
+  const now = new Date(db.NOW_ISO).getTime();
+  const owner: { channel: CommLog["channel"]; summary: string; d: number }[] = [
+    { channel: "email", summary: "Sent monthly statement and disbursement summary.", d: 3 },
+    { channel: "call", summary: "Discussed upcoming lease renewals across the portfolio.", d: 12 },
+    { channel: "meeting", summary: "Quarterly portfolio review meeting.", d: 34 },
+    { channel: "email", summary: "Shared maintenance report and expense breakdown.", d: 61 },
+  ];
+  const tenant: { channel: CommLog["channel"]; summary: string; d: number }[] = [
+    { channel: "sms", summary: "Rent reminder sent for the current month.", d: 2 },
+    { channel: "call", summary: "Followed up on a maintenance request.", d: 9 },
+    { channel: "email", summary: "Shared receipt for last month’s payment.", d: 20 },
+    { channel: "note", summary: "Tenant reported satisfaction with recent repairs.", d: 45 },
+  ];
+  const src = kind === "owner" ? owner : tenant;
+  return src.map((t, i) => ({ id: `comm_${id}_${i}`, at: new Date(now - t.d * DAY_MS).toISOString(), channel: t.channel, summary: t.summary }));
+}
+
 export interface OwnerDetail {
   owner: Owner;
   properties: Property[];
   financials: { monthlyRevenue: number; ytdRevenue: number; outstanding: number; disbursed: number };
   disbursements: { id: string; period: string; gross: number; fees: number; net: number; date: string; status: "paid" | "scheduled" }[];
+  communications: CommLog[];
+  units: number;
+  occupancy: number;
 }
 
 export async function getOwnerDetail(id: string, scope?: Scope): Promise<OwnerDetail> {
@@ -632,7 +661,12 @@ export async function getOwnerDetail(id: string, scope?: Scope): Promise<OwnerDe
   });
   const ytdRevenue = disbursements.reduce((s, d) => s + d.gross, 0);
   const disbursed = disbursements.filter((d) => d.status === "paid").reduce((s, d) => s + d.net, 0);
-  return respond({ owner, properties, financials: { monthlyRevenue, ytdRevenue, outstanding, disbursed }, disbursements }, { error: scope?.forceError });
+  const units = properties.reduce((s, p) => s + p.units, 0);
+  const occupancy = properties.length ? Math.round(properties.reduce((s, p) => s + p.occupancy, 0) / properties.length) : 0;
+  return respond(
+    { owner, properties, financials: { monthlyRevenue, ytdRevenue, outstanding, disbursed }, disbursements, communications: commsFor("owner", id), units, occupancy },
+    { error: scope?.forceError },
+  );
 }
 
 const toM = (n: number) => `${(n / 1_000_000).toFixed(1)}M`;

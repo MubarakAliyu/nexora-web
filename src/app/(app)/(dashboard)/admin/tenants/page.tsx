@@ -2,11 +2,14 @@
 
 import * as React from "react";
 import { useRouter } from "next/navigation";
-import { Search } from "flowbite-react-icons/outline";
+import { Search, Plus, PenNib } from "flowbite-react-icons/outline";
 import { PageHeader } from "@/components/app/page-header";
 import { StatusBadge } from "@/components/app/status";
+import { RowActions } from "@/components/app/row-actions";
+import { TenantFormDialog } from "@/components/admin/tenant-form-dialog";
 import { DataTable, type Column } from "@/components/ui/data-table";
 import { Input } from "@/components/ui/input";
+import { Button } from "@/components/ui/button";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { selectClass } from "@/components/forms/field";
 import { useAsync, debugErrorFlag } from "@/lib/use-async";
@@ -29,6 +32,8 @@ export default function TenantsPage() {
   const [q, setQ] = React.useState("");
   const [property, setProperty] = React.useState("all");
   const [status, setStatus] = React.useState("all");
+  const [formOpen, setFormOpen] = React.useState(false);
+  const [editing, setEditing] = React.useState<Tenant | null>(null);
   const scope: Scope = React.useMemo(() => ({ forceError: debugErrorFlag() }), []);
   const props = React.useMemo(() => propertyOptions(), []);
 
@@ -58,11 +63,24 @@ export default function TenantsPage() {
     { key: "unitId", header: "Unit", render: (t) => unitLabel(t.unitId) },
     { key: "status", header: "Status", sortable: true, render: (t) => <StatusBadge status={t.status} /> },
     { key: "since", header: "Tenant since", sortable: true, align: "right", render: (t) => formatDate(t.since) },
+    {
+      key: "actions", header: "", align: "right",
+      render: (t) => (
+        <RowActions actions={[
+          { label: "View", icon: <Search size={16} />, onClick: () => router.push(`/admin/tenants/${t.id}`) },
+          { label: "Edit", icon: <PenNib size={16} />, onClick: () => { setEditing(t); setFormOpen(true); } },
+        ]} />
+      ),
+    },
   ];
 
   return (
     <div>
-      <PageHeader title="Tenants" subtitle="Everyone renting across the portfolio" />
+      <PageHeader
+        title="Tenants"
+        subtitle="Everyone renting across the portfolio"
+        actions={<Button onClick={() => { setEditing(null); setFormOpen(true); }} className="gap-2"><Plus size={18} /> Add tenant</Button>}
+      />
 
       <div className="mb-4 flex flex-col gap-3 sm:flex-row sm:items-center">
         <div className="relative sm:max-w-xs sm:flex-1">
@@ -95,6 +113,8 @@ export default function TenantsPage() {
         emptyDescription="Try adjusting your search or filters."
         pageSize={8}
       />
+
+      <TenantFormDialog open={formOpen} onOpenChange={setFormOpen} editing={editing} onDone={reload} />
     </div>
   );
 }
