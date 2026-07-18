@@ -281,6 +281,47 @@ export interface Announcement {
   sentBy: string;
 }
 
+/* ---------------------------------------------------- RBAC role defs */
+
+export interface PermissionSet {
+  read: boolean;
+  write: boolean;
+}
+
+export interface RoleDef {
+  id: string;
+  name: string;
+  description: string;
+  system: boolean;
+  members: number;
+  permissions: Record<string, PermissionSet>;
+}
+
+/* ------------------------------------------------------------- wallet */
+
+export type TxType = "deposit" | "withdrawal" | "fee" | "disbursement" | "refund";
+export type TxStatus = "completed" | "pending" | "failed";
+
+export interface WalletTx {
+  id: string;
+  date: string; // ISO
+  type: TxType;
+  amount: number; // UGX (always positive; direction implied by type)
+  status: TxStatus;
+  reference: string;
+  description: string;
+}
+
+export interface BankAccount {
+  id: string;
+  bankName: string;
+  accountNumber: string; // stored full; UI masks to last 4
+  accountName: string;
+  branch: string;
+  swift: string;
+  primary: boolean;
+}
+
 /* -------------------------------------------------- activity feed */
 
 export interface Activity {

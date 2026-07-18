@@ -15,7 +15,13 @@ import { properties as portfolio } from "@/content/portfolio";
 import type {
   Activity,
   Announcement,
+  BankAccount,
   Building,
+  PermissionSet,
+  RoleDef,
+  TxStatus,
+  TxType,
+  WalletTx,
   Expense,
   ExpenseCategory,
   Invoice,
@@ -526,6 +532,62 @@ export const activities: Activity[] = [
 ].sort((a, b) => (a.at < b.at ? 1 : -1));
 
 /* ------------------------------------------------------------ helpers */
+
+/* --------------------------------------------------------- RBAC roles */
+
+export const PERMISSION_MODULES = [
+  "properties", "units", "tenants", "owners", "leases", "finance", "maintenance", "crm", "analytics", "settings", "staff",
+] as const;
+
+const rw = (read: boolean, write: boolean): PermissionSet => ({ read, write });
+function perms(spec: Partial<Record<(typeof PERMISSION_MODULES)[number], [boolean, boolean]>>, fallback: [boolean, boolean] = [false, false]): Record<string, PermissionSet> {
+  const out: Record<string, PermissionSet> = {};
+  for (const m of PERMISSION_MODULES) {
+    const p = spec[m] ?? fallback;
+    out[m] = rw(p[0], p[1]);
+  }
+  return out;
+}
+
+export const roleDefs: RoleDef[] = [
+  { id: "role_super_admin", name: "Super Admin", description: "Full access to every module and setting.", system: true, members: 1, permissions: perms({}, [true, true]) },
+  { id: "role_ops_manager", name: "Operations Manager", description: "Operations oversight across properties and teams.", system: true, members: 1, permissions: perms({ settings: [true, false], analytics: [true, false] }, [true, true]) },
+  { id: "role_property_manager", name: "Property Manager", description: "Manages properties, units, tenants, leases and maintenance.", system: true, members: 2, permissions: perms({ properties: [true, true], units: [true, true], tenants: [true, true], owners: [true, false], leases: [true, true], maintenance: [true, true], crm: [true, true], finance: [true, false], analytics: [true, false] }) },
+  { id: "role_maintenance_officer", name: "Maintenance Officer", description: "Handles maintenance tickets and technicians.", system: true, members: 1, permissions: perms({ maintenance: [true, true], properties: [true, false], units: [true, false] }) },
+  { id: "role_finance_officer", name: "Finance Officer", description: "Invoices, payments, expenses and financial reports.", system: true, members: 1, permissions: perms({ finance: [true, true], owners: [true, false], analytics: [true, false] }) },
+  { id: "role_owner", name: "Owner", description: "Portal access to their own properties and financials.", system: true, members: 6, permissions: perms({ properties: [true, false], finance: [true, false], analytics: [true, false] }) },
+  { id: "role_tenant", name: "Tenant", description: "Portal access to their lease, payments and requests.", system: true, members: 30, permissions: perms({ leases: [true, false], finance: [true, false], maintenance: [true, true] }) },
+];
+
+/* -------------------------------------------------------------- wallet */
+
+export const wallet = { balance: 148_500_000 };
+
+const txTypes: TxType[] = ["deposit", "withdrawal", "fee", "disbursement", "refund"];
+const txDesc: Record<TxType, string[]> = {
+  deposit: ["Rent collected — Nakasero Heights", "Rent collected — Kololo Court", "Mobile-money settlement", "Card settlement batch"],
+  withdrawal: ["Withdrawal to Stanbic ••3421", "Operating float top-up", "Withdrawal to Absa ••7788"],
+  fee: ["Management fee", "Payment gateway fee", "Bank charges"],
+  disbursement: ["Owner disbursement — Salim Kato", "Owner disbursement — Rehema Ssali", "Owner disbursement — Diana Achieng"],
+  refund: ["Deposit refund — vacated unit", "Overpayment refund"],
+};
+export const walletTransactions: WalletTx[] = Array.from({ length: 22 }, (_, i) => {
+  const type = i < 3 ? "deposit" : pick(txTypes);
+  return {
+    id: `wtx_${i + 1}`,
+    date: daysAgo(int(0, 90)),
+    type,
+    amount: int(2, 90) * 500_000,
+    status: (chance(0.86) ? "completed" : chance(0.5) ? "pending" : "failed") as TxStatus,
+    reference: `WX${int(100000, 999999)}`,
+    description: pick(txDesc[type]),
+  };
+}).sort((a, b) => (a.date < b.date ? 1 : -1));
+
+export const bankAccounts: BankAccount[] = [
+  { id: "bank_1", bankName: "Stanbic Bank Uganda", accountNumber: "9030012343421", accountName: "Nexora Property Management Ltd", branch: "Garden City", swift: "SBICUGKX", primary: true },
+  { id: "bank_2", bankName: "Absa Bank Uganda", accountNumber: "6002458897788", accountName: "Nexora Property Management Ltd", branch: "Kampala Road", swift: "BARCUGKX", primary: false },
+];
 
 export const NOW_ISO = NOW.toISOString();
 

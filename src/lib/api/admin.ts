@@ -36,6 +36,8 @@ import type {
 
 export type { Activity, Announcement, AudienceKind, BroadcastChannel, CommLog, Expense, ExpenseCategory, Invoice, Lead, LeadActivity, Lease, MaintenanceTicket, Owner, Payment, Property, Staff, Tenant, Unit };
 export type { Building, LeaseStatus, InvoiceStatus, TicketStatus, TicketPriority, UnitStatus, UnitType, PropertyStatus, TicketCategory, PaymentMethod, LeadStatus } from "@/lib/mock/types";
+export type { RoleDef, PermissionSet, WalletTx, BankAccount, TxType, TxStatus } from "@/lib/mock/types";
+export const PERMISSION_MODULES = db.PERMISSION_MODULES;
 
 const BEDROOMS_BY_TYPE: Record<UnitType, number> = {
   Studio: 0, "1 Bedroom": 1, "2 Bedroom": 2, "3 Bedroom": 3, Penthouse: 4, Office: 0, Retail: 0,
@@ -996,6 +998,47 @@ export async function getAnalytics(scope?: Scope): Promise<Analytics> {
     { occupancyRate, collectionRate, arrears, avgResolutionDays, retentionRate, revenueByProperty, occupancyByCategory, collectionTrend },
     { error: scope?.forceError },
   );
+}
+
+/* ============================================================ roles (read) */
+
+export async function listRoles(scope?: Scope): Promise<import("@/lib/mock/types").RoleDef[]> {
+  return respond([...db.roleDefs], { error: scope?.forceError });
+}
+
+/* ============================================================ wallet (read) */
+
+export interface WalletSummary {
+  balance: number;
+  received: number;
+  withdrawn: number;
+  pending: number;
+  trend: Series[];
+}
+
+export async function getWallet(scope?: Scope): Promise<WalletSummary> {
+  const received = db.walletTransactions.filter((t) => (t.type === "deposit" || t.type === "refund") && t.status === "completed").reduce((s, t) => s + t.amount, 0);
+  const withdrawn = db.walletTransactions.filter((t) => (t.type === "withdrawal" || t.type === "disbursement" || t.type === "fee") && t.status === "completed").reduce((s, t) => s + t.amount, 0);
+  const pending = db.walletTransactions.filter((t) => t.status === "pending").reduce((s, t) => s + t.amount, 0);
+  const months = ["Feb", "Mar", "Apr", "May", "Jun", "Jul"];
+  const trend = months.map((m, i) => ({ label: m, value: Math.round((db.wallet.balance * (0.78 + i * 0.045)) / 1_000_000) }));
+  return respond({ balance: db.wallet.balance, received, withdrawn, pending, trend }, { error: scope?.forceError });
+}
+
+export async function listTransactions(filter?: { type?: string; status?: string }, scope?: Scope): Promise<import("@/lib/mock/types").WalletTx[]> {
+  let rows = [...db.walletTransactions];
+  if (filter?.type && filter.type !== "all") rows = rows.filter((t) => t.type === filter.type);
+  if (filter?.status && filter.status !== "all") rows = rows.filter((t) => t.status === filter.status);
+  return respond(rows.sort((a, b) => (a.date < b.date ? 1 : -1)), { error: scope?.forceError });
+}
+
+export async function listBankAccounts(scope?: Scope): Promise<import("@/lib/mock/types").BankAccount[]> {
+  return respond([...db.bankAccounts], { error: scope?.forceError });
+}
+
+/** Owners as recipient options for disbursements (id + name). */
+export function ownerOptions(): { id: string; name: string }[] {
+  return db.owners.map((o) => ({ id: o.id, name: o.name }));
 }
 
 export * from "./admin-mutations";

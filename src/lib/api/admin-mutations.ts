@@ -8,6 +8,7 @@ import * as db from "@/lib/mock/db";
 import { recordMutation } from "@/lib/api/actions";
 import type { Role } from "@/lib/roles";
 import type {
+  BankAccount,
   Expense,
   ExpenseCategory,
   Invoice,
@@ -17,10 +18,13 @@ import type {
   Lease,
   MaintenanceTicket,
   Owner,
+  PermissionSet,
+  RoleDef,
   Staff,
   Tenant,
   TicketCategory,
   TicketPriority,
+  WalletTx,
 } from "@/lib/mock/types";
 
 class NotFoundError extends Error {}
@@ -514,6 +518,180 @@ export async function removeStaff(id: string): Promise<{ ok: true }> {
     entityType: "staff", entityId: id, entityName: removed.name, action: "deleted",
     summary: `Removed staff member ${removed.name}`,
     notify: { type: "system", title: "Staff removed", body: `${removed.name} was removed from the team.` },
+  });
+  return { ok: true };
+}
+
+/* -------------------------------------------------------------- roles */
+
+export interface RoleInput {
+  name: string;
+  description: string;
+  permissions: Record<string, PermissionSet>;
+}
+
+export async function createRole(input: RoleInput): Promise<RoleDef> {
+  await mDelay();
+  const role: RoleDef = { id: `role_${Date.now()}`, name: input.name, description: input.description, system: false, members: 0, permissions: input.permissions };
+  db.roleDefs.push(role);
+  recordMutation({
+    entityType: "role", entityId: role.id, entityName: role.name, action: "created",
+    summary: `Created role "${role.name}"`, after: { name: role.name },
+    notify: { type: "system", title: "Role created", body: `Role "${role.name}" was created.` },
+  });
+  return role;
+}
+
+export async function updateRole(id: string, patch: Partial<RoleInput>): Promise<RoleDef> {
+  await mDelay();
+  const role = db.roleDefs.find((r) => r.id === id);
+  if (!role) throw new NotFoundError(id);
+  const before = { name: role.name, description: role.description };
+  if (patch.name) role.name = patch.name;
+  if (patch.description !== undefined) role.description = patch.description;
+  if (patch.permissions) role.permissions = patch.permissions;
+  recordMutation({
+    entityType: "role", entityId: id, entityName: role.name, action: "updated",
+    summary: `Updated role "${role.name}" permissions`, before, after: { name: role.name },
+    notify: { type: "system", title: "Role updated", body: `Role "${role.name}" was updated.` },
+  });
+  return role;
+}
+
+export async function deleteRole(id: string): Promise<{ ok: true }> {
+  await mDelay();
+  const idx = db.roleDefs.findIndex((r) => r.id === id);
+  if (idx === -1) throw new NotFoundError(id);
+  const [removed] = db.roleDefs.splice(idx, 1);
+  recordMutation({
+    entityType: "role", entityId: id, entityName: removed.name, action: "deleted",
+    summary: `Deleted role "${removed.name}"`,
+    notify: { type: "system", title: "Role deleted", body: `Role "${removed.name}" was deleted.` },
+  });
+  return { ok: true };
+}
+
+/* -------------------------------------------------------------- wallet */
+
+function walletRef() { return `WX${Math.floor(100000 + Math.random() * 899999)}`; }
+
+export class InsufficientFundsError extends Error {
+  constructor() { super("Amount exceeds available balance."); this.name = "InsufficientFundsError"; }
+}
+
+export async function withdrawFunds(input: { amount: number; bankId: string; note?: string }): Promise<WalletTx> {
+  await new Promise((r) => setTimeout(r, 250));
+  if (input.amount > db.wallet.balance) throw new InsufficientFundsError();
+  const bank = db.bankAccounts.find((b) => b.id === input.bankId);
+  db.wallet.balance -= input.amount;
+  const tx: WalletTx = {
+    id: `wtx_${Date.now()}`, date: db.NOW_ISO, type: "withdrawal", amount: input.amount, status: "completed",
+    reference: walletRef(), description: input.note || `Withdrawal to ${bank?.bankName ?? "bank"} ••${bank?.accountNumber.slice(-4) ?? ""}`,
+  };
+  db.walletTransactions.unshift(tx);
+  recordMutation({
+    entityType: "wallet", entityId: tx.id, entityName: tx.reference, action: "created",
+    summary: `Withdrew ${input.amount.toLocaleString("en-UG")} UGX to ${bank?.bankName ?? "bank"}`,
+    after: { amount: input.amount, balance: db.wallet.balance },
+    notify: { type: "payment", title: "Withdrawal initiated", body: `${(input.amount / 1_000_000).toFixed(1)}M UGX withdrawal to ${bank?.bankName ?? "your bank"}.` },
+  });
+  return tx;
+}
+
+export async function sendFunds(input: { ownerId: string; amount: number; reference?: string; note?: string }): Promise<WalletTx> {
+  await new Promise((r) => setTimeout(r, 250));
+  if (input.amount > db.wallet.balance) throw new InsufficientFundsError();
+  const owner = db.owners.find((o) => o.id === input.ownerId);
+  db.wallet.balance -= input.amount;
+  const tx: WalletTx = {
+    id: `wtx_${Date.now()}`, date: db.NOW_ISO, type: "disbursement", amount: input.amount, status: "completed",
+    reference: input.reference || walletRef(), description: input.note || `Owner disbursement — ${owner?.name ?? "owner"}`,
+  };
+  db.walletTransactions.unshift(tx);
+  recordMutation({
+    entityType: "wallet", entityId: tx.id, entityName: tx.reference, action: "created",
+    summary: `Sent ${input.amount.toLocaleString("en-UG")} UGX to ${owner?.name ?? "owner"}`,
+    after: { amount: input.amount, balance: db.wallet.balance },
+    notify: { type: "payment", title: "Funds sent", body: `${(input.amount / 1_000_000).toFixed(1)}M UGX disbursed to ${owner?.name ?? "an owner"}.` },
+  });
+  return tx;
+}
+
+/* -------------------------------------------------------------- bank accounts */
+
+export interface BankInput {
+  bankName: string;
+  accountNumber: string;
+  accountName: string;
+  branch: string;
+  swift: string;
+}
+
+export async function addBankAccount(input: BankInput): Promise<BankAccount> {
+  await mDelay();
+  const acct: BankAccount = { id: `bank_${Date.now()}`, ...input, primary: db.bankAccounts.length === 0 };
+  db.bankAccounts.push(acct);
+  recordMutation({
+    entityType: "bank_account", entityId: acct.id, entityName: acct.bankName, action: "created",
+    summary: `Added bank account ${acct.bankName} ••${acct.accountNumber.slice(-4)}`,
+    notify: { type: "system", title: "Bank account added", body: `${acct.bankName} ••${acct.accountNumber.slice(-4)} was added.` },
+  });
+  return acct;
+}
+
+export async function updateBankAccount(id: string, patch: Partial<BankInput>): Promise<BankAccount> {
+  await mDelay();
+  const acct = db.bankAccounts.find((b) => b.id === id);
+  if (!acct) throw new NotFoundError(id);
+  Object.assign(acct, {
+    bankName: patch.bankName ?? acct.bankName,
+    accountNumber: patch.accountNumber ?? acct.accountNumber,
+    accountName: patch.accountName ?? acct.accountName,
+    branch: patch.branch ?? acct.branch,
+    swift: patch.swift ?? acct.swift,
+  });
+  recordMutation({
+    entityType: "bank_account", entityId: id, entityName: acct.bankName, action: "updated",
+    summary: `Updated bank account ${acct.bankName}`,
+    notify: { type: "system", title: "Bank account updated", body: `${acct.bankName} details were updated.` },
+  });
+  return acct;
+}
+
+export async function deleteBankAccount(id: string): Promise<{ ok: true }> {
+  await mDelay();
+  const idx = db.bankAccounts.findIndex((b) => b.id === id);
+  if (idx === -1) throw new NotFoundError(id);
+  const [removed] = db.bankAccounts.splice(idx, 1);
+  if (removed.primary && db.bankAccounts[0]) db.bankAccounts[0].primary = true;
+  recordMutation({
+    entityType: "bank_account", entityId: id, entityName: removed.bankName, action: "deleted",
+    summary: `Deleted bank account ${removed.bankName} ••${removed.accountNumber.slice(-4)}`,
+    notify: { type: "system", title: "Bank account removed", body: `${removed.bankName} was removed.` },
+  });
+  return { ok: true };
+}
+
+export async function setPrimaryAccount(id: string): Promise<{ ok: true }> {
+  await mDelay();
+  const acct = db.bankAccounts.find((b) => b.id === id);
+  if (!acct) throw new NotFoundError(id);
+  db.bankAccounts.forEach((b) => { b.primary = b.id === id; });
+  recordMutation({
+    entityType: "bank_account", entityId: id, entityName: acct.bankName, action: "updated",
+    summary: `Set ${acct.bankName} as primary account`,
+    notify: false,
+  });
+  return { ok: true };
+}
+
+/* -------------------------------------------------------------- settings (audit-only) */
+
+export async function saveSettingsSection(section: string, summary: string): Promise<{ ok: true }> {
+  await mDelay();
+  recordMutation({
+    entityType: "settings", entityId: section, entityName: section, action: "updated",
+    summary, notify: { type: "system", title: "Settings updated", body: summary },
   });
   return { ok: true };
 }
