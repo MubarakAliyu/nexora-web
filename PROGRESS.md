@@ -578,6 +578,35 @@ state; prefer instant/conditional/keyed.
 
 ---
 
+## Admin Live Upgrade — Pass 2 ✅ (all CRUD modals + delete confirmations + expanded panels)
+
+Every admin entity now has full create/edit/delete, each routed through the Pass-1 live engine
+(`recordMutation` → revision bump + toast + **system notification** + **audit entry**). Reusable
+foundation: **`DeleteConfirmation`** ("This action cannot be undone", used everywhere) and
+**`RowActions`** (⋯ menu that stops propagation so it never triggers row-click). Shared form dialogs:
+`OwnerFormDialog`, `TenantFormDialog`. Data layer split: `lib/api/admin-mutations.ts` holds
+owners/tenants/leases/invoices/expenses/tickets/leads/announcements/staff mutations (re-exported from
+`admin.ts`), plus unit CRUD + `getUnitDetail` + `unitOptions`/`tenantOptions` in `admin.ts`.
+
+- **Properties** — create/edit/delete (delete cascades units + leases).
+- **Units** — create/edit/delete + a rich **Manage drawer** (tenant/lease/rent status + maintenance
+  history + change-status + quick actions).
+- **Owners** — add/edit; detail expanded (occupancy stat, **Communication** timeline).
+- **Tenants** — add/edit; detail expanded (paid-to-date total, **Communication** tab + complaints).
+- **Leases** — create (tenant + vacant-unit selects → unit occupied), edit, renew, **terminate**
+  (reason/exit/deposit-refund → unit vacant), delete.
+- **Finance** — invoices (generate/edit-status/delete), expenses (log/edit/delete).
+- **Maintenance** — create ticket, update status/technician/cost, **close** (resolution required), delete.
+- **CRM Leads** — add, edit-stage, **convert to owner/tenant**, delete.
+- **Announcements** — delete (composer already notifies).
+- **Staff** — real panel (role/dept/status/joined) + **invite** modal + edit + deactivate/reactivate + remove.
+
+Every dialog: RHF + zod, dark-mode-aware, responsive. **Verified live:** Staff invite → list 6→7 +
+bell 4→5 + "Invitation sent" toast + "Invited" badge; Property delete → "Delete property?" ("cannot be
+undone") → removed + toast + bell +1. lint + tsc clean; committed in 4 chunks.
+
+---
+
 ## Admin Live Upgrade (post-Batch-10) — Pass 1 ✅ (dark mode + sidebar polish + live state engine)
 
 Pre-work first: **`fix: dashboard mobile responsiveness + topbar layout`** — root cause of page
