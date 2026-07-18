@@ -14,6 +14,7 @@ import {
   Bell,
   Cog,
   UsersGroup,
+  Wallet,
 } from "flowbite-react-icons/outline";
 import type { SidebarItem } from "@/components/ui/sidebar";
 import type { Role } from "@/lib/roles";
@@ -56,6 +57,7 @@ export function navForRole(role: Role): SidebarItem[] {
     tenants: { label: "Tenants", href: "/admin/tenants", icon: <Users size={sz} /> },
     leases: { label: "Leases", href: "/admin/leases", icon: <FileLines size={sz} /> },
     finance: { label: "Finance", href: "/admin/finance", icon: <Cash size={sz} /> },
+    wallet: { label: "Wallet", href: "/admin/wallet", icon: <Wallet size={sz} /> },
     maintenance: { label: "Maintenance", href: "/admin/maintenance", icon: <AdjustmentsHorizontal size={sz} /> },
     leads: { label: "CRM / Leads", href: "/admin/leads", icon: <ClipboardList size={sz} /> },
     analytics: { label: "Analytics", href: "/admin/analytics", icon: <ChartLineUp size={sz} /> },
@@ -69,7 +71,7 @@ export function navForRole(role: Role): SidebarItem[] {
     ops_manager: Object.keys(all),
     property_manager: ["dashboard", "properties", "units", "tenants", "leases", "maintenance", "leads"],
     maintenance_officer: ["dashboard", "maintenance", "properties"],
-    finance_officer: ["dashboard", "finance", "owners", "analytics", "announcements"],
+    finance_officer: ["dashboard", "finance", "wallet", "owners", "analytics", "announcements"],
     owner: [],
     tenant: [],
   };
