@@ -578,6 +578,42 @@ state; prefer instant/conditional/keyed.
 
 ---
 
+## Admin Live Upgrade — Pass 3 ✅ (Settings expansion + Security + Wallet + Audit Trail)
+
+**Data layer:** RBAC `roleDefs` (7 PRD roles + per-module permission matrix) + role CRUD; wallet
+(`wallet.balance`, `walletTransactions`, `bankAccounts`) + `withdrawFunds`/`sendFunds`/bank CRUD +
+`saveSettingsSection` — all through `recordMutation`. New read accessors: `listRoles`, `getWallet`,
+`listTransactions`, `listBankAccounts`, `ownerOptions`, `PERMISSION_MODULES`.
+
+**Settings → 7 tabs** (`/admin/settings`):
+1. **Company** — profile form (name/email/phone/address/reg/TIN/description + logo stub) → save + audit;
+   keeps the appearance/theme toggle.
+2. **Global** — currency/timezone/date-format, lease defaults (grace/due-day), maintenance SLA hours.
+3. **Roles** — 7 role cards + Create/Edit (module R/W permission matrix, write implies read) + Delete
+   ("cannot be undone"). All through the live engine.
+4. **Notifications** — 8 types × 3 channels (In-app/Email/SMS) Switch grid → save.
+5. **Audit Trail** — reads the audit store; search + user/entity/action/date filters; paginated,
+   newest-first; **click-to-expand** rows (conditional-render + mount animation) showing summary +
+   before/after JSON.
+6. **Security** — 2FA Switch with **disable-confirmation** dialog; change-password form with **strength
+   meter**; active-sessions list with revoke-confirmation.
+7. **Integrations** — 6 status cards (Flutterwave/Stripe/Resend/Africa's Talking/Cloudinary/S3) +
+   Configure modal with masked API-key/secret fields.
+
+**Wallet** (`/admin/wallet`, in sidebar after Finance): balance count-up + received/withdrawn/pending
+KPIs + balance-trend chart; filterable transaction table (+/- colour-coded via foreground/primary,
+status badges); **Withdraw** modal (review step + balance validation), **Send funds** modal (owner
+disbursement); **Banking details** (masked accounts + add/edit/delete + set-primary). All wallet
+mutations live-update the balance KPI.
+
+**Verified:** Wallet withdraw UGX 25M → review "Balance after 123.5M" → confirm → **balance KPI
+148.5M→123.5M live** + toast + bell +1 + new transaction row. Company save → toast + **Audit Trail
+entry** (Aisha Nakato · updated · settings · company) + click-to-expand detail. Roles (7 cards +
+create), Security (2FA + strength meter + 2 revokable sessions) render. lint + tsc clean; committed in
+2 chunks (settings/audit/security + wallet). Dark-mode + responsive throughout.
+
+---
+
 ## Admin Live Upgrade — Pass 2 ✅ (all CRUD modals + delete confirmations + expanded panels)
 
 Every admin entity now has full create/edit/delete, each routed through the Pass-1 live engine
