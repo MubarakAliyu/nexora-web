@@ -19,6 +19,8 @@ import { EmptyState } from "@/components/ui/empty-state";
 import { Skeleton, SkeletonText } from "@/components/ui/skeleton";
 import { toast } from "@/components/ui/sonner";
 import { useAsync, debugErrorFlag } from "@/lib/use-async";
+import { downloadPdf } from "@/lib/pdf/download";
+import { statementPdf } from "@/lib/pdf/builders";
 import { formatUGX, formatDate, fromNow } from "@/lib/format";
 import { getOwnerDetail, NOW_ISO, type OwnerDetail, type Property, type Scope } from "@/lib/api/admin";
 
@@ -77,6 +79,7 @@ export default function OwnerDetailPage() {
       <PageHeader title={owner.name} subtitle="Property owner"
         actions={
           <div className="flex gap-2">
+            <Button variant="outline" className="gap-2" onClick={() => { const { payload, filename } = statementPdf(owner.id); downloadPdf(payload, filename); }}><FileLines size={18} /> Statement</Button>
             <Button variant="outline" className="gap-2" onClick={() => setEditOpen(true)}><PenNib size={18} /> Edit</Button>
             <Button className="gap-2" onClick={() => toast.info("Message owner", { description: "Messaging is mocked in this build." })}><Envelope size={18} /> Message</Button>
           </div>

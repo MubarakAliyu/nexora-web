@@ -14,6 +14,8 @@ import { toast } from "@/components/ui/sonner";
 import { useAsync, debugErrorFlag } from "@/lib/use-async";
 import { useSession } from "@/lib/stores/session";
 import { formatUGX, formatDate } from "@/lib/format";
+import { downloadPdf } from "@/lib/pdf/download";
+import { receiptPdf } from "@/lib/pdf/builders";
 import { getTenant, propertyName, type Payment, type Scope } from "@/lib/api/admin";
 
 export default function TenantDashboardPage() {
@@ -55,6 +57,10 @@ export default function TenantDashboardPage() {
     { key: "amount", header: "Amount", sortable: true, align: "right", render: (p) => formatUGX(p.amount) },
     { key: "method", header: "Method", render: (p) => <span className="capitalize">{p.method.replace("_", " ")}</span> },
     { key: "status", header: "Status", render: (p) => <StatusBadge status={p.status} /> },
+    {
+      key: "receipt", header: "", align: "right",
+      render: (p) => <Button variant="ghost" size="sm" onClick={() => { const { payload, filename } = receiptPdf(p); downloadPdf(payload, filename); }}>Receipt</Button>,
+    },
   ];
 
   return (

@@ -12,9 +12,10 @@ import { BarChart } from "@/components/ui/chart";
 import { DataTable, type Column } from "@/components/ui/data-table";
 import { Skeleton, SkeletonChart } from "@/components/ui/skeleton";
 import { EmptyState } from "@/components/ui/empty-state";
-import { toast } from "@/components/ui/sonner";
 import { useAsync, debugErrorFlag } from "@/lib/use-async";
 import { useSession } from "@/lib/stores/session";
+import { downloadPdf } from "@/lib/pdf/download";
+import { statementPdf } from "@/lib/pdf/builders";
 import { formatUGX, formatUGXFull, formatDate } from "@/lib/format";
 import {
   getOwnerDetail, getOwnerFinancials, type OwnerFinancials, type OwnerDetail, type Scope,
@@ -59,7 +60,7 @@ export default function OwnerFinancialsPage() {
               <option value="ytd">Year to date</option>
               <option value="12m">Last 12 months</option>
             </select>
-            <Button variant="outline" className="gap-2" onClick={() => toast.info("Export", { description: "Statement export is mocked in this build." })}>
+            <Button variant="outline" className="gap-2" onClick={() => { const { payload, filename } = statementPdf(ownerId); downloadPdf(payload, filename); }}>
               <Download size={18} /> Export
             </Button>
           </div>

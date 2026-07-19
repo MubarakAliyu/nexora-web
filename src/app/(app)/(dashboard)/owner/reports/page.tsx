@@ -5,7 +5,9 @@ import { FileLines, Download, CalendarMonth } from "flowbite-react-icons/outline
 import { PageHeader } from "@/components/app/page-header";
 import { Card } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
-import { toast } from "@/components/ui/sonner";
+import { useSession } from "@/lib/stores/session";
+import { downloadPdf } from "@/lib/pdf/download";
+import { statementPdf } from "@/lib/pdf/builders";
 
 type ReportKind = "Monthly" | "Quarterly" | "Annual";
 interface OwnerReport {
@@ -31,7 +33,8 @@ function kindTone(kind: ReportKind) {
 }
 
 export default function OwnerReportsPage() {
-  const download = (r: OwnerReport) => toast.success("Report downloaded", { description: `${r.title} (${r.size}) — mocked in this build.` });
+  const ownerId = useSession((s) => s.user?.ownerId) ?? "";
+  const download = (r: OwnerReport) => { const { payload, filename } = statementPdf(ownerId, r.period); downloadPdf(payload, filename); };
 
   const groups: { label: string; kind: ReportKind }[] = [
     { label: "Monthly statements", kind: "Monthly" },

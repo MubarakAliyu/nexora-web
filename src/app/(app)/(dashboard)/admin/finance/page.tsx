@@ -23,6 +23,9 @@ import {
 } from "@/components/ui/dialog";
 import { toast } from "@/components/ui/sonner";
 import { useAsync, debugErrorFlag } from "@/lib/use-async";
+import { downloadPdf } from "@/lib/pdf/download";
+import { invoicePdf, receiptPdf, statementPdf } from "@/lib/pdf/builders";
+import { ownerOptions } from "@/lib/api/admin";
 import { formatUGX, formatUGXFull, formatDate } from "@/lib/format";
 import {
   listInvoices, listPayments, listExpenses, getFinanceSummary, createInvoice, updateInvoice, deleteInvoice,
@@ -142,7 +145,7 @@ function InvoicesTab() {
       key: "actions", header: "", align: "right",
       render: (i) => (
         <RowActions actions={[
-          { label: "View PDF", icon: <FileLines size={16} />, onClick: () => toast.info("View PDF", { description: "PDF rendering is mocked in this build." }) },
+          { label: "View PDF", icon: <FileLines size={16} />, onClick: () => { const { payload, filename } = invoicePdf(i); downloadPdf(payload, filename); } },
           { label: "Edit status", icon: <PenNib size={16} />, onClick: () => setEditing(i) },
           { label: "Delete", icon: <TrashBin size={16} />, onClick: () => setDeleting(i), danger: true, separatorBefore: true },
         ]} />
@@ -181,6 +184,10 @@ function PaymentsTab() {
     { key: "method", header: "Method", render: (p) => <span className="capitalize">{p.method.replace("_", " ")}</span> },
     { key: "reference", header: "Reference", render: (p) => <span className="text-muted">{p.reference}</span> },
     { key: "status", header: "Status", render: (p) => <StatusBadge status={p.status} /> },
+    {
+      key: "actions", header: "", align: "right",
+      render: (p) => <RowActions actions={[{ label: "Receipt PDF", icon: <FileLines size={16} />, onClick: () => { const { payload, filename } = receiptPdf(p); downloadPdf(payload, filename); } }]} />,
+    },
   ];
   return (
     <div>
@@ -305,20 +312,19 @@ function ExpensesTab() {
 /* ------------------------------------------------------------- reports */
 
 function ReportsTab() {
-  const [type, setType] = React.useState("rent-roll");
-  const [from, setFrom] = React.useState("2026-01-01");
+  const owners = React.useMemo(() => ownerOptions(), []);
+  const [type, setType] = React.useState("owner-statements");
+  const [ownerId, setOwnerId] = React.useState(owners[0]?.id ?? "");
   const [to, setTo] = React.useState("2026-07-01");
-  const [busy, setBusy] = React.useState(false);
-  const generate = async () => {
-    setBusy(true);
-    await new Promise((r) => setTimeout(r, 900));
-    setBusy(false);
-    toast.success("Report ready", { description: "Your PDF export is mocked in this build." });
+  const period = new Date(to).toLocaleDateString("en-GB", { month: "long", year: "numeric" });
+  const generate = () => {
+    const { payload, filename } = statementPdf(ownerId, period);
+    downloadPdf(payload, filename);
   };
   const recent = [
-    { name: "Rent roll — Jun 2026", date: "1 Jul 2026" },
-    { name: "Collections — Q2 2026", date: "1 Jul 2026" },
-    { name: "Owner statements — May 2026", date: "3 Jun 2026" },
+    { name: "Owner statement — Salim Kato", date: "1 Jul 2026" },
+    { name: "Owner statement — Rehema Ssali", date: "1 Jul 2026" },
+    { name: "Owner statement — Diana Achieng", date: "3 Jun 2026" },
   ];
   return (
     <div className="grid gap-4 lg:grid-cols-3">
@@ -327,25 +333,27 @@ function ReportsTab() {
         <div className="mt-4 grid gap-4 sm:grid-cols-2">
           <Field label="Report type" htmlFor="rp-type">
             <select id="rp-type" className={selectClass} value={type} onChange={(e) => setType(e.target.value)}>
+              <option value="owner-statements">Owner statement</option>
               <option value="rent-roll">Rent roll</option>
               <option value="collections">Collections</option>
               <option value="arrears">Arrears</option>
-              <option value="owner-statements">Owner statements</option>
-              <option value="expenses">Expense report</option>
             </select>
           </Field>
-          <div />
-          <Field label="From" htmlFor="rp-from"><Input id="rp-from" type="date" value={from} onChange={(e) => setFrom(e.target.value)} /></Field>
-          <Field label="To" htmlFor="rp-to"><Input id="rp-to" type="date" value={to} onChange={(e) => setTo(e.target.value)} /></Field>
+          <Field label="Owner" htmlFor="rp-owner">
+            <select id="rp-owner" className={selectClass} value={ownerId} onChange={(e) => setOwnerId(e.target.value)}>
+              {owners.map((o) => <option key={o.id} value={o.id}>{o.name}</option>)}
+            </select>
+          </Field>
+          <Field label="Period ending" htmlFor="rp-to"><Input id="rp-to" type="date" value={to} onChange={(e) => setTo(e.target.value)} /></Field>
         </div>
-        <Button className="mt-5 gap-2" onClick={generate} loading={busy}><Download size={18} /> Generate PDF</Button>
+        <Button className="mt-5 gap-2" onClick={generate}><Download size={18} /> Generate PDF</Button>
       </Card>
       <Card className="p-6">
         <h3 className="mb-4 font-heading text-h3 font-semibold text-foreground">Recent reports</h3>
         <ul className="space-y-2">
-          {recent.map((r) => (
+          {recent.map((r, i) => (
             <li key={r.name}>
-              <button type="button" onClick={() => toast.info("Download", { description: "PDF download is mocked in this build." })}
+              <button type="button" onClick={() => { const { payload, filename } = statementPdf(owners[i % owners.length]?.id ?? ownerId); downloadPdf(payload, filename); }}
                 className="flex w-full items-center gap-3 rounded-lg border border-border p-3 text-left transition-colors hover:border-primary/40 hover:bg-surface-hover">
                 <FileLines size={18} className="text-muted" />
                 <span className="flex-1"><span className="block text-body text-foreground">{r.name}</span><span className="block text-caption text-muted">{r.date}</span></span>

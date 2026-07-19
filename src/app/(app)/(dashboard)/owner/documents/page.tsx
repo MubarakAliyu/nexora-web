@@ -7,10 +7,11 @@ import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
 import { DataTable, type Column } from "@/components/ui/data-table";
 import { selectClass } from "@/components/forms/field";
-import { toast } from "@/components/ui/sonner";
 import { useAsync, debugErrorFlag } from "@/lib/use-async";
 import { useSession } from "@/lib/stores/session";
 import { formatDate } from "@/lib/format";
+import { downloadPdf } from "@/lib/pdf/download";
+import { statementPdf, leasePdfForProperty } from "@/lib/pdf/builders";
 import { listProperties, type Property, type Scope } from "@/lib/api/admin";
 
 type DocType = "Management Agreement" | "Title Deed" | "Insurance Policy" | "Lease Agreement" | "Statement";
@@ -69,7 +70,15 @@ export default function OwnerDocumentsPage() {
       key: "dl", header: "", align: "right",
       render: (d) => (
         <button type="button" aria-label={`Download ${d.name}`}
-          onClick={(e) => { e.stopPropagation(); toast.success("Document downloaded", { description: `${d.name} — mocked in this build.` }); }}
+          onClick={(e) => {
+            e.stopPropagation();
+            if (d.type === "Lease Agreement") {
+              const lease = leasePdfForProperty(d.propertyId);
+              if (lease) { downloadPdf(lease.payload, lease.filename); return; }
+            }
+            const { payload, filename } = statementPdf(ownerId ?? "");
+            downloadPdf(payload, filename);
+          }}
           className="inline-flex h-8 w-8 items-center justify-center rounded-md border border-border text-muted transition-colors hover:border-primary hover:text-primary">
           <Download size={16} />
         </button>

@@ -4,7 +4,7 @@ import * as React from "react";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
-import { Plus, Clock, PenNib, TrashBin, AdjustmentsHorizontal } from "flowbite-react-icons/outline";
+import { Plus, Clock, PenNib, TrashBin, AdjustmentsHorizontal, FileLines } from "flowbite-react-icons/outline";
 import { PageHeader } from "@/components/app/page-header";
 import { StatusBadge } from "@/components/app/status";
 import { RowActions } from "@/components/app/row-actions";
@@ -19,6 +19,8 @@ import {
 } from "@/components/ui/dialog";
 import { toast } from "@/components/ui/sonner";
 import { useAsync, debugErrorFlag } from "@/lib/use-async";
+import { downloadPdf } from "@/lib/pdf/download";
+import { leasePdf } from "@/lib/pdf/builders";
 import { formatUGX, formatDate } from "@/lib/format";
 import {
   listLeases, createLease, updateLease, renewLease, terminateLease, deleteLease,
@@ -231,6 +233,7 @@ export default function LeasesPage() {
       render: (l) => (
         <RowActions actions={[
           { label: "Manage", icon: <AdjustmentsHorizontal size={16} />, onClick: () => setManage(l) },
+          { label: "Download agreement", icon: <FileLines size={16} />, onClick: () => { const { payload, filename } = leasePdf(l); downloadPdf(payload, filename); } },
           { label: "Edit", icon: <PenNib size={16} />, onClick: () => { setEditing(l); setFormOpen(true); } },
           { label: "Terminate", icon: <Clock size={16} />, onClick: () => setTerminating(l) },
           { label: "Delete", icon: <TrashBin size={16} />, onClick: () => setDeleting(l), danger: true, separatorBefore: true },

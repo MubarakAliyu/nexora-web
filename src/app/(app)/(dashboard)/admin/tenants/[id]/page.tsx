@@ -30,6 +30,8 @@ import { EmptyState } from "@/components/ui/empty-state";
 import { Skeleton, SkeletonText } from "@/components/ui/skeleton";
 import { toast } from "@/components/ui/sonner";
 import { useAsync, debugErrorFlag } from "@/lib/use-async";
+import { downloadPdf } from "@/lib/pdf/download";
+import { leasePdf, invoicePdf, receiptPdf } from "@/lib/pdf/builders";
 import { formatUGX, formatDate, fromNow } from "@/lib/format";
 import {
   getTenant,
@@ -242,12 +244,15 @@ export default function TenantDetailPage() {
         </TabsContent>
 
         <TabsContent value="documents">
-          <EmptyState
-            icon={<FileLines size={22} />}
-            title="No documents yet"
-            description="Signed lease, ID copies and correspondence will live here."
-            action={<Button variant="outline" onClick={() => toast.info("Upload document", { description: "Document upload is mocked in this build." })}>Upload document</Button>}
-          />
+          <Card className="p-6">
+            <h3 className="mb-4 font-heading text-h3 font-semibold text-foreground">Documents</h3>
+            <div className="grid gap-3 sm:grid-cols-3">
+              <Button variant="outline" className="justify-start gap-2" disabled={!lease} onClick={() => { if (lease) { const { payload, filename } = leasePdf(lease); downloadPdf(payload, filename); } }}><FileLines size={18} /> Lease agreement</Button>
+              <Button variant="outline" className="justify-start gap-2" disabled={invoices.length === 0} onClick={() => { if (invoices[0]) { const { payload, filename } = invoicePdf(invoices[0]); downloadPdf(payload, filename); } }}><FileLines size={18} /> Latest invoice</Button>
+              <Button variant="outline" className="justify-start gap-2" disabled={payments.length === 0} onClick={() => { if (payments[0]) { const { payload, filename } = receiptPdf(payments[0]); downloadPdf(payload, filename); } }}><FileLines size={18} /> Latest receipt</Button>
+            </div>
+            <p className="mt-4 text-caption text-muted">Generated PDFs use this tenant’s real lease, invoice and payment data.</p>
+          </Card>
         </TabsContent>
       </Tabs>
 
