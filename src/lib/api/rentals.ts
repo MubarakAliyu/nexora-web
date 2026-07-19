@@ -67,9 +67,16 @@ export async function listRentals(filters?: RentalFilters): Promise<RentalListin
   return rows;
 }
 
+export interface DateRange {
+  from: string; // ISO
+  to: string; // ISO
+}
+
 export interface RentalDetail {
   property: RentalListing;
   units: Unit[];
+  /** Booked date ranges (future, active) — used to block the booking calendar. */
+  bookedRanges: DateRange[];
 }
 
 export async function getRentalDetail(id: string): Promise<RentalDetail> {
@@ -77,7 +84,10 @@ export async function getRentalDetail(id: string): Promise<RentalDetail> {
   const property = db.properties.find((p) => p.id === id && p.rentalType);
   if (!property) throw new Error("Rental not found");
   const propUnits = db.units.filter((u) => u.propertyId === id);
-  return { property: asListing(property), units: propUnits };
+  const bookedRanges = db.bookings
+    .filter((b) => b.propertyId === id && b.status !== "cancelled" && new Date(b.checkOut).getTime() >= Date.now())
+    .map((b) => ({ from: b.checkIn, to: b.checkOut }));
+  return { property: asListing(property), units: propUnits, bookedRanges };
 }
 
 /** Distinct locations + amenities for building filter controls. */
