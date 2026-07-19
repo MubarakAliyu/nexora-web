@@ -17,7 +17,7 @@ export function WhatsAppButton() {
       initial={reduce ? false : { opacity: 0, y: 20 }}
       animate={reduce ? undefined : { opacity: 1, y: 0 }}
       transition={{ delay: 0.6, duration: 0.5, ease: [0.22, 1, 0.36, 1] }}
-      className="group fixed bottom-5 right-5 z-40 flex items-center focus-visible:outline-none"
+      className="group fixed bottom-32 right-5 z-40 flex items-center focus-visible:outline-none md:bottom-28"
     >
       {/* Label reveal on hover (desktop) */}
       <span className="pointer-events-none mr-3 hidden translate-x-2 rounded-md bg-foreground px-3 py-1.5 text-caption font-medium text-background opacity-0 shadow-md transition-all duration-300 group-hover:translate-x-0 group-hover:opacity-100 md:block">

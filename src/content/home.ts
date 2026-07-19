@@ -77,14 +77,12 @@ export interface ServiceItem {
 }
 
 export const services: ServiceItem[] = [
-  { title: "Property Management", blurb: "End-to-end management of residential and mixed-use properties.", slug: "property-management", icon: "building" },
-  { title: "Rental Management", blurb: "Tenant sourcing, leasing, rent collection and renewals.", slug: "rental-management", icon: "home" },
-  { title: "Facility Management", blurb: "Building systems, common areas and vendor coordination.", slug: "facility-management", icon: "cog" },
-  { title: "Cleaning & Housekeeping", blurb: "Premium cleaning for homes, offices and common spaces.", slug: "premium-cleaning", icon: "sparkles" },
-  { title: "Security & Concierge", blurb: "Trained security and concierge-grade resident services.", slug: "security-concierge", icon: "shield" },
-  { title: "Maintenance Coordination", blurb: "Fast, tracked repairs with trusted technicians.", slug: "maintenance-coordination", icon: "tools" },
-  { title: "Mobile Car Wash", blurb: "On-site vehicle care as a resident convenience.", slug: "mobile-car-wash", icon: "vehicle" },
-  { title: "Asset Optimisation", blurb: "Data-driven strategies to grow your property’s value.", slug: "asset-optimisation", icon: "chart" },
+  { title: "Property Management", blurb: "End-to-end management of residential, commercial and mixed-use properties.", slug: "property-management", icon: "building" },
+  { title: "Rental Management", blurb: "Long- and short-term rentals, tenant placement and occupancy management.", slug: "rental-management", icon: "home" },
+  { title: "Condominium Management", blurb: "Association management, shared facilities, security and resident coordination.", slug: "condominium-management", icon: "quality" },
+  { title: "Housekeeping & Cleaning", blurb: "Residential, commercial, deep, move-in/out and scheduled cleaning.", slug: "housekeeping-cleaning", icon: "sparkles" },
+  { title: "Home & Lifestyle", blurb: "Laundry, janitorial, gardening and mobile car wash services.", slug: "home-lifestyle", icon: "vehicle" },
+  { title: "Asset Optimization", blurb: "Data-driven strategies to grow your property’s value.", slug: "asset-optimization", icon: "chart" },
 ];
 
 export interface ValueProp {
@@ -94,7 +92,7 @@ export interface ValueProp {
 }
 
 export const whyChoose: ValueProp[] = [
-  { title: "International Governance", blurb: "Groupe M-Zi Inc. standards bring global accountability to local management.", icon: "globe" },
+  { title: "International Standards", blurb: "Global best practice and governance brought to local property management.", icon: "globe" },
   { title: "Radical Transparency", blurb: "Clear monthly statements and real-time visibility into your property.", icon: "eye" },
   { title: "Certified Quality", blurb: "Consistent, audited standards across every service we deliver.", icon: "quality" },
   { title: "Always Responsive", blurb: "A dedicated team and support that answers when you need it.", icon: "support" },

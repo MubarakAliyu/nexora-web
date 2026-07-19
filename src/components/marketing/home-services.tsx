@@ -16,7 +16,7 @@ export function HomeServices() {
         />
         <RevealGroup
           stagger={0.08}
-          className="mt-12 grid gap-5 sm:grid-cols-2 lg:grid-cols-4"
+          className="mt-12 grid gap-5 sm:grid-cols-2 lg:grid-cols-3"
         >
           {services.map((s) => (
             <RevealItem key={s.slug} className="h-full">
@@ -35,6 +35,9 @@ export function HomeServices() {
             </RevealItem>
           ))}
         </RevealGroup>
+        <div className="mt-12 flex justify-center">
+          <AnimatedLink href="/services">View All Services</AnimatedLink>
+        </div>
       </div>
     </section>
   );
