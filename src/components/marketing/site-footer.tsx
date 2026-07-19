@@ -39,11 +39,11 @@ export function SiteFooter() {
         <div className="flex flex-col gap-8 border-b border-background/15 pb-12 lg:flex-row lg:items-start lg:justify-between">
           <div className="max-w-md space-y-5">
             <Image
-              src="/brand/logo-white.svg"
+              src="/brand/logo-white.png"
               alt={site.name}
-              width={190}
-              height={42}
-              className="h-10 w-auto"
+              width={840}
+              height={310}
+              className="h-11 w-auto"
             />
             <p className="font-heading text-h3 font-medium text-background">
               {site.tagline}

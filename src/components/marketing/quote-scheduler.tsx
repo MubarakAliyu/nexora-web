@@ -120,7 +120,7 @@ export function QuoteScheduler() {
     <div className="flex flex-col border-b border-border p-6 md:border-b-0 md:border-r md:p-8 lg:w-[38%]">
       <div className="flex items-center gap-3">
         <span className="flex h-12 w-12 items-center justify-center rounded-xl border border-border bg-surface-hover">
-          <Image src="/brand/icon-mark.svg" alt="" width={26} height={26} />
+          <Image src="/brand/icon-mark.png" alt="" width={525} height={543} className="h-7 w-auto" />
         </span>
         <span className="text-caption font-medium uppercase tracking-[0.2em] text-muted">
           Nexora

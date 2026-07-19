@@ -20,11 +20,11 @@ export default function AuthLayout({ children }: { children: ReactNode }) {
         <div className="relative z-10 flex h-full flex-col justify-between p-12">
           <Link href="/" className="inline-block">
             <Image
-              src="/brand/logo-white.svg"
+              src="/brand/logo-white.png"
               alt="Nexora"
-              width={180}
-              height={40}
-              className="h-9 w-auto"
+              width={840}
+              height={310}
+              className="h-11 w-auto"
             />
           </Link>
           <div>
@@ -45,11 +45,11 @@ export default function AuthLayout({ children }: { children: ReactNode }) {
         <div className="w-full max-w-md">
           <Link href="/" className="mb-8 inline-block lg:hidden">
             <Image
-              src="/brand/logo-primary.svg"
+              src="/brand/logo-primary.png"
               alt="Nexora"
-              width={160}
-              height={37}
-              className="h-8 w-auto"
+              width={840}
+              height={310}
+              className="h-9 w-auto"
             />
           </Link>
           {children}

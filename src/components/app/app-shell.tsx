@@ -63,9 +63,9 @@ function initials(name: string) {
 
 const brandLogo = (collapsed: boolean) =>
   collapsed ? (
-    <Image src="/brand/icon-mark.svg" alt="Nexora" width={32} height={32} className="h-8 w-8" />
+    <Image src="/brand/icon-mark.png" alt="Nexora" width={525} height={543} className="h-8 w-auto" />
   ) : (
-    <Image src="/brand/logo-primary.svg" alt="Nexora" width={150} height={35} className="h-7 w-auto" />
+    <Image src="/brand/logo-primary.png" alt="Nexora" width={840} height={310} className="h-9 w-auto" />
   );
 
 export function AppShell({ children }: { children: React.ReactNode }) {

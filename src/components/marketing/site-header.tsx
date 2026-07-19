@@ -51,7 +51,7 @@ export function SiteHeader({ hasHero }: { hasHero: boolean }) {
           className="relative block h-9 w-[170px] shrink-0 rounded-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2 focus-visible:ring-offset-transparent"
         >
           <Image
-            src="/brand/logo-white.svg"
+            src="/brand/logo-white.png"
             alt=""
             fill
             priority
@@ -62,7 +62,7 @@ export function SiteHeader({ hasHero }: { hasHero: boolean }) {
             )}
           />
           <Image
-            src="/brand/logo-primary.svg"
+            src="/brand/logo-primary.png"
             alt={site.name}
             fill
             priority
