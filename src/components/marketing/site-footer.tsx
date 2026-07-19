@@ -136,7 +136,7 @@ export function SiteFooter() {
 
         {/* Bottom bar */}
         <div className="flex flex-col items-center justify-between gap-3 border-t border-background/15 pt-8 text-caption text-background/60 sm:flex-row">
-          <p>{site.company}</p>
+          <p>{site.tagline}</p>
           <p>
             © {year} {site.name}. All rights reserved.
           </p>

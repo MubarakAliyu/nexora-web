@@ -26,7 +26,7 @@ const typeScale = [
   { label: "H2 · Cinzel · 28 / 600", node: <Heading as="h2" size="h2">Institutional Trust</Heading> },
   { label: "H3 · Cinzel · 22 / 600", node: <Heading as="h3" size="h3">Rental & Property Management</Heading> },
   { label: "Body · Montserrat · 16 / 400", node: <Text variant="body">Nexora manages residential, commercial and institutional properties with international-grade governance and transparent monthly reporting.</Text> },
-  { label: "Caption · Montserrat · 13 · tracked", node: <Text variant="caption">Kampala, Uganda · A Groupe M-Zi Inc. Company</Text> },
+  { label: "Caption · Montserrat · 13 · tracked", node: <Text variant="caption">Kampala, Uganda · Nexora Property Management</Text> },
 ];
 
 export default function StyleGuidePage() {

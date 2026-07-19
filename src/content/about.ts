@@ -6,7 +6,7 @@ export const aboutHero = {
   eyebrow: "About Nexora",
   title: "Property management, elevated by trust.",
   subtitle:
-    "A Kampala-based property management company delivering global standards of transparency and care — backed by the international governance of Groupe M-Zi Inc.",
+    "A Kampala-based property management company delivering global standards of transparency and care — with the discipline and accountability owners can rely on.",
   image: "/images/properties/villa-minimalist.jpg",
   imageAlt: "Minimalist white villa managed by Nexora",
 };
@@ -16,7 +16,7 @@ export const aboutStory = {
   heading: "Built in Kampala. Governed to global standards.",
   body: [
     "Nexora was founded to close a simple gap: property owners in Uganda deserved management that is as transparent, accountable and professional as anything in the world’s leading markets.",
-    "We operate on the ground across Kampala and beyond — leasing, collecting, maintaining and caring for residential, commercial and institutional properties — while our parent, Groupe M-Zi Inc. (Canada), holds us to international standards of reporting and governance.",
+    "We operate on the ground across Kampala and beyond — leasing, collecting, maintaining and caring for residential, commercial and institutional properties — while holding ourselves to international standards of reporting and governance.",
     "The result is a company that combines local operational excellence with the discipline and clarity that owners, investors and residents can rely on.",
   ],
   image: "/images/properties/aerial-neighbourhood.jpg",

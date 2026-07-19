@@ -58,15 +58,12 @@ export const primaryNav: NavLink[] = [
 /* ------------------------------------------------------ service lines */
 
 export const services: NavLink[] = [
-  { label: "Rental Management", href: "/services/rental-management" },
   { label: "Property Management", href: "/services/property-management" },
+  { label: "Rental Management", href: "/services/rental-management" },
   { label: "Condominium Management", href: "/services/condominium-management" },
-  { label: "Facility Management", href: "/services/facility-management" },
-  { label: "Premium Cleaning & Housekeeping", href: "/services/premium-cleaning" },
-  { label: "Security & Concierge", href: "/services/security-concierge" },
-  { label: "Maintenance Coordination", href: "/services/maintenance-coordination" },
-  { label: "Mobile Car Wash", href: "/services/mobile-car-wash" },
-  { label: "Asset Optimisation", href: "/services/asset-optimisation" },
+  { label: "Housekeeping & Cleaning", href: "/services/housekeeping-cleaning" },
+  { label: "Home & Lifestyle", href: "/services/home-lifestyle" },
+  { label: "Asset Optimization", href: "/services/asset-optimization" },
 ];
 
 /* --------------------------------------------------------- footer nav */
@@ -122,7 +119,6 @@ export const site = {
   name: "Nexora Property Management",
   shortName: "Nexora",
   tagline: "Managing Properties. Maximizing Value.",
-  company: "A Groupe M-Zi Inc. Company",
   quote:
     "Every property is a promise — to protect value, to serve people, and to endure.",
 } as const;

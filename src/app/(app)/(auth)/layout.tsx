@@ -36,7 +36,7 @@ export default function AuthLayout({ children }: { children: ReactNode }) {
               owners, investors and residents.
             </p>
           </div>
-          <p className="text-caption text-background/60">A Groupe M-Zi Inc. Company</p>
+          <p className="text-caption text-background/60">Nexora Property Management · Kampala, Uganda</p>
         </div>
       </div>
 

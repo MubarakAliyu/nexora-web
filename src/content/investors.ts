@@ -16,7 +16,7 @@ export interface InvestorValue {
 }
 
 export const whyInvest: InvestorValue[] = [
-  { title: "International Governance", blurb: "Groupe M-Zi Inc. standards bring global accountability to your investment.", icon: "globe" },
+  { title: "International Standards", blurb: "Global best-practice governance brings real accountability to your investment.", icon: "globe" },
   { title: "Radical Transparency", blurb: "Real-time visibility and clear monthly statements — see everything, always.", icon: "eye" },
   { title: "Protected Assets", blurb: "Proactive maintenance and diligence that safeguard your property’s value.", icon: "protection" },
   { title: "Reliable Returns", blurb: "Optimised occupancy and pricing to maximise your rental income.", icon: "chart" },

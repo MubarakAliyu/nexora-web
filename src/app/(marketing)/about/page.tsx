@@ -23,7 +23,7 @@ import {
 export const metadata: Metadata = {
   title: "About",
   description:
-    "Nexora is a Kampala-based property management company backed by the international governance of Groupe M-Zi Inc. — combining local excellence with global standards.",
+    "Nexora is a Kampala-based property management company combining local operational excellence with international standards of transparency and governance.",
 };
 
 export default function AboutPage() {

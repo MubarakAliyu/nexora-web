@@ -61,7 +61,7 @@ export const about = {
   eyebrow: "About Nexora",
   heading: "Integrated property management, built on trust.",
   body: [
-    "Nexora is a Kampala-based property management company delivering rental, condominium and facility management under one accountable roof — backed by the international governance of Groupe M-Zi Inc. (Canada).",
+    "Nexora is a Kampala-based property management company delivering property, rental, condominium and lifestyle services under one accountable roof — built on international standards of governance and transparency.",
     "We combine local operational excellence with global standards of transparency, so owners enjoy true peace of mind and residents enjoy a home that is cared for.",
   ],
   cta: { label: "Learn more about us", href: "/about" },
