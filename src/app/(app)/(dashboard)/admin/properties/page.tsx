@@ -30,8 +30,26 @@ const schema = z.object({
   category: z.string().min(1, "Choose a category"),
   units: z.number().int("Enter a whole number").min(1, "At least 1 unit"),
   status: z.string().min(1),
+  rentalType: z.enum(["short-term", "long-term"]),
+  rentalPayment: z.enum(["online", "manual"]),
+  bedrooms: z.number().min(0),
+  minStay: z.number().min(0),
+  maxStay: z.number().min(0),
+  amenities: z.string(),
+  dailyRate: z.number().min(0),
+  weeklyRate: z.number().min(0),
+  monthlyRate: z.number().min(0),
+  cleaningFee: z.number().min(0),
+  annualRent: z.number().min(0),
 });
 type Values = z.infer<typeof schema>;
+
+const baseDefaults: Values = {
+  name: "", location: "", category: "", units: 1, status: "onboarding",
+  rentalType: "long-term", rentalPayment: "manual", bedrooms: 0,
+  minStay: 6, maxStay: 24, amenities: "",
+  dailyRate: 0, weeklyRate: 0, monthlyRate: 0, cleaningFee: 80000, annualRent: 0,
+};
 
 function PropertyFormDialog({
   open, onOpenChange, editing, onDone,
@@ -42,28 +60,56 @@ function PropertyFormDialog({
   onDone: () => void;
 }) {
   const isEdit = !!editing;
-  const { register, handleSubmit, reset, formState: { errors, isSubmitting } } = useForm<Values>({
+  const { register, handleSubmit, reset, watch, formState: { errors, isSubmitting } } = useForm<Values>({
     resolver: zodResolver(schema),
-    defaultValues: { name: "", location: "", category: "", units: 1, status: "onboarding" },
+    defaultValues: baseDefaults,
   });
+  const rentalType = watch("rentalType");
 
   React.useEffect(() => {
     if (open) {
       reset(
         editing
-          ? { name: editing.name, location: editing.location, category: editing.category, units: editing.units, status: editing.status }
-          : { name: "", location: "", category: "", units: 1, status: "onboarding" },
+          ? {
+              name: editing.name, location: editing.location, category: editing.category,
+              units: editing.units, status: editing.status,
+              rentalType: editing.rentalType ?? "long-term",
+              rentalPayment: editing.rentalPayment ?? (editing.rentalType === "short-term" ? "online" : "manual"),
+              bedrooms: editing.bedrooms ?? 0,
+              minStay: editing.minStay ?? (editing.rentalType === "short-term" ? 2 : 6),
+              maxStay: editing.maxStay ?? (editing.rentalType === "short-term" ? 30 : 24),
+              amenities: (editing.amenities ?? []).join(", "),
+              dailyRate: editing.shortTerm?.daily ?? 0,
+              weeklyRate: editing.shortTerm?.weekly ?? 0,
+              monthlyRate: editing.shortTerm?.monthly ?? 0,
+              cleaningFee: editing.shortTerm?.cleaningFee ?? 80000,
+              annualRent: editing.annualRent ?? 0,
+            }
+          : baseDefaults,
       );
     }
   }, [open, editing, reset]);
 
   const onSubmit = async (v: Values) => {
+    const rental = {
+      rentalType: v.rentalType,
+      rentalPayment: v.rentalPayment,
+      minStay: v.minStay,
+      maxStay: v.maxStay,
+      bedrooms: v.bedrooms,
+      amenities: v.amenities ? v.amenities.split(",").map((s) => s.trim()).filter(Boolean) : [],
+      dailyRate: v.dailyRate,
+      weeklyRate: v.weeklyRate,
+      monthlyRate: v.monthlyRate,
+      cleaningFee: v.cleaningFee,
+      annualRent: v.annualRent,
+    };
     try {
       if (isEdit && editing) {
-        await updateProperty(editing.id, { name: v.name, location: v.location, category: v.category as Property["category"], units: v.units, status: v.status as Property["status"] });
+        await updateProperty(editing.id, { name: v.name, location: v.location, category: v.category as Property["category"], units: v.units, status: v.status as Property["status"], ...rental });
         toast.success("Property updated", { description: `${v.name} was saved.` });
       } else {
-        await createProperty({ name: v.name, location: v.location, category: v.category as Property["category"], units: v.units, status: v.status as Property["status"] });
+        await createProperty({ name: v.name, location: v.location, category: v.category as Property["category"], units: v.units, status: v.status as Property["status"], ...rental });
         toast.success("Property added", { description: `${v.name} is now ${v.status}.` });
       }
       onOpenChange(false);
@@ -75,7 +121,7 @@ function PropertyFormDialog({
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent>
+      <DialogContent className="max-h-[90vh] overflow-y-auto">
         <DialogHeader>
           <DialogTitle>{isEdit ? "Edit property" : "Add a property"}</DialogTitle>
           <DialogDescription>{isEdit ? "Update this property’s details." : "Register a new property to begin onboarding."}</DialogDescription>
@@ -105,6 +151,64 @@ function PropertyFormDialog({
               </select>
             </Field>
           </div>
+
+          {/* Rental configuration */}
+          <div className="rounded-lg border border-border bg-surface-hover p-4">
+            <p className="mb-3 text-caption font-semibold uppercase tracking-wide text-muted">Rental configuration</p>
+            <div className="grid gap-4 sm:grid-cols-2">
+              <Field label="Rental type" htmlFor="ap-rtype">
+                <select id="ap-rtype" className={selectClass} {...register("rentalType")}>
+                  <option value="long-term">Long-term (inquiry)</option>
+                  <option value="short-term">Short-term (instant booking)</option>
+                </select>
+              </Field>
+              <Field label="Payment method" htmlFor="ap-pay">
+                <select id="ap-pay" className={selectClass} {...register("rentalPayment")}>
+                  <option value="manual">Manual (offline)</option>
+                  <option value="online">Online</option>
+                </select>
+              </Field>
+              <Field label="Bedrooms (typical)" htmlFor="ap-beds">
+                <Input id="ap-beds" type="number" {...register("bedrooms", { valueAsNumber: true })} />
+              </Field>
+              <Field label={rentalType === "short-term" ? "Min / max stay (nights)" : "Min / max stay (months)"} htmlFor="ap-minstay">
+                <div className="flex gap-2">
+                  <Input id="ap-minstay" type="number" aria-label="Minimum stay" {...register("minStay", { valueAsNumber: true })} />
+                  <Input aria-label="Maximum stay" type="number" {...register("maxStay", { valueAsNumber: true })} />
+                </div>
+              </Field>
+            </div>
+
+            {rentalType === "short-term" ? (
+              <div className="mt-4 grid gap-4 sm:grid-cols-2">
+                <Field label="Daily rate (UGX)" htmlFor="ap-daily">
+                  <Input id="ap-daily" type="number" {...register("dailyRate", { valueAsNumber: true })} />
+                </Field>
+                <Field label="Weekly rate (UGX)" htmlFor="ap-weekly">
+                  <Input id="ap-weekly" type="number" {...register("weeklyRate", { valueAsNumber: true })} />
+                </Field>
+                <Field label="Monthly rate (UGX)" htmlFor="ap-monthly">
+                  <Input id="ap-monthly" type="number" {...register("monthlyRate", { valueAsNumber: true })} />
+                </Field>
+                <Field label="Cleaning fee (UGX)" htmlFor="ap-clean">
+                  <Input id="ap-clean" type="number" {...register("cleaningFee", { valueAsNumber: true })} />
+                </Field>
+              </div>
+            ) : (
+              <div className="mt-4">
+                <Field label="Annual rent (UGX)" htmlFor="ap-annual">
+                  <Input id="ap-annual" type="number" {...register("annualRent", { valueAsNumber: true })} />
+                </Field>
+              </div>
+            )}
+
+            <div className="mt-4">
+              <Field label="Amenities (comma-separated)" htmlFor="ap-amen">
+                <Input id="ap-amen" placeholder="WiFi, Secure Parking, 24/7 Security" {...register("amenities")} />
+              </Field>
+            </div>
+          </div>
+
           <DialogFooter>
             <DialogClose asChild><Button type="button" variant="outline">Cancel</Button></DialogClose>
             <Button type="submit" loading={isSubmitting}>{isEdit ? "Save changes" : "Add property"}</Button>

@@ -26,6 +26,8 @@ import type {
   Owner,
   Payment,
   Property,
+  RentalType,
+  RentalPaymentMode,
   Staff,
   Tenant,
   TicketStatus,
@@ -37,6 +39,7 @@ import type {
 export type { Activity, Announcement, AudienceKind, BroadcastChannel, CommLog, Expense, ExpenseCategory, Invoice, Lead, LeadActivity, Lease, MaintenanceTicket, Owner, Payment, Property, Staff, Tenant, Unit };
 export type { Building, LeaseStatus, InvoiceStatus, TicketStatus, TicketPriority, UnitStatus, UnitType, PropertyStatus, TicketCategory, PaymentMethod, LeadStatus } from "@/lib/mock/types";
 export type { RoleDef, PermissionSet, WalletTx, BankAccount, TxType, TxStatus } from "@/lib/mock/types";
+export type { RentalType, RentalPaymentMode, RentalListing, ShortTermPricing } from "@/lib/mock/types";
 export const PERMISSION_MODULES = db.PERMISSION_MODULES;
 
 const BEDROOMS_BY_TYPE: Record<UnitType, number> = {
@@ -216,6 +219,44 @@ export interface PropertyInput {
   ownerId?: string;
   status?: Property["status"];
   image?: string;
+  /* rental listing config */
+  rentalType?: RentalType;
+  rentalPayment?: RentalPaymentMode;
+  minStay?: number;
+  maxStay?: number;
+  bedrooms?: number;
+  amenities?: string[];
+  /* short-term pricing */
+  dailyRate?: number;
+  weeklyRate?: number;
+  monthlyRate?: number;
+  cleaningFee?: number;
+  /* long-term pricing */
+  annualRent?: number;
+}
+
+/** Build the rental-config slice of a Property from a PropertyInput. */
+function rentalConfigFrom(input: Partial<PropertyInput>): Partial<Property> {
+  const out: Partial<Property> = {};
+  if (input.rentalType) out.rentalType = input.rentalType;
+  if (input.rentalPayment) out.rentalPayment = input.rentalPayment;
+  if (input.minStay != null) out.minStay = input.minStay;
+  if (input.maxStay != null) out.maxStay = input.maxStay;
+  if (input.bedrooms != null) out.bedrooms = input.bedrooms;
+  if (input.amenities) out.amenities = input.amenities;
+  if (input.rentalType === "short-term") {
+    out.shortTerm = {
+      daily: input.dailyRate ?? 0,
+      weekly: input.weeklyRate ?? (input.dailyRate ?? 0) * 6,
+      monthly: input.monthlyRate ?? (input.dailyRate ?? 0) * 24,
+      cleaningFee: input.cleaningFee ?? 0,
+    };
+    out.annualRent = undefined;
+  } else if (input.rentalType === "long-term") {
+    out.annualRent = input.annualRent ?? 0;
+    out.shortTerm = undefined;
+  }
+  return out;
 }
 
 export async function createProperty(input: PropertyInput): Promise<Property> {
@@ -234,6 +275,12 @@ export async function createProperty(input: PropertyInput): Promise<Property> {
     monthlyRevenue: 0,
     buildings: [{ id: `bld_${id}_1`, name: "Main Block", floors: Math.max(1, Math.ceil(input.units / 4)), units: input.units }],
     since: db.NOW_ISO,
+    rentalType: input.rentalType ?? "long-term",
+    rentalPayment: input.rentalPayment ?? (input.rentalType === "short-term" ? "online" : "manual"),
+    amenities: input.amenities ?? [],
+    bedrooms: input.bedrooms ?? 0,
+    availableUnits: input.units,
+    ...rentalConfigFrom(input),
   };
   db.properties.unshift(property);
   const owner = db.owners.find((o) => o.id === property.ownerId);
@@ -261,6 +308,7 @@ export async function updateProperty(id: string, patch: Partial<PropertyInput>):
     category: patch.category ?? property.category,
     units: patch.units ?? property.units,
     status: patch.status ?? property.status,
+    ...rentalConfigFrom(patch),
   });
   recordMutation({
     entityType: "property",

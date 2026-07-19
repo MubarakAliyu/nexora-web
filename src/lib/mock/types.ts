@@ -53,6 +53,18 @@ export interface CommLog {
 
 export type PropertyStatus = "managed" | "onboarding" | "prospect";
 
+/** Rental listing configuration. Short-term = instant online booking;
+ *  long-term = inquiry-only (manual payment, no instant booking). */
+export type RentalType = "short-term" | "long-term";
+export type RentalPaymentMode = "online" | "manual";
+
+export interface ShortTermPricing {
+  daily: number; // UGX / night
+  weekly: number; // UGX / week
+  monthly: number; // UGX / month
+  cleaningFee: number; // UGX per booking
+}
+
 export interface Building {
   id: string;
   name: string;
@@ -73,6 +85,33 @@ export interface Property {
   monthlyRevenue: number; // UGX
   buildings: Building[];
   since: string;
+  /* ---- rental listing config (Revision Pass 2) ----
+     Optional on the base entity (so existing construction stays intact);
+     populated for every property at seed time. Use `RentalListing` when you
+     need them guaranteed present. */
+  rentalType?: RentalType;
+  rentalPayment?: RentalPaymentMode;
+  /** Short-term: nights. Long-term: months. */
+  minStay?: number;
+  maxStay?: number;
+  /** Present for short-term rentals. */
+  shortTerm?: ShortTermPricing;
+  /** Present for long-term rentals (UGX / year). */
+  annualRent?: number;
+  amenities?: string[];
+  /** Typical bedroom count, used for browse filtering. */
+  bedrooms?: number;
+  /** Units currently available to rent/book. */
+  availableUnits?: number;
+}
+
+/** A property guaranteed to carry rental-listing config (post-seed). */
+export interface RentalListing extends Property {
+  rentalType: RentalType;
+  rentalPayment: RentalPaymentMode;
+  amenities: string[];
+  bedrooms: number;
+  availableUnits: number;
 }
 
 /* -------------------------------------------------------------- units */
@@ -320,6 +359,57 @@ export interface BankAccount {
   branch: string;
   swift: string;
   primary: boolean;
+}
+
+/* ----------------------------------------------------- bookings */
+
+export type BookingStatus = "confirmed" | "pending" | "cancelled" | "completed";
+
+/** Short-term rental booking (instant, online-paid). */
+export interface Booking {
+  id: string;
+  reference: string; // NX-BK-XXXXXX
+  propertyId: string;
+  propertyName: string;
+  unitId?: string;
+  unitLabel?: string;
+  guestName: string;
+  guestEmail: string;
+  guestPhone: string;
+  adults: number;
+  children: number;
+  specialRequests?: string;
+  checkIn: string; // ISO date
+  checkOut: string; // ISO date
+  nights: number;
+  nightlyRate: number;
+  cleaningFee: number;
+  taxes: number;
+  total: number;
+  paymentMethod: string; // flutterwave | mobile_money | card
+  status: BookingStatus;
+  createdAt: string; // ISO
+}
+
+export type ServiceBookingKind = "cleaning" | "lifestyle";
+
+/** Cleaning / Home & Lifestyle service booking. */
+export interface ServiceBooking {
+  id: string;
+  reference: string; // NX-SV-XXXXXX
+  kind: ServiceBookingKind;
+  category: string; // e.g. "Residential Cleaning" | "Laundry"
+  name: string;
+  email: string;
+  phone: string;
+  location: string;
+  propertyType?: string;
+  size?: string;
+  details?: string; // items/weight, vehicle type, area size…
+  date: string; // ISO preferred date
+  time: string; // preferred time slot
+  status: BookingStatus;
+  createdAt: string; // ISO
 }
 
 /* -------------------------------------------------- activity feed */

@@ -16,7 +16,10 @@ import type {
   Activity,
   Announcement,
   BankAccount,
+  Booking,
+  BookingStatus,
   Building,
+  ServiceBooking,
   PermissionSet,
   RoleDef,
   TxStatus,
@@ -209,6 +212,64 @@ function makeUnits(p: Property) {
   }
 }
 properties.forEach(makeUnits);
+
+/* ------------------------------------------------ rental listing config */
+
+// Dedicated rng so rental enrichment never shifts the shared `rnd` sequence
+// (units, tenants, invoices… stay byte-identical to before this feature).
+const rrnd = mulberry32(775533);
+const rpick = <T>(arr: T[]): T => arr[Math.floor(rrnd() * arr.length)];
+const rint = (min: number, max: number) => Math.floor(rrnd() * (max - min + 1)) + min;
+
+const AMENITY_POOL = [
+  "WiFi", "Secure Parking", "24/7 Security", "Backup Generator", "Water Backup",
+  "Swimming Pool", "Fully Furnished", "Air Conditioning", "Gym", "Elevator",
+  "Private Balcony", "CCTV", "Landscaped Garden", "Pet Friendly", "Housekeeping",
+];
+
+// Curated short-term set (holiday / serviced lets). Salim owns entebbe-villas
+// + kira-gardens + muyenga-heights, so he holds several short-term properties
+// for the owner-portal rental transparency view (Revision Pass 3).
+const SHORT_TERM_IDS = new Set([
+  "entebbe-villas", "kira-gardens", "muyenga-heights", "munyonyo-suites",
+  "nakasero-heights", "naguru-view", "bugolobi-lofts",
+]);
+
+function enrichRental(p: Property) {
+  const base = avgRentFor(p.category);
+  const monthly = Math.round(base / 50_000) * 50_000;
+  const commercial = p.category === "Commercial" || p.category === "Managed Facilities";
+
+  const pool = [...AMENITY_POOL];
+  const amenities: string[] = [];
+  const n = rint(4, 7);
+  for (let i = 0; i < n && pool.length; i++) {
+    amenities.push(pool.splice(Math.floor(rrnd() * pool.length), 1)[0]);
+  }
+
+  const vacant = units.filter((u) => u.propertyId === p.id && u.status === "vacant").length;
+
+  p.amenities = amenities;
+  p.bedrooms = commercial ? 0 : rpick([1, 2, 2, 3, 3, 4]);
+  p.availableUnits = Math.max(1, vacant || rint(1, 4));
+
+  // Commercial / facilities are always long-term; residential follows the set.
+  if (!commercial && SHORT_TERM_IDS.has(p.id)) {
+    const daily = Math.round(monthly / 24 / 1_000) * 1_000;
+    p.rentalType = "short-term";
+    p.rentalPayment = "online";
+    p.minStay = 2;
+    p.maxStay = 30;
+    p.shortTerm = { daily, weekly: daily * 6, monthly, cleaningFee: 80_000 };
+  } else {
+    p.rentalType = "long-term";
+    p.rentalPayment = "manual";
+    p.minStay = 6;
+    p.maxStay = 24;
+    p.annualRent = monthly * 12;
+  }
+}
+properties.forEach(enrichRental);
 
 /* ------------------------------------------------------- tenants + leases */
 
@@ -530,6 +591,82 @@ export const activities: Activity[] = [
     return { id: `af_lease_${i}`, at: daysAgo(int(1, 8)), kind: "lease" as const, text: `Lease expiring soon — ${t?.name ?? "tenant"}` };
   }),
 ].sort((a, b) => (a.at < b.at ? 1 : -1));
+
+/* --------------------------------------------------------- bookings */
+
+const rFullName = () => `${rpick(firstNames)} ${rpick(lastNames)}`;
+const rEmail = (name: string) => `${name.toLowerCase().replace(/[^a-z]+/g, ".")}@example.com`;
+const rPhone = () => `+2567${rint(0, 9)}${rint(1000000, 9999999)}`;
+
+const bookingStatuses: BookingStatus[] = ["confirmed", "confirmed", "completed", "pending"];
+const bookingPayMethods = ["flutterwave", "mobile_money", "card"];
+const shortTermProps = properties.filter((p) => p.rentalType === "short-term");
+
+/** Seeded short-term bookings — several land on Salim's properties so the
+ *  owner-portal rental view and admin Bookings module (Pass 3) have data. */
+export const bookings: Booking[] = Array.from({ length: 14 }, (_, i) => {
+  const p = rpick(shortTermProps);
+  const st = p.shortTerm!;
+  const nights = rint(2, 12);
+  const checkInMs = NOW.getTime() + rint(-45, 55) * DAY;
+  const checkOutMs = checkInMs + nights * DAY;
+  const propUnits = units.filter((u) => u.propertyId === p.id);
+  const unit = propUnits.length ? rpick(propUnits) : undefined;
+  const subtotal = st.daily * nights + st.cleaningFee;
+  const taxes = Math.round((subtotal * 0.18) / 1000) * 1000;
+  const name = rFullName();
+  const status = checkOutMs < NOW.getTime() ? "completed" : rpick(bookingStatuses);
+  return {
+    id: `bkg_${i + 1}`,
+    reference: `NX-BK-${rint(100000, 999999)}`,
+    propertyId: p.id,
+    propertyName: p.name,
+    unitId: unit?.id,
+    unitLabel: unit?.label,
+    guestName: name,
+    guestEmail: rEmail(name),
+    guestPhone: rPhone(),
+    adults: rint(1, 4),
+    children: rint(0, 3),
+    checkIn: iso(checkInMs),
+    checkOut: iso(checkOutMs),
+    nights,
+    nightlyRate: st.daily,
+    cleaningFee: st.cleaningFee,
+    taxes,
+    total: subtotal + taxes,
+    paymentMethod: rpick(bookingPayMethods),
+    status,
+    createdAt: iso(checkInMs - rint(3, 30) * DAY),
+  };
+}).sort((a, b) => (a.createdAt < b.createdAt ? 1 : -1));
+
+const cleaningCats = ["Residential Cleaning", "Commercial Cleaning", "Deep Cleaning", "Move-In/Move-Out", "Event Cleaning", "Facility Cleaning", "Scheduled Programme"];
+const lifestyleCats = ["Laundry", "Mobile Car Wash", "Gardening & Lawn", "Janitorial"];
+const timeSlots = ["08:00–10:00", "10:00–12:00", "12:00–14:00", "14:00–16:00", "16:00–18:00"];
+
+export const serviceBookings: ServiceBooking[] = Array.from({ length: 10 }, (_, i) => {
+  const kind: ServiceBooking["kind"] = i % 2 === 0 ? "cleaning" : "lifestyle";
+  const category = kind === "cleaning" ? rpick(cleaningCats) : rpick(lifestyleCats);
+  const name = rFullName();
+  const createdMs = NOW.getTime() - rint(1, 40) * DAY;
+  const status = rpick(["confirmed", "completed", "pending", "confirmed"] as BookingStatus[]);
+  return {
+    id: `svb_${i + 1}`,
+    reference: `NX-SV-${rint(100000, 999999)}`,
+    kind,
+    category,
+    name,
+    email: rEmail(name),
+    phone: rPhone(),
+    location: rpick(["Kololo, Kampala", "Naguru, Kampala", "Muyenga, Kampala", "Ntinda, Kampala", "Entebbe"]),
+    propertyType: kind === "cleaning" ? rpick(["Apartment", "House", "Office", "Retail"]) : undefined,
+    date: iso(NOW.getTime() + rint(1, 20) * DAY),
+    time: rpick(timeSlots),
+    status,
+    createdAt: iso(createdMs),
+  };
+}).sort((a, b) => (a.createdAt < b.createdAt ? 1 : -1));
 
 /* ------------------------------------------------------------ helpers */
 
