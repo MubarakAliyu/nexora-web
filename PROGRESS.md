@@ -578,6 +578,36 @@ state; prefer instant/conditional/keyed.
 
 ---
 
+## Admin Live Upgrade — Pass 4 ✅ (Branded PDFs + integration polish) — ADMIN ENHANCEMENT COMPLETE
+
+The 4-pass admin enhancement is **COMPLETE**. Pass 4 adds client-side branded PDF generation and
+wires every download stub across all three portals.
+
+- **PDF generator** (`lib/pdf/*`): `@react-pdf/renderer`, **dynamically imported** inside `downloadPdf`
+  so it's a client-only, code-split chunk — the full `npm run build` passes clean (verified). `theme.ts`
+  (brand colours + logo PNG + company constants; Helvetica for load-safe generation). `documents.tsx`:
+  shared branded Header (logo + company + orange-underlined title) / Footer (reg + tagline + page
+  numbers) + the four documents. `builders.ts`: entity → payload (real store data). `download.ts`:
+  blob → browser download + toast.
+- **4 branded documents:** Invoice (bill-to, line-items table, total, payment instructions), Receipt
+  (PAID stamp, amount/balance), Owner Statement (per-property breakdown + portfolio totals +
+  disbursement), Lease Agreement (parties, terms table, 6 clauses, signature block).
+- **Wired stubs** — Admin: Finance invoices *View PDF*, payments *Receipt*, Reports *Owner Statement*
+  generator + recent, Leases *Download agreement*, Owner detail *Statement*, Tenant detail Documents
+  (lease/invoice/receipt). Owner: reports, financials export, documents (lease→Lease PDF, else
+  Statement). Tenant: payment-history receipts.
+- **Verified live:** all 4 types generate real files with sensible names + success toasts —
+  `Nexora-Invoice-INV-2026-0224-July-2026.pdf`, `Nexora-Statement-Salim-Kato-Jun-2026.pdf`,
+  `Nexora-Lease-LSE-LSE1.pdf`, `Nexora-Receipt-NX583700.pdf`. Owner portal still reconciles (Salim's
+  statement generates from his real 4-property data). **Full `npm run build` clean** (first since
+  Batch 9, with all Pass 1–4 additions). Committed in chunks (pdf-generator / stub-wiring).
+
+**Admin dashboard is now a fully live, state-managed product:** dark mode, live state engine, full CRUD
+for every entity, delete confirmations, 7-tab Settings, RBAC roles, Wallet, audit trail, system
+notifications, and branded PDFs. Next: **Batch 11 — Tenant Portal.**
+
+---
+
 ## Admin Live Upgrade — Pass 3 ✅ (Settings expansion + Security + Wallet + Audit Trail)
 
 **Data layer:** RBAC `roleDefs` (7 PRD roles + per-module permission matrix) + role CRUD; wallet
