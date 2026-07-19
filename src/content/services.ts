@@ -1,12 +1,19 @@
 /**
  * Services content (typed) — powers /services and every /services/[slug] page.
  * Slugs here are the single source of truth for the dynamic route.
+ *
+ * Six service categories (Nexora revision). Each carries a service-specific CTA.
  */
 
 export interface SubService {
   icon: string;
   title: string;
   desc: string;
+}
+
+export interface ServiceCta {
+  label: string;
+  href: string;
 }
 
 export interface Service {
@@ -23,82 +30,94 @@ export interface Service {
   included: SubService[];
   forWho: string[];
   pricingNote: string;
+  /** Service-specific call to action. */
+  cta: ServiceCta;
   /** Slugs of 2–3 related services. */
   related: string[];
 }
 
 export const services: Service[] = [
   {
-    slug: "rental-management",
-    title: "Rental Management",
-    promise: "Fill units faster, collect on time, and keep tenants longer.",
-    icon: "home",
-    excerpt: "Tenant sourcing, leasing, rent collection and renewals — handled end-to-end.",
-    heroImage: "/images/properties/tower-curved-balcony.jpg",
-    overviewImage: "/images/properties/interior-living-room.jpg",
-    overview: [
-      "We manage the full rental lifecycle so your units stay occupied and your income stays predictable. From marketing and tenant screening to leasing, rent collection and renewals, Nexora handles every step with transparency.",
-      "You receive clear monthly statements and real-time visibility — while we handle the day-to-day.",
-    ],
-    included: [
-      { icon: "eye", title: "Marketing & listing", desc: "Professional listings and targeted marketing to minimise vacancy." },
-      { icon: "shield", title: "Tenant screening", desc: "Thorough background and reference checks on every applicant." },
-      { icon: "quality", title: "Leasing & renewals", desc: "Watertight lease agreements, renewals and turnover management." },
-      { icon: "chart", title: "Rent collection", desc: "Reliable collection with transparent tracking and follow-up." },
-    ],
-    forWho: [
-      "Individual landlords and owners",
-      "Diaspora owners wanting hands-off income",
-      "Investors with multi-unit residential properties",
-    ],
-    pricingNote:
-      "Typically a percentage of collected rent — you only pay when your property earns. Exact terms are tailored to your portfolio.",
-    related: ["property-management", "condominium-management", "maintenance-coordination"],
-  },
-  {
     slug: "property-management",
     title: "Property Management",
     promise: "One accountable partner for the entire life of your property.",
     icon: "building",
-    excerpt: "End-to-end management of residential and mixed-use properties.",
+    excerpt: "End-to-end management of residential, commercial and mixed-use properties.",
     heroImage: "/images/properties/tower-poolside.jpg",
     overviewImage: "/images/properties/apartment-facade.jpg",
     overview: [
-      "Our flagship service brings leasing, finance, maintenance, facilities and reporting under one roof. We act as the single point of accountability for your property — so you deal with one trusted team, not a dozen vendors.",
-      "Every decision is guided by protecting your asset and maximizing its long-term value.",
+      "Our flagship service brings tenants, leases, rent, inspections, maintenance, vendors, security and reporting under one roof. Nexora becomes the single point of accountability for your property — so you deal with one trusted team, not a dozen vendors.",
+      "Every decision is guided by protecting your asset and maximizing its long-term value, with transparent monthly reporting for full visibility.",
     ],
     included: [
-      { icon: "home", title: "Tenancy management", desc: "Full leasing, rent and tenant relationship management." },
-      { icon: "cog", title: "Operations", desc: "Day-to-day running of the building and its systems." },
-      { icon: "chart", title: "Financial reporting", desc: "Transparent monthly statements and owner disbursements." },
-      { icon: "protection", title: "Asset protection", desc: "Proactive upkeep that preserves and grows value." },
+      { icon: "home", title: "Tenant management", desc: "Screening, onboarding and day-to-day tenant relationships." },
+      { icon: "quality", title: "Lease administration", desc: "Watertight agreements, renewals and turnover handled end-to-end." },
+      { icon: "chart", title: "Rent collection", desc: "Reliable collection with transparent tracking and follow-up." },
+      { icon: "eye", title: "Property inspections", desc: "Scheduled inspections that catch issues before they escalate." },
+      { icon: "tools", title: "Maintenance coordination", desc: "Vetted technicians dispatched and tracked — for Nexora-managed properties." },
+      { icon: "support", title: "Vendor coordination", desc: "Trusted contractors sourced, coordinated and quality-checked." },
+      { icon: "shield", title: "Security services", desc: "Trained personnel and access control where required." },
+      { icon: "protection", title: "Property reporting", desc: "Clear monthly statements and owner disbursements." },
     ],
     forWho: [
-      "Owners of residential and mixed-use buildings",
+      "Owners of residential, commercial and mixed-use buildings",
       "Investors seeking a single accountable manager",
       "Developers handing over completed projects",
     ],
     pricingNote:
-      "A management fee scaled to the size and complexity of your property. We’ll propose a clear, all-inclusive structure.",
-    related: ["rental-management", "facility-management", "asset-optimisation"],
+      "A management fee scaled to the size and complexity of your property. We’ll propose a clear, all-inclusive structure. Maintenance is offered only for properties under Nexora management, not as a standalone service.",
+    cta: { label: "Contact an Advisor", href: "/contact" },
+    related: ["rental-management", "condominium-management", "asset-optimization"],
+  },
+  {
+    slug: "rental-management",
+    title: "Rental Management",
+    promise: "Fill units faster, collect on time, and keep tenants longer.",
+    icon: "home",
+    excerpt: "Long- and short-term rentals, tenant placement and occupancy management.",
+    heroImage: "/images/high-view-toy-model-house-keys.jpg",
+    overviewImage: "/images/african-american-homeowners-holding-keys-new-household-property-bought-mortgage-loan-move-together-enjoying-real-estate-relocation-life-event-new-beginnings-close-up.jpg",
+    overview: [
+      "We manage the full rental lifecycle so your units stay occupied and your income stays predictable. Nexora handles two distinct rental workflows — long-term tenancies and short-term stays — under one transparent service.",
+      "From marketing and tenant placement to lease coordination and occupancy management, you get clear reporting and real-time visibility while we handle the day-to-day.",
+    ],
+    included: [
+      { icon: "home", title: "Long-term rentals", desc: "Full tenancy management for six-month and annual leases." },
+      { icon: "sparkles", title: "Short-term rentals", desc: "Furnished, serviced stays with instant online booking." },
+      { icon: "shield", title: "Tenant placement", desc: "Sourcing, screening and placing the right tenants faster." },
+      { icon: "chart", title: "Occupancy management", desc: "Pricing and availability tuned to keep units earning." },
+      { icon: "quality", title: "Lease coordination", desc: "Agreements, renewals and handovers coordinated cleanly." },
+    ],
+    forWho: [
+      "Individual landlords and owners",
+      "Diaspora owners wanting hands-off rental income",
+      "Investors with multi-unit residential properties",
+    ],
+    pricingNote:
+      "Typically a percentage of collected rent — you only pay when your property earns. Short-term stays are priced per night with a transparent service fee.",
+    cta: { label: "Browse Properties", href: "/rentals" },
+    related: ["property-management", "housekeeping-cleaning", "asset-optimization"],
   },
   {
     slug: "condominium-management",
     title: "Condominium Management",
     promise: "Well-run associations, happy residents, protected value.",
-    icon: "building",
-    excerpt: "Association management, shared facilities, budgets and owner reporting.",
+    icon: "quality",
+    excerpt: "Association management, shared facilities, security and resident coordination.",
     heroImage: "/images/properties/apartment-facade.jpg",
     overviewImage: "/images/properties/tower-curved-balcony.jpg",
     overview: [
-      "Condominiums thrive on fair governance and well-managed shared spaces. Nexora administers associations professionally — budgets, service charges, common-area upkeep and clear communication with every owner.",
+      "Condominiums thrive on fair governance and well-managed shared spaces. Nexora administers associations professionally — facilities, resident coordination, security, concierge, common areas and vendor management, all handled with clear communication to every owner.",
       "We keep the community running smoothly and the building’s value protected.",
     ],
     included: [
-      { icon: "quality", title: "Association admin", desc: "Meetings, records, bylaws and owner communication." },
-      { icon: "chart", title: "Budgets & levies", desc: "Transparent service-charge budgeting and collection." },
-      { icon: "cog", title: "Common areas", desc: "Maintenance of shared facilities and amenities." },
-      { icon: "shield", title: "Compliance", desc: "Governance that keeps the association accountable." },
+      { icon: "cog", title: "Facility management", desc: "Building systems and shared infrastructure kept running." },
+      { icon: "support", title: "Resident coordination", desc: "Meetings, records and clear owner communication." },
+      { icon: "shield", title: "Security services", desc: "Trained guards and access control across the community." },
+      { icon: "quality", title: "Concierge services", desc: "Front-desk assistance and everyday resident support." },
+      { icon: "tools", title: "Maintenance coordination", desc: "Common-area repairs dispatched and tracked to completion." },
+      { icon: "home", title: "Common area management", desc: "Lobbies, amenities and grounds maintained to standard." },
+      { icon: "eye", title: "Vendor coordination", desc: "Vetted contractors managed and quality-checked." },
     ],
     forWho: [
       "Condominium associations and boards",
@@ -107,160 +126,91 @@ export const services: Service[] = [
     ],
     pricingNote:
       "A per-unit or whole-association fee agreed with the board — structured for fairness and transparency.",
-    related: ["property-management", "facility-management", "security-concierge"],
+    cta: { label: "Request Consultation", href: "/contact" },
+    related: ["property-management", "home-lifestyle", "asset-optimization"],
   },
   {
-    slug: "facility-management",
-    title: "Facility Management",
-    promise: "Buildings that run reliably, safely and efficiently.",
-    icon: "cog",
-    excerpt: "Building systems, common areas, vendors and preventive upkeep.",
-    heroImage: "/images/properties/aerial-neighbourhood.jpg",
-    overviewImage: "/images/properties/twin-towers-dusk.jpg",
-    overview: [
-      "We keep the physical building performing — electrical, plumbing, HVAC, lifts, generators, water and common areas — through planned, preventive maintenance and trusted vendor coordination.",
-      "Fewer breakdowns, lower costs, and a safer environment for everyone.",
-    ],
-    included: [
-      { icon: "cog", title: "Building systems", desc: "Preventive maintenance of core building services." },
-      { icon: "shield", title: "Safety & compliance", desc: "Fire, security and regulatory compliance checks." },
-      { icon: "support", title: "Vendor management", desc: "Vetted contractors, coordinated and quality-checked." },
-      { icon: "chart", title: "Cost control", desc: "Planned upkeep that reduces emergency spend." },
-    ],
-    forWho: [
-      "Owners of apartment and commercial buildings",
-      "Condominium associations",
-      "Institutional and mixed-use facilities",
-    ],
-    pricingNote:
-      "A recurring facilities fee based on building size and systems — with optional planned-maintenance packages.",
-    related: ["property-management", "maintenance-coordination", "security-concierge"],
-  },
-  {
-    slug: "premium-cleaning",
-    title: "Premium Cleaning & Housekeeping",
-    promise: "Immaculate spaces, every single day.",
+    slug: "housekeeping-cleaning",
+    title: "Housekeeping & Cleaning Services",
+    promise: "Immaculate spaces, every single time.",
     icon: "sparkles",
-    excerpt: "Premium cleaning for homes, offices and common spaces.",
+    excerpt: "Residential, commercial, deep, move-in/out, event and scheduled cleaning.",
     heroImage: "/images/properties/interior-living-room.jpg",
     overviewImage: "/images/properties/villa-minimalist.jpg",
     overview: [
-      "Presentation matters. Our trained housekeeping teams deliver hotel-grade cleaning for private homes, offices and building common areas — scheduled or on demand, always to a consistent standard.",
-      "Clean, cared-for spaces that residents and visitors notice.",
+      "Presentation matters. Our trained teams deliver hotel-grade cleaning for homes, offices, facilities and events — booked on demand or on a scheduled programme, always to a consistent, audited standard.",
+      "From routine housekeeping to intensive deep cleans, every job is supervised and quality-checked so spaces look and feel their best.",
     ],
     included: [
-      { icon: "sparkles", title: "Deep & routine cleaning", desc: "Scheduled and one-off cleaning to a premium standard." },
-      { icon: "home", title: "Housekeeping", desc: "Ongoing housekeeping for homes and serviced units." },
-      { icon: "cog", title: "Common areas", desc: "Lobbies, corridors and shared amenities kept pristine." },
-      { icon: "quality", title: "Quality checks", desc: "Supervised teams with consistent, audited results." },
+      { icon: "home", title: "Residential cleaning", desc: "Homes and serviced apartments kept spotless." },
+      { icon: "building", title: "Commercial cleaning", desc: "Offices, retail and workspaces cleaned to standard." },
+      { icon: "sparkles", title: "Deep cleaning", desc: "Kitchen, bathroom, carpet, mattress and upholstery deep cleans." },
+      { icon: "tools", title: "Move-in / move-out", desc: "Turnover cleaning that gets units ready to let." },
+      { icon: "award", title: "Event cleaning", desc: "Pre- and post-event cleaning for venues and functions." },
+      { icon: "cog", title: "Facility cleaning", desc: "Common areas and building facilities kept pristine." },
+      { icon: "chart", title: "Scheduled programmes", desc: "Daily, weekly, monthly or contract cleaning plans." },
     ],
     forWho: [
       "Homeowners and serviced-apartment operators",
-      "Offices and commercial tenants",
-      "Buildings needing common-area care",
+      "Offices, retail and commercial tenants",
+      "Facilities, venues and event organisers",
     ],
     pricingNote:
       "Priced per visit or on a monthly plan, based on space and frequency. Bundled free within many management packages.",
-    related: ["property-management", "facility-management", "mobile-car-wash"],
+    cta: { label: "Book Cleaning", href: "/book/cleaning" },
+    related: ["home-lifestyle", "property-management", "condominium-management"],
   },
   {
-    slug: "security-concierge",
-    title: "Security & Concierge",
-    promise: "Peace of mind at the door, and a warm welcome beyond it.",
-    icon: "shield",
-    excerpt: "Trained security and concierge-grade resident services.",
-    heroImage: "/images/properties/villas-dusk.jpg",
-    overviewImage: "/images/properties/villa-infinity-pool.jpg",
-    overview: [
-      "Safety and service go hand in hand. We provide trained security personnel and access control alongside concierge services that make residents feel looked after — from visitor management to everyday requests.",
-      "Secure, welcoming buildings that people are proud to call home.",
-    ],
-    included: [
-      { icon: "shield", title: "Manned security", desc: "Trained guards and 24/7 access control." },
-      { icon: "eye", title: "Surveillance", desc: "Monitoring and visitor management systems." },
-      { icon: "support", title: "Concierge desk", desc: "Front-desk assistance and resident services." },
-      { icon: "quality", title: "Standards", desc: "Professional, vetted and consistently supervised teams." },
-    ],
-    forWho: [
-      "Residential towers and gated communities",
-      "Condominiums and serviced apartments",
-      "Commercial and institutional properties",
-    ],
-    pricingNote:
-      "Staffed on a monthly basis by coverage level and site — scoped precisely to your building’s needs.",
-    related: ["facility-management", "condominium-management", "property-management"],
-  },
-  {
-    slug: "maintenance-coordination",
-    title: "Maintenance Coordination",
-    promise: "Repairs done fast, tracked, and done right.",
-    icon: "tools",
-    excerpt: "Fast, tracked repairs with trusted technicians.",
-    heroImage: "/images/properties/suburban-house.jpg",
-    overviewImage: "/images/properties/residential-street.jpg",
-    overview: [
-      "When something breaks, response time matters. We coordinate a network of vetted technicians and track every request from report to resolution — with clear updates and transparent costs.",
-      "Less downtime, no runaround, and a full record of the work done.",
-    ],
-    included: [
-      { icon: "tools", title: "Request handling", desc: "Simple reporting and rapid dispatch of technicians." },
-      { icon: "support", title: "Vetted technicians", desc: "Trusted trades for plumbing, electrical and more." },
-      { icon: "eye", title: "Status tracking", desc: "Transparent updates from report to completion." },
-      { icon: "chart", title: "Cost transparency", desc: "Clear, approved costs with a full work record." },
-    ],
-    forWho: [
-      "Owners and landlords",
-      "Tenants within managed properties",
-      "Associations needing reliable repairs",
-    ],
-    pricingNote:
-      "Coordination is included in management plans; standalone work is quoted transparently before approval.",
-    related: ["facility-management", "property-management", "rental-management"],
-  },
-  {
-    slug: "mobile-car-wash",
-    title: "Mobile Car Wash",
-    promise: "A spotless car, without leaving home.",
+    slug: "home-lifestyle",
+    title: "Home & Lifestyle Services",
+    promise: "Everyday convenience, delivered to your door.",
     icon: "vehicle",
-    excerpt: "On-site vehicle care as a resident convenience.",
+    excerpt: "Laundry, janitorial, gardening, mobile car wash and scheduled programmes.",
     heroImage: "/images/properties/villa-infinity-pool.jpg",
     overviewImage: "/images/properties/villa-garden-pool.jpg",
     overview: [
-      "A modern convenience that residents love. Our mobile team washes and details vehicles on-site at the buildings we manage — a simple perk that adds everyday value to the living experience.",
-      "Booked in minutes, delivered at the parking bay.",
+      "The lifestyle services residents love, run to a professional standard. From laundry and hospitality linen to gardening, janitorial care and mobile car wash — booked in minutes with pickup, delivery and scheduling handled for you.",
+      "A simple set of everyday perks that add real value to the living experience across the buildings we manage.",
     ],
     included: [
-      { icon: "vehicle", title: "On-site wash", desc: "Exterior and interior cleaning at your parking bay." },
-      { icon: "sparkles", title: "Detailing", desc: "Premium detailing options on request." },
-      { icon: "support", title: "Easy booking", desc: "Simple scheduling for residents." },
-      { icon: "quality", title: "Consistent care", desc: "Trained team, dependable results." },
+      { icon: "sparkles", title: "Laundry services", desc: "Wash, dry-clean, fold and iron with pickup & delivery." },
+      { icon: "building", title: "Hospitality laundry", desc: "Linen and uniform laundry for hotels, hospitals and institutions." },
+      { icon: "support", title: "Pickup & delivery", desc: "Scheduled collection and drop-off that fits your routine." },
+      { icon: "cog", title: "Janitorial services", desc: "Ongoing janitorial care for homes and workspaces." },
+      { icon: "home", title: "Gardening & lawn care", desc: "Landscaping and grounds maintenance kept sharp." },
+      { icon: "vehicle", title: "Mobile car wash", desc: "Private, fleet, interior and exterior valeting on-site." },
+      { icon: "chart", title: "Scheduled wash programmes", desc: "Recurring wash and care plans for residents and fleets." },
     ],
     forWho: [
       "Residents of managed buildings",
-      "Serviced-apartment operators",
-      "Owners adding resident amenities",
+      "Hotels, hospitals and institutional clients",
+      "Owners adding resident amenities and fleet operators",
     ],
     pricingNote:
-      "Pay-per-wash or resident subscription — an optional amenity offered across managed properties.",
-    related: ["premium-cleaning", "security-concierge", "property-management"],
+      "Pay-per-service or a recurring subscription — an optional amenity offered across managed properties.",
+    cta: { label: "Book Service", href: "/book/lifestyle" },
+    related: ["housekeeping-cleaning", "property-management", "condominium-management"],
   },
   {
-    slug: "asset-optimisation",
-    title: "Asset Optimisation",
+    slug: "asset-optimization",
+    title: "Asset Optimization & Advisory",
     promise: "Turn a well-run property into a better-performing asset.",
     icon: "chart",
-    excerpt: "Data-driven strategies to grow your property’s value.",
+    excerpt: "Performance analysis, revenue optimization and investment advisory.",
     heroImage: "/images/properties/twin-towers-dusk.jpg",
     overviewImage: "/images/properties/tower-poolside.jpg",
     overview: [
-      "Beyond day-to-day management, we help owners make their assets work harder. Using occupancy, pricing and cost data, we identify opportunities to lift income, reduce spend and increase long-term value.",
-      "Clear recommendations, backed by the numbers.",
+      "Beyond day-to-day management, we help owners make their assets work harder. Using occupancy, pricing and cost data, Nexora identifies opportunities to lift income, reduce spend and grow long-term value.",
+      "Clear, data-backed recommendations and strategy — from valuation support to portfolio growth planning.",
     ],
     included: [
-      { icon: "chart", title: "Performance analysis", desc: "Occupancy, revenue and cost benchmarking." },
-      { icon: "eye", title: "Pricing strategy", desc: "Data-informed rent and positioning advice." },
-      { icon: "quality", title: "Value improvements", desc: "Targeted upgrades with the best return." },
-      { icon: "protection", title: "Risk review", desc: "Protecting income and long-term asset value." },
+      { icon: "chart", title: "Property performance analysis", desc: "Occupancy, revenue and cost benchmarking." },
+      { icon: "eye", title: "Occupancy optimization", desc: "Availability and demand strategies that keep units earning." },
+      { icon: "quality", title: "Revenue optimization", desc: "Data-informed pricing and positioning advice." },
+      { icon: "protection", title: "Asset valuation support", desc: "Valuation guidance to inform your decisions." },
+      { icon: "award", title: "Investment advisory", desc: "Guidance for acquiring and improving income assets." },
+      { icon: "globe", title: "Portfolio growth strategy", desc: "Long-term planning to scale your holdings." },
+      { icon: "cog", title: "Operational efficiency", desc: "Consulting that trims cost and lifts performance." },
     ],
     forWho: [
       "Investors and portfolio owners",
@@ -269,7 +219,8 @@ export const services: Service[] = [
     ],
     pricingNote:
       "Offered as an advisory add-on or bundled into full management — scoped to your goals.",
-    related: ["property-management", "rental-management", "facility-management"],
+    cta: { label: "Schedule Consultation", href: "/contact" },
+    related: ["property-management", "rental-management", "condominium-management"],
   },
 ];
 
@@ -283,7 +234,7 @@ export const servicesIndexHero = {
   eyebrow: "Our Services",
   title: "Everything your property needs, under one roof.",
   subtitle:
-    "From leasing and finance to facilities, cleaning, security and asset strategy — Nexora is the single accountable partner for your property.",
+    "From property, rental and condominium management to housekeeping, home & lifestyle services and asset advisory — Nexora is the single accountable partner for your property.",
   image: "/images/properties/tower-poolside.jpg",
   imageAlt: "Poolside view of a managed residential tower",
 };

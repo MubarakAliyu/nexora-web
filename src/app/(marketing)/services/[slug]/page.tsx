@@ -139,8 +139,8 @@ export default async function ServicePage({
                 {service.pricingNote}
               </p>
               <div className="mt-6">
-                <CtaButton href="/contact" size="md">
-                  Request a Quote
+                <CtaButton href={service.cta.href} size="md">
+                  {service.cta.label}
                 </CtaButton>
               </div>
             </div>

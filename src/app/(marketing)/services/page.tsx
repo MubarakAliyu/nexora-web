@@ -11,7 +11,7 @@ import { services, servicesIndexHero, servicesCta } from "@/content/services";
 export const metadata: Metadata = {
   title: "Services",
   description:
-    "Full-service property management from Nexora — rental, property, condominium and facility management, cleaning, security, maintenance, mobile car wash and asset optimisation.",
+    "Full-service property management from Nexora — property, rental and condominium management, housekeeping & cleaning, home & lifestyle services and asset optimization.",
 };
 
 export default function ServicesPage() {
