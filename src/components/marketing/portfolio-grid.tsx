@@ -7,8 +7,15 @@ import { motion, useReducedMotion, LayoutGroup } from "framer-motion";
 import { MapPin } from "flowbite-react-icons/outline";
 import { cn } from "@/lib/utils";
 import { properties, categories, type Category } from "@/content/portfolio";
+import { properties as dbProperties } from "@/lib/mock/db";
+import type { RentalType } from "@/lib/mock/types";
 
 const EASE = [0.22, 1, 0.36, 1] as const;
+
+/** Rental type per slug — single source of truth is the seeded property data. */
+const RENTAL_TYPE: Record<string, RentalType | undefined> = Object.fromEntries(
+  dbProperties.map((p) => [p.id, p.rentalType]),
+);
 
 /** Filterable portfolio grid. Filter chips reflow the grid via Framer `layout`
  *  (positions animate, not just show/hide). Cards scroll-reveal with a subtle
@@ -69,6 +76,16 @@ export function PortfolioGrid() {
                   <span className="absolute left-3 top-3 rounded-full bg-background/90 px-2.5 py-1 text-caption font-medium text-foreground">
                     {p.category}
                   </span>
+                  {RENTAL_TYPE[p.slug] && (
+                    <span
+                      className={cn(
+                        "absolute right-3 top-3 rounded-full px-2.5 py-1 text-caption font-semibold",
+                        RENTAL_TYPE[p.slug] === "short-term" ? "bg-primary text-primary-foreground" : "bg-foreground/90 text-background",
+                      )}
+                    >
+                      {RENTAL_TYPE[p.slug] === "short-term" ? "Short-Term" : "Long-Term"}
+                    </span>
+                  )}
                 </div>
                 <div className="p-5">
                   <h3 className="font-heading text-h3 font-semibold text-foreground">

@@ -40,6 +40,7 @@ export type { Activity, Announcement, AudienceKind, BroadcastChannel, CommLog, E
 export type { Building, LeaseStatus, InvoiceStatus, TicketStatus, TicketPriority, UnitStatus, UnitType, PropertyStatus, TicketCategory, PaymentMethod, LeadStatus } from "@/lib/mock/types";
 export type { RoleDef, PermissionSet, WalletTx, BankAccount, TxType, TxStatus } from "@/lib/mock/types";
 export type { RentalType, RentalPaymentMode, RentalListing, ShortTermPricing } from "@/lib/mock/types";
+export type { Booking, BookingStatus, ServiceBooking, ServiceBookingStatus, ServiceBookingKind } from "@/lib/mock/types";
 export const PERMISSION_MODULES = db.PERMISSION_MODULES;
 
 const BEDROOMS_BY_TYPE: Record<UnitType, number> = {
