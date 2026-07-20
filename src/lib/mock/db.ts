@@ -229,11 +229,12 @@ const AMENITY_POOL = [
 ];
 
 // Curated short-term set (holiday / serviced lets). Salim owns entebbe-villas
-// + kira-gardens + muyenga-heights, so he holds several short-term properties
-// for the owner-portal rental transparency view (Revision Pass 3).
+// + kira-gardens (short-term) and nakasero-heights + muyenga-heights
+// (long-term, incl. Mubarak's lease), so his owner portal shows BOTH rental
+// types for the Pass 3 transparency view.
 const SHORT_TERM_IDS = new Set([
-  "entebbe-villas", "kira-gardens", "muyenga-heights", "munyonyo-suites",
-  "nakasero-heights", "naguru-view", "bugolobi-lofts",
+  "entebbe-villas", "kira-gardens", "munyonyo-suites",
+  "naguru-view", "bugolobi-lofts",
 ]);
 
 function enrichRental(p: Property) {

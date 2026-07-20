@@ -2,9 +2,10 @@
 
 import * as React from "react";
 import Link from "next/link";
-import { Building, Home, ChartLineUp, Cash, Receipt, AngleRight } from "flowbite-react-icons/outline";
+import { Building, Home, ChartLineUp, Cash, Receipt, AngleRight, CalendarMonth } from "flowbite-react-icons/outline";
 import { PageHeader } from "@/components/app/page-header";
 import { OwnerPropertyCard } from "@/components/app/owner-property-card";
+import { StatusBadge } from "@/components/app/status";
 import { Card } from "@/components/ui/card";
 import { StatCard } from "@/components/ui/stat-card";
 import { CountUp } from "@/components/motion/count-up";
@@ -15,10 +16,11 @@ import { EmptyState } from "@/components/ui/empty-state";
 import { Button } from "@/components/ui/button";
 import { useAsync, debugErrorFlag } from "@/lib/use-async";
 import { useSession } from "@/lib/stores/session";
-import { fromNow } from "@/lib/format";
+import { fromNow, formatDate } from "@/lib/format";
 import {
   getDashboardStats, getRevenueSeries, getOccupancySeries, getOwnerActivity, listProperties, NOW_ISO, type Scope,
 } from "@/lib/api/admin";
+import { listBookings } from "@/lib/api/rentals";
 
 function MoneyStat({ value }: { value: number }) {
   const m = value / 1_000_000;
@@ -35,6 +37,8 @@ export default function OwnerDashboardPage() {
   const occupancy = useAsync(() => getOccupancySeries(scope), [scope]);
   const activity = useAsync(() => getOwnerActivity(ownerId ?? "", scope), [ownerId, scope]);
   const properties = useAsync(() => listProperties(undefined, scope), [scope]);
+  const bookings = useAsync(() => listBookings({ ownerId }), [ownerId]);
+  const recentBookings = (bookings.data ?? []).slice(0, 6);
 
   return (
     <div className="space-y-8">
@@ -86,21 +90,46 @@ export default function OwnerDashboardPage() {
         </Card>
       </div>
 
-      {/* Activity */}
-      <Card className="p-6">
-        <h2 className="mb-5 font-heading text-h3 font-semibold text-foreground">Recent activity</h2>
-        {activity.loading ? (
-          <div className="space-y-4">{Array.from({ length: 5 }).map((_, i) => <div key={i} className="flex gap-3"><Skeleton className="h-4 w-4 rounded-full" /><Skeleton className="h-4 flex-1" /></div>)}</div>
-        ) : activity.error ? (
-          <EmptyState title="Couldn’t load activity" description={activity.error} action={<Button variant="outline" size="sm" onClick={activity.reload}>Try again</Button>} />
-        ) : activity.data && activity.data.length > 0 ? (
-          <Timeline>
-            {activity.data.map((a) => <TimelineItem key={a.id} title={a.text} time={fromNow(a.at, NOW_ISO)} />)}
-          </Timeline>
-        ) : (
-          <EmptyState title="No recent activity" description="Activity on your properties will show here." />
-        )}
-      </Card>
+      {/* Activity + bookings */}
+      <div className="grid gap-4 lg:grid-cols-2">
+        <Card className="p-6">
+          <h2 className="mb-5 font-heading text-h3 font-semibold text-foreground">Recent activity</h2>
+          {activity.loading ? (
+            <div className="space-y-4">{Array.from({ length: 5 }).map((_, i) => <div key={i} className="flex gap-3"><Skeleton className="h-4 w-4 rounded-full" /><Skeleton className="h-4 flex-1" /></div>)}</div>
+          ) : activity.error ? (
+            <EmptyState title="Couldn’t load activity" description={activity.error} action={<Button variant="outline" size="sm" onClick={activity.reload}>Try again</Button>} />
+          ) : activity.data && activity.data.length > 0 ? (
+            <Timeline>
+              {activity.data.map((a) => <TimelineItem key={a.id} title={a.text} time={fromNow(a.at, NOW_ISO)} />)}
+            </Timeline>
+          ) : (
+            <EmptyState title="No recent activity" description="Activity on your properties will show here." />
+          )}
+        </Card>
+
+        <Card className="p-6">
+          <h2 className="mb-5 flex items-center gap-2 font-heading text-h3 font-semibold text-foreground">
+            <CalendarMonth size={20} className="text-primary" /> Recent bookings
+          </h2>
+          {bookings.loading ? (
+            <div className="space-y-3">{Array.from({ length: 4 }).map((_, i) => <Skeleton key={i} className="h-12 w-full" />)}</div>
+          ) : recentBookings.length > 0 ? (
+            <ul className="divide-y divide-border">
+              {recentBookings.map((b) => (
+                <li key={b.id} className="flex items-center justify-between gap-3 py-3">
+                  <div className="min-w-0">
+                    <p className="truncate text-body font-medium text-foreground">{b.guestName}</p>
+                    <p className="truncate text-caption text-muted">{b.propertyName} · {formatDate(b.checkIn)} → {formatDate(b.checkOut)}</p>
+                  </div>
+                  <StatusBadge status={b.status} />
+                </li>
+              ))}
+            </ul>
+          ) : (
+            <EmptyState title="No bookings yet" description="Short-term stays on your properties will show here." />
+          )}
+        </Card>
+      </div>
 
       {/* Properties quick glance */}
       <div>

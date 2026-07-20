@@ -4,9 +4,10 @@ import * as React from "react";
 import Link from "next/link";
 import Image from "next/image";
 import { useParams } from "next/navigation";
-import { MapPin, Building, Home, Cash, AdjustmentsHorizontal } from "flowbite-react-icons/outline";
+import { MapPin, Building, Home, Cash, AdjustmentsHorizontal, CalendarMonth } from "flowbite-react-icons/outline";
 import { PageHeader } from "@/components/app/page-header";
 import { StatusBadge } from "@/components/app/status";
+import { RentalTypeBadge } from "@/components/app/rental-type-badge";
 import { Card } from "@/components/ui/card";
 import { StatCard } from "@/components/ui/stat-card";
 import { Button } from "@/components/ui/button";
@@ -16,11 +17,12 @@ import { EmptyState } from "@/components/ui/empty-state";
 import { Skeleton, SkeletonText } from "@/components/ui/skeleton";
 import { useAsync, debugErrorFlag } from "@/lib/use-async";
 import { useSession } from "@/lib/stores/session";
-import { formatUGX, fromNow } from "@/lib/format";
+import { formatUGX, formatDate, fromNow } from "@/lib/format";
 import {
   getProperty, getPropertyUnits, listTickets, NOW_ISO,
   type Unit, type MaintenanceTicket, type Scope,
 } from "@/lib/api/admin";
+import { listBookings, type Booking } from "@/lib/api/rentals";
 
 export default function OwnerPropertyDetailPage() {
   const params = useParams<{ slug: string }>();
@@ -31,6 +33,7 @@ export default function OwnerPropertyDetailPage() {
   const property = useAsync(() => getProperty(slug, scope), [slug, scope]);
   const units = useAsync(() => getPropertyUnits(slug, scope), [slug, scope]);
   const tickets = useAsync(() => listTickets({ propertyId: slug }, scope), [slug, scope]);
+  const bookings = useAsync(() => listBookings({ ownerId }), [ownerId]);
 
   if (property.loading) {
     return <div><Skeleton className="h-6 w-40" /><Skeleton className="mt-4 h-52 w-full rounded-xl" /><SkeletonText className="mt-6" lines={3} /></div>;
@@ -47,6 +50,16 @@ export default function OwnerPropertyDetailPage() {
 
   const p = property.data;
   const occupied = Math.round((p.units * p.occupancy) / 100);
+  const isShort = p.rentalType === "short-term";
+  const propBookings = (bookings.data ?? []).filter((b) => b.propertyId === p.id);
+  const activeBookings = propBookings.filter((b) => b.status !== "cancelled" && b.status !== "checked_out");
+
+  const bookingColumns: Column<Booking>[] = [
+    { key: "reference", header: "Reference", render: (b) => <span className="font-medium text-foreground">{b.reference}</span> },
+    { key: "guestName", header: "Guest", render: (b) => b.guestName },
+    { key: "checkIn", header: "Stay", render: (b) => <span className="text-body">{formatDate(b.checkIn)} → {formatDate(b.checkOut)}</span> },
+    { key: "status", header: "Status", render: (b) => <StatusBadge status={b.status} /> },
+  ];
 
   const unitColumns: Column<Unit>[] = [
     { key: "label", header: "Unit", sortable: true, render: (u) => <span className="font-medium text-foreground">{u.label}</span> },
@@ -69,6 +82,7 @@ export default function OwnerPropertyDetailPage() {
           <div className="absolute inset-0 bg-gradient-to-t from-foreground/70 to-transparent" />
           <div className="absolute bottom-0 left-0 flex flex-wrap items-center gap-3 p-5">
             <StatusBadge status={p.status} />
+            <RentalTypeBadge type={p.rentalType} />
             <span className="inline-flex items-center gap-1.5 text-caption font-medium text-background"><MapPin size={16} /> {p.location}</span>
             <span className="inline-flex items-center gap-1.5 text-caption font-medium text-background"><Building size={16} /> {p.category}</span>
           </div>
@@ -81,6 +95,23 @@ export default function OwnerPropertyDetailPage() {
         <StatCard label="Occupancy" value={`${p.occupancy}%`} icon={<AdjustmentsHorizontal size={22} />} />
         <StatCard label="Revenue / mo" value={formatUGX(p.monthlyRevenue)} icon={<Cash size={22} />} />
       </div>
+
+      {/* Current bookings — short-term rentals only */}
+      {isShort && (
+        <section className="mt-8">
+          <div className="mb-4 flex items-center gap-3">
+            <h2 className="font-heading text-h3 font-semibold text-foreground">Current bookings</h2>
+            <span className="inline-flex items-center gap-1.5 rounded-full bg-primary/10 px-2.5 py-0.5 text-caption font-medium text-primary">
+              <CalendarMonth size={13} /> {activeBookings.length} active / upcoming
+            </span>
+          </div>
+          <DataTable
+            columns={bookingColumns} data={activeBookings} getRowId={(b) => b.id}
+            loading={bookings.loading} error={bookings.error} onRetry={bookings.reload}
+            emptyTitle="No active bookings" emptyDescription="Confirmed and upcoming stays will appear here." pageSize={6}
+          />
+        </section>
+      )}
 
       {/* Units */}
       <section className="mt-8">

@@ -1,7 +1,7 @@
 "use client";
 
 import * as React from "react";
-import { Cash, Receipt, ChartLineUp, Download } from "flowbite-react-icons/outline";
+import { Cash, Receipt, ChartLineUp, Download, CalendarMonth, FileLines } from "flowbite-react-icons/outline";
 import { PageHeader } from "@/components/app/page-header";
 import { StatusBadge } from "@/components/app/status";
 import { Card } from "@/components/ui/card";
@@ -20,6 +20,7 @@ import { formatUGX, formatUGXFull, formatDate } from "@/lib/format";
 import {
   getOwnerDetail, getOwnerFinancials, type OwnerFinancials, type OwnerDetail, type Scope,
 } from "@/lib/api/admin";
+import { listRentals, listBookings } from "@/lib/api/rentals";
 
 type PerProperty = OwnerFinancials["perProperty"][number];
 type Disbursement = OwnerDetail["disbursements"][number];
@@ -31,6 +32,18 @@ export default function OwnerFinancialsPage() {
 
   const fin = useAsync(() => getOwnerFinancials(ownerId, scope), [ownerId, scope]);
   const detail = useAsync(() => getOwnerDetail(ownerId, scope), [ownerId, scope]);
+  const bookings = useAsync(() => listBookings({ ownerId }), [ownerId]);
+  const rentals = useAsync(() => listRentals({ rentalType: "all" }), []);
+
+  // Split revenue by source: short-term booking income vs long-term lease income.
+  const bookingRevenue = (bookings.data ?? [])
+    .filter((b) => b.status !== "cancelled")
+    .reduce((s, b) => s + b.total, 0);
+  const ownedShortTerm = (rentals.data ?? []).filter((p) => p.ownerId === ownerId && p.rentalType === "short-term").length;
+  const ownedLongTerm = (rentals.data ?? []).filter((p) => p.ownerId === ownerId && p.rentalType === "long-term").length;
+  const leaseRevenue = detail.data ? detail.data.financials.ytdRevenue : 0;
+  const totalRevenue = leaseRevenue + bookingRevenue;
+  const hasBoth = ownedShortTerm > 0 && ownedLongTerm > 0;
 
   const perPropColumns: Column<PerProperty>[] = [
     { key: "name", header: "Property", sortable: true, render: (p) => <span className="font-medium text-foreground">{p.name}</span> },
@@ -82,6 +95,40 @@ export default function OwnerFinancialsPage() {
           <StatCard label="Outstanding" value={formatUGX(detail.data.financials.outstanding)} icon={<Receipt size={22} />} hint={detail.data.financials.outstanding > 0 ? "in arrears" : "all settled"} />
         </div>
       ) : null}
+
+      {/* Revenue by source — booking income vs lease income */}
+      {detail.data && (
+        <Card className="p-6">
+          <div className="mb-4 flex items-center justify-between">
+            <h2 className="font-heading text-h3 font-semibold text-foreground">Revenue by source</h2>
+            <span className="text-caption text-muted">
+              {hasBoth ? "You hold both short- and long-term rentals" : ownedShortTerm > 0 ? "Short-term portfolio" : "Long-term portfolio"} · YTD
+            </span>
+          </div>
+          <div className="grid gap-4 sm:grid-cols-2">
+            <div className="rounded-xl border border-border p-5">
+              <div className="flex items-center gap-2 text-caption font-medium uppercase tracking-wide text-muted">
+                <FileLines size={16} className="text-primary" /> Long-term lease income
+              </div>
+              <p className="mt-2 font-heading text-h2 font-semibold text-foreground">{formatUGX(leaseRevenue)}</p>
+              <p className="mt-1 text-caption text-muted">{ownedLongTerm} long-term propert{ownedLongTerm === 1 ? "y" : "ies"} · rent collection</p>
+            </div>
+            <div className="rounded-xl border border-border p-5">
+              <div className="flex items-center gap-2 text-caption font-medium uppercase tracking-wide text-muted">
+                <CalendarMonth size={16} className="text-primary" /> Short-term booking income
+              </div>
+              <p className="mt-2 font-heading text-h2 font-semibold text-foreground">{formatUGX(bookingRevenue)}</p>
+              <p className="mt-1 text-caption text-muted">{ownedShortTerm} short-term propert{ownedShortTerm === 1 ? "y" : "ies"} · stay bookings</p>
+            </div>
+          </div>
+          {totalRevenue > 0 && (
+            <div className="mt-4 flex h-2.5 overflow-hidden rounded-full bg-surface-hover" role="img" aria-label="Revenue split">
+              <div className="bg-primary" style={{ width: `${Math.round((leaseRevenue / totalRevenue) * 100)}%` }} />
+              <div className="bg-accent" style={{ width: `${Math.round((bookingRevenue / totalRevenue) * 100)}%` }} />
+            </div>
+          )}
+        </Card>
+      )}
 
       {/* Revenue vs expenses + fee breakdown */}
       <div className="grid gap-4 lg:grid-cols-3">
