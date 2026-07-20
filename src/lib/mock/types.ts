@@ -363,7 +363,21 @@ export interface BankAccount {
 
 /* ----------------------------------------------------- bookings */
 
-export type BookingStatus = "confirmed" | "pending" | "cancelled" | "completed";
+export type BookingStatus =
+  | "confirmed"
+  | "checked_in"
+  | "checked_out"
+  | "cancelled"
+  | "pending"
+  | "completed";
+
+/** Service-booking lifecycle (distinct from stay bookings). */
+export type ServiceBookingStatus =
+  | "new"
+  | "assigned"
+  | "in_progress"
+  | "completed"
+  | "cancelled";
 
 /** Short-term rental booking (instant, online-paid). */
 export interface Booking {
@@ -408,7 +422,8 @@ export interface ServiceBooking {
   details?: string; // items/weight, vehicle type, area size…
   date: string; // ISO preferred date
   time: string; // preferred time slot
-  status: BookingStatus;
+  status: ServiceBookingStatus;
+  assignee?: string; // assigned staff/technician
   createdAt: string; // ISO
 }
 

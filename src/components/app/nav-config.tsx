@@ -15,6 +15,8 @@ import {
   Cog,
   UsersGroup,
   Wallet,
+  CalendarMonth,
+  CalendarWeek,
 } from "flowbite-react-icons/outline";
 import type { SidebarItem } from "@/components/ui/sidebar";
 import type { Role } from "@/lib/roles";
@@ -60,6 +62,8 @@ export function navForRole(role: Role): SidebarItem[] {
     wallet: { label: "Wallet", href: "/admin/wallet", icon: <Wallet size={sz} /> },
     maintenance: { label: "Maintenance", href: "/admin/maintenance", icon: <AdjustmentsHorizontal size={sz} /> },
     leads: { label: "CRM / Leads", href: "/admin/leads", icon: <ClipboardList size={sz} /> },
+    bookings: { label: "Bookings", href: "/admin/bookings", icon: <CalendarMonth size={sz} /> },
+    serviceBookings: { label: "Service Bookings", href: "/admin/service-bookings", icon: <CalendarWeek size={sz} /> },
     analytics: { label: "Analytics", href: "/admin/analytics", icon: <ChartLineUp size={sz} /> },
     announcements: { label: "Announcements", href: "/admin/announcements", icon: <Bullhorn size={sz} /> },
     staff: { label: "Staff", href: "/admin/staff", icon: <UsersGroup size={sz} /> },
@@ -69,7 +73,7 @@ export function navForRole(role: Role): SidebarItem[] {
   const keysByRole: Record<Role, string[]> = {
     super_admin: Object.keys(all),
     ops_manager: Object.keys(all),
-    property_manager: ["dashboard", "properties", "units", "tenants", "leases", "maintenance", "leads"],
+    property_manager: ["dashboard", "properties", "units", "tenants", "leases", "maintenance", "leads", "bookings", "serviceBookings"],
     maintenance_officer: ["dashboard", "maintenance", "properties"],
     finance_officer: ["dashboard", "finance", "wallet", "owners", "analytics", "announcements"],
     owner: [],

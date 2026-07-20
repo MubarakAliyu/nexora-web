@@ -36,6 +36,9 @@ import {
   NOW_ISO,
   type Scope,
 } from "@/lib/api/admin";
+import { getRecentBookings, getActiveBookingCount } from "@/lib/api/rentals";
+import { StatusBadge } from "@/components/app/status";
+import { CalendarMonth } from "flowbite-react-icons/outline";
 
 function MoneyStat({ value }: { value: number }) {
   const m = value / 1_000_000;
@@ -56,6 +59,8 @@ export default function AdminDashboardPage() {
   const alerts = useAsync(() => getAlerts(scope), [scope]);
   const occupancy = useAsync(() => getOccupancySeries(scope), [scope]);
   const revenue = useAsync(() => getRevenueSeries(scope), [scope]);
+  const recentBookings = useAsync(() => getRecentBookings(5), []);
+  const activeBookings = useAsync(() => getActiveBookingCount(), []);
 
   const showRevenue = role !== "property_manager";
   const showOccupancy = role !== "finance_officer";
@@ -100,6 +105,7 @@ export default function AdminDashboardPage() {
           <StatCard label="Monthly revenue" value={<MoneyStat value={stats.data.monthlyRevenue} />} icon={<Cash size={22} />} trend={{ value: "4.1%", direction: "up" }} />
           <StatCard label="Outstanding rent" value={<MoneyStat value={stats.data.outstanding} />} icon={<Receipt size={22} />} hint="pending + overdue" />
           <StatCard label="Open tickets" value={<CountUp to={stats.data.openTickets} duration={1.2} immediate />} icon={<AdjustmentsHorizontal size={22} />} hint="needing attention" />
+          <StatCard label="Active bookings" value={<CountUp to={activeBookings.data ?? 0} duration={1.2} immediate />} icon={<CalendarMonth size={22} />} hint="confirmed + checked-in" />
         </div>
       ) : null}
 
@@ -210,6 +216,41 @@ export default function AdminDashboardPage() {
           </Link>
         </Card>
       </div>
+
+      {/* Recent bookings */}
+      <Card className="mt-6 p-6">
+        <div className="mb-4 flex items-center justify-between">
+          <h2 className="font-heading text-h3 font-semibold text-foreground">Recent bookings</h2>
+          <Link href="/admin/bookings" className="inline-flex items-center gap-1 text-caption font-medium text-primary transition-colors hover:text-accent">
+            View all <ArrowUp size={14} className="rotate-45" />
+          </Link>
+        </div>
+        {recentBookings.loading ? (
+          <div className="space-y-3">{Array.from({ length: 5 }).map((_, i) => <Skeleton key={i} className="h-12 w-full" />)}</div>
+        ) : recentBookings.data && recentBookings.data.length > 0 ? (
+          <ul className="divide-y divide-border">
+            {recentBookings.data.map((b) => (
+              <li key={b.id} className="flex items-center justify-between gap-4 py-3">
+                <div className="flex min-w-0 items-center gap-3">
+                  <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-md bg-surface-active text-primary"><CalendarMonth size={18} /></span>
+                  <div className="min-w-0">
+                    <p className="truncate text-body font-medium text-foreground">{b.label}</p>
+                    <p className="truncate text-caption text-muted">
+                      {b.kind === "stay" ? "Short-term" : b.kind === "service" ? "Service booking" : "Long-term inquiry"} · {b.sublabel}
+                    </p>
+                  </div>
+                </div>
+                <div className="flex shrink-0 items-center gap-3">
+                  <StatusBadge status={b.status} />
+                  <span className="hidden text-caption text-muted sm:block">{fromNow(b.at, NOW_ISO)}</span>
+                </div>
+              </li>
+            ))}
+          </ul>
+        ) : (
+          <EmptyState title="No bookings yet" description="Bookings and service requests will show here." />
+        )}
+      </Card>
     </div>
   );
 }

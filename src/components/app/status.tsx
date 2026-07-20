@@ -50,6 +50,14 @@ const STATUS: Record<string, { label: string; tone: Tone }> = {
   proposal: { label: "Proposal", tone: "neutral" },
   won: { label: "Won", tone: "good" },
   lost: { label: "Lost", tone: "neutral" },
+  // bookings (short-term stays)
+  confirmed: { label: "Confirmed", tone: "good" },
+  checked_in: { label: "Checked-in", tone: "neutral" },
+  checked_out: { label: "Checked-out", tone: "good" },
+  cancelled: { label: "Cancelled", tone: "bad" },
+  // rental inquiries (long-term) — mapped from lead stages
+  quoted: { label: "Quoted", tone: "neutral" },
+  converted: { label: "Converted", tone: "good" },
   // expenses / staff
   approved: { label: "Approved", tone: "good" },
   reimbursed: { label: "Reimbursed", tone: "good" },

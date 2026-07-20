@@ -250,7 +250,7 @@ export async function createServiceBooking(input: ServiceBookingInput): Promise<
     details: input.details,
     date: input.date,
     time: input.time,
-    status: "confirmed",
+    status: "new",
     createdAt: new Date().toISOString(),
   };
   db.serviceBookings.unshift(booking);
@@ -284,4 +284,246 @@ export async function listServiceBookings(scope?: { forceError?: boolean }): Pro
   await mDelay();
   if (scope?.forceError) throw new Error("Failed to load service bookings.");
   return [...db.serviceBookings];
+}
+
+/* ============================================================ admin: bookings */
+
+/** Friendly long-term inquiry stage, mapped from the underlying CRM lead status. */
+export type InquiryStage = "new" | "contacted" | "quoted" | "converted" | "lost";
+
+const LEAD_TO_STAGE: Record<string, InquiryStage> = {
+  new: "new", contacted: "contacted", qualified: "contacted",
+  proposal: "quoted", won: "converted", lost: "lost",
+};
+const STAGE_TO_LEAD: Record<InquiryStage, string> = {
+  new: "new", contacted: "contacted", quoted: "proposal", converted: "won", lost: "lost",
+};
+
+export interface AdminBookingRow {
+  id: string;
+  kind: "short-term" | "long-term";
+  reference: string;
+  guestName: string;
+  propertyId?: string;
+  propertyName: string;
+  unitLabel?: string;
+  date: string; // check-in (short) or inquiry created (long)
+  checkIn?: string;
+  checkOut?: string;
+  /** Short-term: BookingStatus. Long-term: InquiryStage. */
+  status: string;
+  amount?: number;
+  leadId?: string;
+}
+
+function inquiryProperty(note: string | undefined): { name: string; id?: string } {
+  const m = note?.match(/Rental inquiry for (.+?)\./);
+  const name = m?.[1]?.trim() ?? "—";
+  const prop = db.properties.find((p) => p.name === name);
+  return { name, id: prop?.id };
+}
+
+function inquiryRows(): AdminBookingRow[] {
+  return db.leads
+    .filter((l) => l.source === "rental-inquiry")
+    .map((l) => {
+      const note = l.activities.find((a) => a.kind === "note")?.text;
+      const prop = inquiryProperty(note);
+      return {
+        id: l.id,
+        kind: "long-term" as const,
+        reference: `NX-INQ-${l.id.replace(/\D/g, "").slice(-6).padStart(6, "0")}`,
+        guestName: l.name,
+        propertyId: prop.id,
+        propertyName: prop.name,
+        date: l.createdAt,
+        status: LEAD_TO_STAGE[l.status] ?? "new",
+        leadId: l.id,
+      };
+    });
+}
+
+function bookingRows(): AdminBookingRow[] {
+  return db.bookings.map((b) => ({
+    id: b.id,
+    kind: "short-term" as const,
+    reference: b.reference,
+    guestName: b.guestName,
+    propertyId: b.propertyId,
+    propertyName: b.propertyName,
+    unitLabel: b.unitLabel,
+    date: b.checkIn,
+    checkIn: b.checkIn,
+    checkOut: b.checkOut,
+    status: b.status,
+    amount: b.total,
+  }));
+}
+
+export interface BookingFilters {
+  type?: "all" | "short-term" | "long-term";
+  status?: string;
+  propertyId?: string;
+  from?: string; // ISO date (inclusive)
+  to?: string; // ISO date (inclusive)
+  q?: string;
+  forceError?: boolean;
+}
+
+export async function listBookingRows(filters?: BookingFilters): Promise<AdminBookingRow[]> {
+  await mDelay();
+  if (filters?.forceError) throw new Error("Failed to load bookings.");
+  const f = filters ?? {};
+  let rows = [...bookingRows(), ...inquiryRows()];
+  if (f.type && f.type !== "all") rows = rows.filter((r) => r.kind === f.type);
+  if (f.status && f.status !== "all") rows = rows.filter((r) => r.status === f.status);
+  if (f.propertyId && f.propertyId !== "all") rows = rows.filter((r) => r.propertyId === f.propertyId);
+  if (f.from) rows = rows.filter((r) => r.date >= f.from!);
+  if (f.to) rows = rows.filter((r) => r.date <= f.to! + "T23:59:59.999Z");
+  if (f.q) {
+    const s = f.q.toLowerCase();
+    rows = rows.filter((r) => r.reference.toLowerCase().includes(s) || r.guestName.toLowerCase().includes(s) || r.propertyName.toLowerCase().includes(s));
+  }
+  return rows.sort((a, b) => (a.date < b.date ? 1 : -1));
+}
+
+export interface BookingDetail {
+  kind: "short-term" | "long-term";
+  booking?: Booking;
+  lead?: import("@/lib/mock/types").Lead;
+  propertyName: string;
+  propertyId?: string;
+  stage?: InquiryStage;
+}
+
+export async function getBookingDetail(id: string): Promise<BookingDetail> {
+  await mDelay(250);
+  const booking = db.bookings.find((b) => b.id === id);
+  if (booking) return { kind: "short-term", booking, propertyName: booking.propertyName, propertyId: booking.propertyId };
+  const lead = db.leads.find((l) => l.id === id && l.source === "rental-inquiry");
+  if (lead) {
+    const prop = inquiryProperty(lead.activities.find((a) => a.kind === "note")?.text);
+    return { kind: "long-term", lead, propertyName: prop.name, propertyId: prop.id, stage: LEAD_TO_STAGE[lead.status] ?? "new" };
+  }
+  throw new Error("Booking not found");
+}
+
+export async function updateBookingStatus(id: string, status: "confirmed" | "checked_in" | "checked_out" | "cancelled"): Promise<Booking> {
+  await mDelay(300);
+  const booking = db.bookings.find((b) => b.id === id);
+  if (!booking) throw new Error("Booking not found");
+  const before = booking.status;
+  booking.status = status;
+  recordMutation({
+    entityType: "booking",
+    entityId: id,
+    entityName: booking.reference,
+    action: "updated",
+    summary: `Booking ${booking.reference} → ${status.replace("_", "-")}`,
+    before: { status: before },
+    after: { status },
+    notify: { type: "system", title: "Booking updated", body: `${booking.reference} is now ${status.replace("_", "-")}.` },
+  });
+  return booking;
+}
+
+export async function updateInquiryStage(leadId: string, stage: InquiryStage) {
+  await mDelay(300);
+  const lead = db.leads.find((l) => l.id === leadId);
+  if (!lead) throw new Error("Inquiry not found");
+  const before = lead.status;
+  lead.status = STAGE_TO_LEAD[stage] as typeof lead.status;
+  lead.activities.push({ id: `act_${Date.now()}`, at: new Date().toISOString(), kind: "status", text: `Inquiry stage → ${stage}` });
+  recordMutation({
+    entityType: "lead",
+    entityId: leadId,
+    entityName: lead.name,
+    action: "updated",
+    summary: `Rental inquiry ${lead.name} → ${stage}`,
+    before: { status: before },
+    after: { status: lead.status },
+    notify: { type: "system", title: "Inquiry updated", body: `${lead.name}'s inquiry is now ${stage}.` },
+  });
+  return lead;
+}
+
+/* ==================================================== admin: service bookings */
+
+export async function getServiceBooking(id: string): Promise<ServiceBooking> {
+  await mDelay(250);
+  const sb = db.serviceBookings.find((s) => s.id === id);
+  if (!sb) throw new Error("Service booking not found");
+  return sb;
+}
+
+export async function updateServiceBookingStatus(id: string, status: import("@/lib/mock/types").ServiceBookingStatus): Promise<ServiceBooking> {
+  await mDelay(300);
+  const sb = db.serviceBookings.find((s) => s.id === id);
+  if (!sb) throw new Error("Service booking not found");
+  const before = sb.status;
+  sb.status = status;
+  recordMutation({
+    entityType: "service-booking",
+    entityId: id,
+    entityName: sb.reference,
+    action: "updated",
+    summary: `Service booking ${sb.reference} → ${status.replace("_", " ")}`,
+    before: { status: before },
+    after: { status },
+    notify: { type: "system", title: "Service booking updated", body: `${sb.reference} is now ${status.replace("_", " ")}.` },
+  });
+  return sb;
+}
+
+export async function assignServiceBooking(id: string, assignee: string): Promise<ServiceBooking> {
+  await mDelay(300);
+  const sb = db.serviceBookings.find((s) => s.id === id);
+  if (!sb) throw new Error("Service booking not found");
+  sb.assignee = assignee;
+  if (sb.status === "new") sb.status = "assigned";
+  recordMutation({
+    entityType: "service-booking",
+    entityId: id,
+    entityName: sb.reference,
+    action: "updated",
+    summary: `Service booking ${sb.reference} assigned to ${assignee}`,
+    after: { assignee, status: sb.status },
+    notify: { type: "system", title: "Service booking assigned", body: `${sb.reference} assigned to ${assignee}.` },
+  });
+  return sb;
+}
+
+/** Latest bookings + service bookings for the admin dashboard "Recent Bookings" feed. */
+export interface RecentBookingItem {
+  id: string;
+  kind: "stay" | "service" | "inquiry";
+  label: string;
+  sublabel: string;
+  status: string;
+  at: string;
+}
+
+export async function getRecentBookings(limit = 5): Promise<RecentBookingItem[]> {
+  await mDelay(250);
+  const stays: RecentBookingItem[] = db.bookings.map((b) => ({
+    id: b.id, kind: "stay", label: `${b.guestName} · ${b.propertyName}`,
+    sublabel: b.reference, status: b.status, at: b.createdAt,
+  }));
+  const services: RecentBookingItem[] = db.serviceBookings.map((s) => ({
+    id: s.id, kind: "service", label: `${s.name} · ${s.category}`,
+    sublabel: s.reference, status: s.status, at: s.createdAt,
+  }));
+  const inquiries: RecentBookingItem[] = db.leads
+    .filter((l) => l.source === "rental-inquiry")
+    .map((l) => ({
+      id: l.id, kind: "inquiry", label: `${l.name} · ${inquiryProperty(l.activities.find((a) => a.kind === "note")?.text).name}`,
+      sublabel: "Long-term inquiry", status: LEAD_TO_STAGE[l.status] ?? "new", at: l.createdAt,
+    }));
+  return [...stays, ...services, ...inquiries].sort((a, b) => (a.at < b.at ? 1 : -1)).slice(0, limit);
+}
+
+/** Count of active (non-cancelled, non-checked-out) short-term bookings. */
+export async function getActiveBookingCount(): Promise<number> {
+  await mDelay(150);
+  return db.bookings.filter((b) => b.status === "confirmed" || b.status === "checked_in").length;
 }

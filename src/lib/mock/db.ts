@@ -20,6 +20,7 @@ import type {
   BookingStatus,
   Building,
   ServiceBooking,
+  ServiceBookingStatus,
   PermissionSet,
   RoleDef,
   TxStatus,
@@ -598,7 +599,6 @@ const rFullName = () => `${rpick(firstNames)} ${rpick(lastNames)}`;
 const rEmail = (name: string) => `${name.toLowerCase().replace(/[^a-z]+/g, ".")}@example.com`;
 const rPhone = () => `+2567${rint(0, 9)}${rint(1000000, 9999999)}`;
 
-const bookingStatuses: BookingStatus[] = ["confirmed", "confirmed", "completed", "pending"];
 const bookingPayMethods = ["flutterwave", "mobile_money", "card"];
 const shortTermProps = properties.filter((p) => p.rentalType === "short-term");
 
@@ -615,7 +615,10 @@ export const bookings: Booking[] = Array.from({ length: 14 }, (_, i) => {
   const subtotal = st.daily * nights + st.cleaningFee;
   const taxes = Math.round((subtotal * 0.18) / 1000) * 1000;
   const name = rFullName();
-  const status = checkOutMs < NOW.getTime() ? "completed" : rpick(bookingStatuses);
+  let status: BookingStatus;
+  if (checkOutMs < NOW.getTime()) status = "checked_out";
+  else if (checkInMs <= NOW.getTime()) status = rpick(["checked_in", "checked_in", "cancelled"] as BookingStatus[]);
+  else status = rpick(["confirmed", "confirmed", "confirmed", "cancelled"] as BookingStatus[]);
   return {
     id: `bkg_${i + 1}`,
     reference: `NX-BK-${rint(100000, 999999)}`,
@@ -644,13 +647,15 @@ export const bookings: Booking[] = Array.from({ length: 14 }, (_, i) => {
 const cleaningCats = ["Residential Cleaning", "Commercial Cleaning", "Deep Cleaning", "Move-In/Move-Out", "Event Cleaning", "Facility Cleaning", "Scheduled Programme"];
 const lifestyleCats = ["Laundry", "Mobile Car Wash", "Gardening & Lawn", "Janitorial"];
 const timeSlots = ["08:00–10:00", "10:00–12:00", "12:00–14:00", "14:00–16:00", "16:00–18:00"];
+const serviceTechs = ["James Odoi", "Fred Wanyama", "Peter Ssemakula", "SparkleClean Team", "GreenScape Crew"];
 
 export const serviceBookings: ServiceBooking[] = Array.from({ length: 10 }, (_, i) => {
   const kind: ServiceBooking["kind"] = i % 2 === 0 ? "cleaning" : "lifestyle";
   const category = kind === "cleaning" ? rpick(cleaningCats) : rpick(lifestyleCats);
   const name = rFullName();
   const createdMs = NOW.getTime() - rint(1, 40) * DAY;
-  const status = rpick(["confirmed", "completed", "pending", "confirmed"] as BookingStatus[]);
+  const status = rpick(["new", "assigned", "in_progress", "completed", "new"] as ServiceBookingStatus[]);
+  const assigned = status === "assigned" || status === "in_progress" || status === "completed";
   return {
     id: `svb_${i + 1}`,
     reference: `NX-SV-${rint(100000, 999999)}`,
@@ -664,9 +669,33 @@ export const serviceBookings: ServiceBooking[] = Array.from({ length: 10 }, (_, 
     date: iso(NOW.getTime() + rint(1, 20) * DAY),
     time: rpick(timeSlots),
     status,
+    assignee: assigned ? rpick(serviceTechs) : undefined,
     createdAt: iso(createdMs),
   };
 }).sort((a, b) => (a.createdAt < b.createdAt ? 1 : -1));
+
+// Seed a few long-term rental inquiries as CRM leads so /admin/bookings and
+// /admin/leads show inquiry rows on a fresh load (source: "rental-inquiry").
+const longTermProps = properties.filter((p) => p.rentalType === "long-term");
+const inquiryStatuses: LeadStatus[] = ["new", "new", "contacted", "qualified", "proposal"];
+for (let i = 0; i < 5; i++) {
+  const p = rpick(longTermProps);
+  const name = rFullName();
+  const createdMs = NOW.getTime() - rint(2, 30) * DAY;
+  leads.push({
+    id: `lead_inq_${i + 1}`,
+    name,
+    email: rEmail(name),
+    phone: rPhone(),
+    source: "rental-inquiry",
+    service: "Rental Management",
+    status: rpick(inquiryStatuses),
+    value: rint(4, 20) * 500_000,
+    createdAt: iso(createdMs),
+    owner: "Unassigned",
+    activities: [{ id: `act_inq_${i}`, at: iso(createdMs), kind: "note", text: `Rental inquiry for ${p.name}. Preferred move-in within 60 days; lease duration 1 year.` }],
+  });
+}
 
 /* ------------------------------------------------------------ helpers */
 
