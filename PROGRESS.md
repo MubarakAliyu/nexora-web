@@ -13,6 +13,49 @@ Grep for `lucide` before every batch gate — it must return zero hits in `src/`
 
 ---
 
+## Revision Pass 2 ✅ — Rental Management + Service Booking Flows (pre-Batch-11)
+
+Commits: `rental-config` → `rental-browsing` → `booking-flows` → `service-booking-forms` → `cta-wiring`.
+
+- **2A Rental config:** `rentalType` (short-term/long-term) + `rentalPayment` (online/manual) +
+  `minStay`/`maxStay`/`bedrooms`/`amenities` + short-term pricing (daily/weekly/monthly/cleaningFee)
+  + long-term `annualRent` on Property. All 16 mock properties seeded (7 short-term incl. Salim's
+  entebbe-villas/kira-gardens/muyenga-heights). Admin property dialog gets a Rental configuration
+  section with conditional pricing fields. New `lib/api/rentals.ts` + seeded `bookings` (14) and
+  `serviceBookings` (10) in the mock DB.
+- **2B `/rentals`:** browse page — Short/Long-term tabs, search, type/location/beds/price/amenity
+  filters, rich cards (badge, price-per-period, availability, amenities, Book/Enquire CTA).
+- **2C Short-term booking:** `/rentals/[id]` detail (gallery, amenities, units, sticky panel) +
+  5-step flow: dates (range calendar, booked dates blocked) → guests → summary (rate×nights +
+  cleaning + 18% tax) → simulated payment (Flutterwave/MoMo/Card) → confirmation w/ NX-BK ref.
+  Creates a Booking + audit/notification. NB: detail page only skeletons on FIRST load so the
+  live-revision refetch can't unmount an in-flight flow.
+- **2D Long-term inquiry:** inquiry form (unit, move-in, duration, employment) → "within 24 hours"
+  confirmation w/ NX-INQ ref → creates CRM lead (source `rental-inquiry`).
+- **2E Service bookings:** shared 5-step `ServiceBookingWizard` → `/book/cleaning` (7 categories,
+  property fields) + `/book/lifestyle` (4 services, per-category hints). NX-SV refs.
+- **2F CTA wiring:** all six service CTAs live — Contact an Advisor→/contact, Browse
+  Properties→/rentals, Request Consultation→/request-a-quote, Book Cleaning→/book/cleaning,
+  Book Service→/book/lifestyle, Schedule Consultation→/request-a-quote. Zero 404s.
+- **New photos placed:** point3d (rentals hero), keys/moving-in ×2 (Rental Mgmt service),
+  francesca + eric-ardito (rental gallery), clubhouse (Condo Mgmt hero), real-estate-sector
+  (Asset Opt overview), jakub-zerdzicki (Investors reporting), real-estate-purchase (Investors
+  income). Held for Batch 11 tenant onboarding: the two young-couple moving photos.
+- Verified end-to-end in-browser; no horizontal overflow at 375px; lint + tsc clean.
+
+## Revision Pass 1 ✅ — Branding swap + 6 services + M-Zi removal (pre-Batch-11)
+
+Commits: `branding-swap` → `service-restructure` → `homepage-fixes` → `site-wide-cleanup`.
+
+- New brand mark everywhere (icon-mark/logo-primary/logo-white PNGs from `public/new-brand/`,
+  old SVGs retired, favicon set regenerated, PDF header inherits).
+- Services 9 → 6 (Property / Rental / Condominium / Housekeeping & Cleaning / Home & Lifestyle /
+  Asset Optimization & Advisory) with per-service CTAs; old slugs 404.
+- Homepage: 6 service cards + View All Services; WhatsApp button clears the hero controls.
+- ALL "Groupe M-Zi / M-Zi / Group MD" references removed — gate grep returns ZERO.
+
+---
+
 ## Batch 0 — Project Setup, Asset Audit & Scaffolding ✅
 
 **Completed.** Clean Next.js 15 project stood up in `nexora-web/`; toolchain wired; assets

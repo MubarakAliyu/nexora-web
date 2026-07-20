@@ -104,7 +104,7 @@ export const services: Service[] = [
     promise: "Well-run associations, happy residents, protected value.",
     icon: "quality",
     excerpt: "Association management, shared facilities, security and resident coordination.",
-    heroImage: "/images/properties/apartment-facade.jpg",
+    heroImage: "/images/clubhouse-tewksbury-usa.jpg",
     overviewImage: "/images/properties/tower-curved-balcony.jpg",
     overview: [
       "Condominiums thrive on fair governance and well-managed shared spaces. Nexora administers associations professionally — facilities, resident coordination, security, concierge, common areas and vendor management, all handled with clear communication to every owner.",
@@ -126,7 +126,7 @@ export const services: Service[] = [
     ],
     pricingNote:
       "A per-unit or whole-association fee agreed with the board — structured for fairness and transparency.",
-    cta: { label: "Request Consultation", href: "/contact" },
+    cta: { label: "Request Consultation", href: "/request-a-quote" },
     related: ["property-management", "home-lifestyle", "asset-optimization"],
   },
   {
@@ -198,7 +198,7 @@ export const services: Service[] = [
     icon: "chart",
     excerpt: "Performance analysis, revenue optimization and investment advisory.",
     heroImage: "/images/properties/twin-towers-dusk.jpg",
-    overviewImage: "/images/properties/tower-poolside.jpg",
+    overviewImage: "/images/real-estate-sector.jpg",
     overview: [
       "Beyond day-to-day management, we help owners make their assets work harder. Using occupancy, pricing and cost data, Nexora identifies opportunities to lift income, reduce spend and grow long-term value.",
       "Clear, data-backed recommendations and strategy — from valuation support to portfolio growth planning.",
@@ -219,7 +219,7 @@ export const services: Service[] = [
     ],
     pricingNote:
       "Offered as an advisory add-on or bundled into full management — scoped to your goals.",
-    cta: { label: "Schedule Consultation", href: "/contact" },
+    cta: { label: "Schedule Consultation", href: "/request-a-quote" },
     related: ["property-management", "rental-management", "condominium-management"],
   },
 ];

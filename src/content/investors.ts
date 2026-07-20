@@ -31,8 +31,8 @@ export const transparency = {
     "Every month you receive a clear statement — income, expenses, occupancy and net disbursement — with nothing hidden.",
     "For diaspora owners, this transparency is everything: you always know exactly how your asset is performing, without needing to be here.",
   ],
-  image: "/images/properties/interior-living-room.jpg",
-  imageAlt: "Well-managed residential interior",
+  image: "/images/jakub-zerdzicki-6TIlcP5af08-unsplash.jpg",
+  imageAlt: "House keys resting above property performance charts",
 };
 
 export const assetProtection = {
@@ -53,8 +53,8 @@ export const rentalIncome = {
     "From tenant sourcing and screening to rent collection and renewals, we manage the full income cycle and disburse your net proceeds on a predictable schedule.",
     "You enjoy the returns; we handle the work.",
   ],
-  image: "/images/properties/tower-poolside.jpg",
-  imageAlt: "Poolside view of a managed residential tower",
+  image: "/images/real-estate-purchase-concept-idea.jpg",
+  imageAlt: "Property contract with house keys and rental income",
 };
 
 export interface Faq {

@@ -88,7 +88,7 @@ export default function RentalDetailPage() {
           <Image src={INTERIOR_SHOT} alt="Interior" fill sizes="33vw" className="object-cover" />
         </div>
         <div className="relative hidden aspect-[16/10] items-center justify-center overflow-hidden rounded-xl bg-surface-hover sm:flex">
-          <Image src="/images/point3d-commercial-imaging-ltd-JbiLJnvj4b8-unsplash.jpg" alt="Interior" fill sizes="33vw" className="object-cover" />
+          <Image src="/images/eric-ardito--4VBwVCdnnc-unsplash.jpg" alt="Residential exterior" fill sizes="33vw" className="object-cover" />
         </div>
       </div>
 
