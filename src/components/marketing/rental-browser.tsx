@@ -12,7 +12,7 @@ import { Input } from "@/components/ui/input";
 import { EmptyState } from "@/components/ui/empty-state";
 import { useAsync } from "@/lib/use-async";
 import {
-  listRentals, getRentalFacets, monthlyPrice,
+  listRentals, getRentalFacets,
   type RentalListing, type RentalFilters,
 } from "@/lib/api/rentals";
 
