@@ -13,6 +13,41 @@ Grep for `lucide` before every batch gate — it must return zero hits in `src/`
 
 ---
 
+## ✅ ALL THREE REVISION PASSES COMPLETE (pre-Batch-11)
+
+Branding swap · services 9→6 · M-Zi removal · rental types · public browsing · booking &
+inquiry flows · service booking wizards · admin Bookings + Service Bookings modules · owner
+rental transparency. **Final gate: `next build` clean (75 pages, exit 0), lint + tsc clean.**
+Next: Pass 4 (Custom Branded PDFs) → Batch 11 (Tenant Portal, now incl. booking history).
+
+## Revision Pass 3 ✅ — Dashboard Updates + Integration (pre-Batch-11)
+
+Commits: `admin-bookings-module` → `owner-portal-updates` → `data-consistency`.
+
+- **3A Admin modules.** `/admin/bookings` — combined table of short-term stay bookings +
+  long-term rental inquiries (inquiries sourced from `rental-inquiry` CRM leads); filters
+  (type/status/property/date-range/search); row → detail dialog with price breakdown /
+  inquiry details + CRM lead link; status actions (Confirm/Check-In/Check-Out/Cancel and
+  inquiry stages Contacted/Quoted/Convert/Lost) + Add Booking, all via the live engine.
+  `/admin/service-bookings` — table + service-type/status/date filters; detail dialog with
+  assign-staff + status change (New/Assigned/In-Progress/Completed/Cancelled). Sidebar nav
+  gains both (after CRM/Leads). Dashboard Home: **Active Bookings** KPI + **Recent Bookings**
+  feed (stays + services + inquiries). Verified: status change fires toast + notification
+  (bell 4→5) + audit; dark mode confirmed (elevated surface #2D2B28).
+- **3B Owner portal.** Property detail shows the rental-type badge; short-term properties
+  gain a "Current bookings" section (active/upcoming count + mini-table), long-term keep
+  units/lease. Owner dashboard: "Recent bookings" feed beside the activity timeline. Owner
+  financials: "Revenue by source" card (long-term lease vs short-term booking income +
+  proportion bar). Rebalanced Salim's portfolio → Entebbe + Kira short-term, Nakasero +
+  Muyenga long-term (Nakasero holds Mubarak's lease), so his portal shows both types.
+- **3C Data consistency.** Portfolio cards show Short-/Long-Term badges (sourced from the
+  seeded data). `Booking`/`ServiceBooking` types added to the admin entity barrel. Data:
+  `BookingStatus` +checked_in/checked_out; `ServiceBookingStatus` + `assignee`; seeded 5
+  long-term inquiry leads. Marketing→admin flow: create fns return references after the DB
+  write (verified); `/admin/bookings` + `/admin/leads` render seeded rows — within one SPA
+  session a fresh submission persists and surfaces (in-memory DB resets on hard reload, as
+  with every mutation in this build).
+
 ## Revision Pass 2 ✅ — Rental Management + Service Booking Flows (pre-Batch-11)
 
 Commits: `rental-config` → `rental-browsing` → `booking-flows` → `service-booking-forms` → `cta-wiring`.

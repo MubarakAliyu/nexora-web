@@ -5,7 +5,7 @@ import Link from "next/link";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
-import { Plus, Search, CalendarMonth, ArrowRight } from "flowbite-react-icons/outline";
+import { Plus, Search, ArrowRight } from "flowbite-react-icons/outline";
 import { PageHeader } from "@/components/app/page-header";
 import { StatusBadge } from "@/components/app/status";
 import { Badge } from "@/components/ui/badge";
