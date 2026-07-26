@@ -18,6 +18,8 @@ import type {
   Lease,
   MaintenanceTicket,
   Owner,
+  Payment,
+  PaymentMethod,
   PermissionSet,
   RoleDef,
   Staff,
@@ -297,6 +299,47 @@ export async function deleteExpense(id: string): Promise<{ ok: true }> {
     notify: { type: "system", title: "Expense deleted", body: `An expense was deleted.` },
   });
   return { ok: true };
+}
+
+/* -------------------------------------------------------------- payments */
+
+export interface PayInput {
+  invoiceId: string;
+  method: PaymentMethod;
+  amount?: number; // defaults to the full amount due
+}
+
+/** Tenant rent payment — creates a completed payment and settles the invoice. */
+export async function payInvoice(input: PayInput): Promise<Payment> {
+  await mDelay();
+  const invoice = db.invoices.find((i) => i.id === input.invoiceId);
+  if (!invoice) throw new NotFoundError(input.invoiceId);
+  const due = invoice.amount - invoice.paid;
+  const amount = input.amount != null ? Math.min(input.amount, due) : due;
+  const payment: Payment = {
+    id: `pay_${Date.now()}`,
+    invoiceId: invoice.id,
+    tenantId: invoice.tenantId,
+    propertyId: invoice.propertyId,
+    amount,
+    date: new Date().toISOString(),
+    method: input.method,
+    reference: `NX${Math.floor(100000 + Math.random() * 900000)}`,
+    status: "completed",
+  };
+  db.payments.unshift(payment);
+  invoice.paid += amount;
+  invoice.status = invoice.paid >= invoice.amount ? "paid" : "partial";
+  recordMutation({
+    entityType: "payment",
+    entityId: payment.id,
+    entityName: payment.reference,
+    action: "created",
+    summary: `Rent payment ${payment.reference} — ${invoice.number}`,
+    after: { amount, invoice: invoice.number, method: input.method },
+    notify: { type: "system", title: "Payment received", body: `${invoice.number}: ${payment.reference} recorded.` },
+  });
+  return payment;
 }
 
 /* -------------------------------------------------------------- tickets */
