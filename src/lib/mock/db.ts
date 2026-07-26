@@ -406,6 +406,23 @@ for (const lease of leases) {
   }
 }
 
+// Guarantee Mubarak (the demo tenant) always carries one outstanding invoice,
+// so the tenant Pay-Rent flow and the dashboard "next payment due" banner are
+// always demonstrable regardless of the random draw above.
+{
+  const mubInvoices = invoices
+    .filter((i) => i.leaseId === MUBARAK_LEASE_ID)
+    .sort((a, b) => (a.due < b.due ? 1 : -1));
+  const target = mubInvoices[0];
+  if (target) {
+    target.paid = 0;
+    target.status = new Date(target.due).getTime() < NOW.getTime() ? "overdue" : "pending";
+    for (let i = payments.length - 1; i >= 0; i--) {
+      if (payments[i].invoiceId === target.id) payments.splice(i, 1);
+    }
+  }
+}
+
 /* ------------------------------------------------------------- expenses */
 
 const expenseCats: ExpenseCategory[] = ["maintenance", "utilities", "security", "cleaning", "admin", "insurance"];
