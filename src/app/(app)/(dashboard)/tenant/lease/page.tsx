@@ -32,7 +32,7 @@ export default function TenantLeasePage() {
   const user = useSession((s) => s.user);
   const tenantId = user?.tenantId ?? "";
   const scope: Scope = React.useMemo(() => ({ forceError: debugErrorFlag() }), []);
-  const { data, loading, error, reload } = useAsync(() => getTenant(tenantId, scope), [tenantId, scope]);
+  const { data, loading, error } = useAsync(() => getTenant(tenantId, scope), [tenantId, scope]);
 
   if (loading) {
     return <div><Skeleton className="h-6 w-40" /><Skeleton className="mt-4 h-40 w-full rounded-xl" /><SkeletonText className="mt-6" lines={4} /></div>;
@@ -93,7 +93,7 @@ export default function TenantLeasePage() {
         </Button>
       </Card>
 
-      <div className="grid gap-4 lg:grid-cols-2">
+      <div className="grid grid-cols-1 gap-4 lg:grid-cols-2">
         {/* Lease terms */}
         <Card className="p-6">
           <h2 className="mb-2 flex items-center gap-2 font-heading text-h3 font-semibold text-foreground"><FileLines size={20} className="text-primary" /> Lease terms</h2>

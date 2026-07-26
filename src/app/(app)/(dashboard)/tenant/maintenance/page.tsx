@@ -159,7 +159,7 @@ export default function TenantMaintenancePage() {
         ))}
       </div>
 
-      <div className="grid gap-6 lg:grid-cols-[380px_1fr]">
+      <div className="grid grid-cols-1 gap-6 lg:grid-cols-[380px_minmax(0,1fr)]">
         {/* Submit form */}
         <Card className="h-fit p-6">
           <h2 className="mb-1 flex items-center gap-2 font-heading text-h3 font-semibold text-foreground"><Plus size={20} className="text-primary" /> {isComplaint ? "Raise a complaint" : "New maintenance request"}</h2>

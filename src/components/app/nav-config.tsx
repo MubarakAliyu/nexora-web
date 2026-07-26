@@ -44,6 +44,7 @@ export function navForRole(role: Role): SidebarItem[] {
       { label: "My Lease", href: "/tenant/lease", icon: <FileLines size={sz} /> },
       { label: "Rent & Payments", href: "/tenant/payments", icon: <CreditCardPlus size={sz} /> },
       { label: "Maintenance", href: "/tenant/maintenance", icon: <AdjustmentsHorizontal size={sz} /> },
+      { label: "My Bookings", href: "/tenant/bookings", icon: <CalendarMonth size={sz} /> },
       { label: "Documents", href: "/tenant/documents", icon: <FileLines size={sz} /> },
       { label: "Notifications", href: "/notifications", icon: <Bell size={sz} /> },
       { label: "Settings", href: "/settings", icon: <Cog size={sz} /> },

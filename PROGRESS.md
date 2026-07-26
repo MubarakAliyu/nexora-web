@@ -13,6 +13,33 @@ Grep for `lucide` before every batch gate — it must return zero hits in `src/`
 
 ---
 
+## Batch 11 — Tenant Portal ✅ COMPLETE
+
+Commits: `tenant-dashboard` → `tenant-lease` → `tenant-payments` → `tenant-maintenance` →
+`tenant-documents-bookings`. The most-used portal — mobile-first, effortless rent, requests,
+booking history. Logged in as **mubarak@gmail.com** (long-term tenant, Nakasero A-407).
+
+- **Dashboard** (`/tenant`): KPIs (rent / outstanding / next due / open requests), "next
+  payment due" banner, quick actions, lease summary (rental-type badge), recent payments
+  (receipt PDF), open requests, tenant notices.
+- **My Lease** (`/tenant/lease`): property hero, renewal banner, terms / dates / unit /
+  tenant cards, download branded lease PDF.
+- **Rent & Payments** (`/tenant/payments`): balance + history + receipts; **Pay Rent flow**
+  (method → gateway "processing" placeholder → confirmation w/ reference + receipt) wired to
+  `payInvoice` (settles invoice, records payment via live engine).
+- **Maintenance & Requests** (`/tenant/maintenance`): tabbed Maintenance | Complaints;
+  submit form (category/priority/photo-placeholder) → `createTicket`; ticket list + status
+  timeline dialog.
+- **My Bookings** (`/tenant/bookings`): short-term stay history (upcoming/past) — the
+  revision's short-term tenant view; Mubarak seeded with 2 stays.
+- **Documents** (`/tenant/documents`): lease + receipts + invoices, filterable, downloadable.
+- Shared **/notifications** + **/settings** already served the tenant role from Batch 8.
+
+Data: `payInvoice` mutation; Mubarak guaranteed one outstanding invoice + 2 short-term
+bookings; `listBookingsForEmail`. Nav gains "My Bookings". Verified end-to-end: pay-rent and
+ticket submission fire the live engine (bell + toast + audit); no horizontal overflow at
+375px (fixed grid tracks); dark-mode-aware. Gate: `next build` clean, lint + tsc clean.
+
 ## ✅ ALL THREE REVISION PASSES COMPLETE (pre-Batch-11)
 
 Branding swap · services 9→6 · M-Zi removal · rental types · public browsing · booking &

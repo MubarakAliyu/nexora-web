@@ -527,3 +527,13 @@ export async function getActiveBookingCount(): Promise<number> {
   await mDelay(150);
   return db.bookings.filter((b) => b.status === "confirmed" || b.status === "checked_in").length;
 }
+
+/** A guest's short-term stay bookings (matched by email) — for the tenant portal. */
+export async function listBookingsForEmail(email: string, scope?: { forceError?: boolean }): Promise<Booking[]> {
+  await mDelay();
+  if (scope?.forceError) throw new Error("Failed to load bookings.");
+  const e = email.trim().toLowerCase();
+  return db.bookings
+    .filter((b) => b.guestEmail.toLowerCase() === e)
+    .sort((a, b) => (a.checkIn < b.checkIn ? 1 : -1));
+}

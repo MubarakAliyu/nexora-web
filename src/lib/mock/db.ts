@@ -662,6 +662,42 @@ export const bookings: Booking[] = Array.from({ length: 14 }, (_, i) => {
   };
 }).sort((a, b) => (a.createdAt < b.createdAt ? 1 : -1));
 
+// Give Mubarak (the demo tenant) a short-term booking history so the tenant
+// "My Bookings" view has data (a long-term tenant who also books getaways).
+{
+  const stay = properties.find((p) => p.id === "entebbe-villas");
+  const kira = properties.find((p) => p.id === "kira-gardens");
+  const mkBooking = (idx: number, prop: Property | undefined, offsetDays: number, nights: number, status: BookingStatus): Booking | null => {
+    if (!prop?.shortTerm) return null;
+    const checkInMs = NOW.getTime() + offsetDays * DAY;
+    const subtotal = prop.shortTerm.daily * nights + prop.shortTerm.cleaningFee;
+    const taxes = Math.round((subtotal * 0.18) / 1000) * 1000;
+    return {
+      id: `bkg_mub_${idx}`,
+      reference: `NX-BK-${rint(100000, 999999)}`,
+      propertyId: prop.id,
+      propertyName: prop.name,
+      guestName: "Mubarak Aliyu",
+      guestEmail: "mubarak@gmail.com",
+      guestPhone: "+256700000001",
+      adults: 2,
+      children: 1,
+      checkIn: iso(checkInMs),
+      checkOut: iso(checkInMs + nights * DAY),
+      nights,
+      nightlyRate: prop.shortTerm.daily,
+      cleaningFee: prop.shortTerm.cleaningFee,
+      taxes,
+      total: subtotal + taxes,
+      paymentMethod: "mobile_money",
+      status,
+      createdAt: iso(checkInMs - 20 * DAY),
+    };
+  };
+  const mub = [mkBooking(1, stay, -60, 3, "checked_out"), mkBooking(2, kira, 25, 4, "confirmed")].filter(Boolean) as Booking[];
+  bookings.push(...mub);
+}
+
 const cleaningCats = ["Residential Cleaning", "Commercial Cleaning", "Deep Cleaning", "Move-In/Move-Out", "Event Cleaning", "Facility Cleaning", "Scheduled Programme"];
 const lifestyleCats = ["Laundry", "Mobile Car Wash", "Gardening & Lawn", "Janitorial"];
 const timeSlots = ["08:00–10:00", "10:00–12:00", "12:00–14:00", "14:00–16:00", "16:00–18:00"];

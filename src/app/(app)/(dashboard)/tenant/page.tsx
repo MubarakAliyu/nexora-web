@@ -114,7 +114,7 @@ export default function TenantDashboardPage() {
       </div>
 
       {/* Lease + payments */}
-      <div className="mt-6 grid gap-4 lg:grid-cols-3">
+      <div className="mt-6 grid grid-cols-1 gap-4 lg:grid-cols-3">
         <Card className="p-6">
           <div className="mb-4 flex items-center justify-between">
             <h2 className="font-heading text-h3 font-semibold text-foreground">My lease</h2>
@@ -145,7 +145,7 @@ export default function TenantDashboardPage() {
       </div>
 
       {/* Open requests + notices */}
-      <div className="mt-6 grid gap-4 lg:grid-cols-2">
+      <div className="mt-6 grid grid-cols-1 gap-4 lg:grid-cols-2">
         <Card className="p-6">
           <div className="mb-4 flex items-center justify-between">
             <h2 className="font-heading text-h3 font-semibold text-foreground">Open requests</h2>
