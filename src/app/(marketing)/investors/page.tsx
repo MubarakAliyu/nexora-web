@@ -1,4 +1,5 @@
 import type { Metadata } from "next";
+import { pageMeta } from "@/lib/seo";
 import { Reveal, RevealGroup, RevealItem } from "@/components/motion";
 import { PageHero } from "@/components/marketing/page-hero";
 import { MediaText } from "@/components/marketing/media-text";
@@ -17,11 +18,13 @@ import {
   investorsCta,
 } from "@/content/investors";
 
-export const metadata: Metadata = {
+export const metadata: Metadata = pageMeta({
   title: "Investors",
   description:
     "Diaspora and international investors trust Nexora for transparent reporting, protected assets and hands-off rental income across Uganda.",
-};
+  path: "/investors",
+  ogImage: "/images/og/nexora-og-investors.jpg",
+});
 
 export default function InvestorsPage() {
   return (

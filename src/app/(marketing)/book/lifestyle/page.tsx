@@ -1,12 +1,15 @@
 import type { Metadata } from "next";
+import { pageMeta } from "@/lib/seo";
 import { PageHero } from "@/components/marketing/page-hero";
 import { ServiceBookingWizard, type WizardConfig } from "@/components/marketing/service-booking-wizard";
 
-export const metadata: Metadata = {
+export const metadata: Metadata = pageMeta({
   title: "Book a Lifestyle Service",
   description:
     "Book Nexora home & lifestyle services — laundry with pickup & delivery, mobile car wash, gardening & lawn care and janitorial services across Kampala.",
-};
+  path: "/book/lifestyle",
+  ogImage: "/images/og/nexora-og-default.jpg",
+});
 
 const config: WizardConfig = {
   kind: "lifestyle",

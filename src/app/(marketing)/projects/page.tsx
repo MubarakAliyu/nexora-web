@@ -1,4 +1,5 @@
 import type { Metadata } from "next";
+import { pageMeta } from "@/lib/seo";
 import { Reveal } from "@/components/motion";
 import { PageHero } from "@/components/marketing/page-hero";
 import { MediaText } from "@/components/marketing/media-text";
@@ -15,11 +16,13 @@ import {
   projectsCta,
 } from "@/content/portfolio";
 
-export const metadata: Metadata = {
+export const metadata: Metadata = pageMeta({
   title: "Projects & Transformations",
   description:
     "See the measurable impact of Nexora management — cleaning and upgrade transformations, occupancy turnarounds and facility success stories.",
-};
+  path: "/projects",
+  ogImage: "/images/og/nexora-og-default.jpg",
+});
 
 export default function ProjectsPage() {
   return (

@@ -6,6 +6,32 @@ Built as a single Next.js 15 application with two route groups: a public, motion
 
 ---
 
+## Project Status — ✅ Complete (frontend, mock-data)
+
+All build batches are complete and the production build passes clean (80 routes).
+
+| Batch | Scope | Status |
+|---|---|---|
+| 0–2 | Setup, design system, component library | ✅ |
+| 3–7 | Marketing site (home, about, services, portfolio, projects, investors, blog, careers, contact, forms) | ✅ |
+| 8 | Authentication + role-aware app shell | ✅ |
+| 9 | Admin dashboard (14 modules) | ✅ |
+| 10 | Owner portal | ✅ |
+| 11 | Tenant portal (rent, requests, bookings, documents) | ✅ |
+| 12 | Motion polish, responsive QA, performance, accessibility, SEO | ✅ |
+| Revisions 1–3 | Brand refresh, 6 services, rental types, public rental browsing, booking + inquiry flows, admin/owner booking modules | ✅ |
+
+### Public routes (crawlable)
+`/` · `/about` · `/services` + `/services/[slug]` · `/portfolio` + `/portfolio/[slug]` · `/projects` · `/investors` · `/blog` + `/blog/[slug]` · `/careers` · `/contact` · `/request-a-quote` · `/rentals` + `/rentals/[id]` · `/book/cleaning` · `/book/lifestyle`
+
+### App routes (authenticated, noindexed)
+- **Auth:** `/login` · `/register` · `/forgot-password` · `/reset-password` · `/verify-email` · `/2fa`
+- **Admin:** `/admin` · `/properties` (+`/[id]`) · `/units` · `/owners` (+`/[id]`) · `/tenants` (+`/[id]`) · `/leases` · `/finance` · `/wallet` · `/maintenance` · `/leads` (+`/[id]`) · `/bookings` · `/service-bookings` · `/analytics` · `/announcements` · `/staff` · `/settings`
+- **Owner:** `/owner` · `/properties` (+`/[slug]`) · `/financials` · `/reports` · `/documents` · `/notifications` · `/settings`
+- **Tenant:** `/tenant` · `/lease` · `/payments` · `/maintenance` · `/bookings` · `/documents`
+
+---
+
 ## Tech Stack
 
 | Layer | Technology |
@@ -61,10 +87,12 @@ npx tsc --noEmit       # typecheck only, without a full build
 ```
 src/
   app/
-    (marketing)/        # public site: home, about, services, portfolio, projects,
-                         # investors, blog, careers, contact, request-a-quote
+    (marketing)/        # public site: home, about, services (+[slug]), portfolio (+[slug]),
+                         # projects, investors, blog (+[slug]), careers, contact,
+                         # request-a-quote, rentals (+[id]), book/cleaning, book/lifestyle
     (app)/               # authenticated app: auth screens + /admin, /owner, /tenant
     layout.tsx            # root layout — font <link> tags, metadata, favicon
+    sitemap.ts / robots.ts # SEO: generated sitemap.xml + robots.txt
   components/
     ui/                    # shadcn/Radix primitives (Button, DataTable, Dialog, …)
     marketing/               # marketing-only sections (hero, footer, forms, …)

@@ -1,4 +1,5 @@
 import type { Metadata } from "next";
+import { pageMeta } from "@/lib/seo";
 import { CheckCircle } from "flowbite-react-icons/outline";
 import { Reveal, RevealGroup, RevealItem } from "@/components/motion";
 import { PageHero } from "@/components/marketing/page-hero";
@@ -20,11 +21,13 @@ import {
   aboutCta,
 } from "@/content/about";
 
-export const metadata: Metadata = {
+export const metadata: Metadata = pageMeta({
   title: "About",
   description:
     "Nexora is a Kampala-based property management company combining local operational excellence with international standards of transparency and governance.",
-};
+  path: "/about",
+  ogImage: "/images/og/nexora-og-about.jpg",
+});
 
 export default function AboutPage() {
   return (

@@ -1,12 +1,15 @@
 import type { Metadata } from "next";
+import { pageMeta } from "@/lib/seo";
 import { PageHero } from "@/components/marketing/page-hero";
 import { QuoteScheduler } from "@/components/marketing/quote-scheduler";
 
-export const metadata: Metadata = {
+export const metadata: Metadata = pageMeta({
   title: "Request a Quote",
   description:
     "Book a free 30-minute consultation with a Nexora advisor. Pick a date and time that suits you and we'll prepare a tailored property-management proposal.",
-};
+  path: "/request-a-quote",
+  ogImage: "/images/og/nexora-og-default.jpg",
+});
 
 export default function RequestQuotePage() {
   return (

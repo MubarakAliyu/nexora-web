@@ -177,6 +177,12 @@ export function AppShell({ children }: { children: React.ReactNode }) {
       </Sheet>
 
       <div className="flex min-h-screen min-w-0 flex-1 flex-col">
+        <a
+          href="#main-content"
+          className="sr-only focus:not-sr-only focus:fixed focus:left-4 focus:top-4 focus:z-[100] focus:rounded-md focus:bg-primary focus:px-4 focus:py-2 focus:text-body focus:font-medium focus:text-primary-foreground focus:shadow-lg focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary"
+        >
+          Skip to content
+        </a>
         {/* Topbar */}
         <header className="sticky top-0 z-30 flex h-16 items-center gap-2 border-b border-border bg-surface-elevated px-3 sm:px-4 md:px-6">
           <button
@@ -254,7 +260,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
           </div>
         </header>
 
-        <main className="flex-1 px-4 py-6 md:px-8 md:py-8">{children}</main>
+        <main id="main-content" className="flex-1 px-4 py-6 md:px-8 md:py-8">{children}</main>
       </div>
 
       {/* Mobile search */}

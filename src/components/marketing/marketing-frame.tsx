@@ -20,9 +20,15 @@ export function MarketingFrame({ children }: { children: ReactNode }) {
   const hasHero = pageHasHero(pathname);
 
   return (
-    <div className="flex min-h-screen flex-col">
+    <div className="flex min-h-screen flex-col overflow-x-hidden">
+      <a
+        href="#main-content"
+        className="sr-only focus:not-sr-only focus:fixed focus:left-4 focus:top-4 focus:z-[100] focus:rounded-md focus:bg-primary focus:px-4 focus:py-2 focus:text-body focus:font-medium focus:text-primary-foreground focus:shadow-lg focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2"
+      >
+        Skip to content
+      </a>
       <SiteHeader hasHero={hasHero} />
-      <main className={cn("flex-1", !hasHero && "pt-20")}>{children}</main>
+      <main id="main-content" className={cn("flex-1", !hasHero && "pt-20")}>{children}</main>
       <SiteFooter />
       <WhatsAppButton />
       <Toaster />

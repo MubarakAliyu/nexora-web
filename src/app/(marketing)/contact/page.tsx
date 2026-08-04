@@ -1,4 +1,5 @@
 import type { Metadata } from "next";
+import { pageMeta } from "@/lib/seo";
 import type { ReactElement } from "react";
 import { MapPin, Phone, Envelope, Clock } from "flowbite-react-icons/outline";
 import { Whatsapp, Facebook, Instagram, Linkedin, Twitter } from "flowbite-react-icons/solid";
@@ -9,11 +10,13 @@ import { ContactForms } from "@/components/forms/contact-forms";
 import { contact, whatsappHref, socials, type SocialPlatform } from "@/content/site";
 import { contactHero, office } from "@/content/contact";
 
-export const metadata: Metadata = {
+export const metadata: Metadata = pageMeta({
   title: "Contact",
   description:
     "Get in touch with Nexora Property Management in Kampala, Uganda — request a quote, an assessment, or general enquiries.",
-};
+  path: "/contact",
+  ogImage: "/images/og/nexora-og-contact.jpg",
+});
 
 type IconProps = { size?: number; className?: string };
 const socialIcon: Record<SocialPlatform, (p: IconProps) => ReactElement> = {

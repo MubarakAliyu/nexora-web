@@ -1,4 +1,5 @@
 import type { Metadata } from "next";
+import { pageMeta } from "@/lib/seo";
 import { Reveal, RevealGroup, RevealItem } from "@/components/motion";
 import { PageHero } from "@/components/marketing/page-hero";
 import { MediaText } from "@/components/marketing/media-text";
@@ -8,11 +9,13 @@ import { CareersApply } from "@/components/marketing/careers-apply";
 import { CtaBanner } from "@/components/marketing/cta-banner";
 import { careersHero, culture, benefits, careersCta } from "@/content/careers";
 
-export const metadata: Metadata = {
+export const metadata: Metadata = pageMeta({
   title: "Careers",
   description:
     "Join Nexora — build the future of property management with a team that combines local excellence and global standards.",
-};
+  path: "/careers",
+  ogImage: "/images/og/nexora-og-default.jpg",
+});
 
 export default function CareersPage() {
   return (

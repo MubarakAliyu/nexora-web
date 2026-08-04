@@ -30,6 +30,8 @@ import {
   getPropertyMeta,
 } from "@/content/portfolio";
 import { contact, whatsappHref } from "@/content/site";
+import { JsonLd } from "@/components/seo/json-ld";
+import { SITE_URL } from "@/lib/seo";
 
 export function generateStaticParams() {
   return propertySlugs.map((slug) => ({ slug }));
@@ -43,7 +45,14 @@ export async function generateMetadata({
   const { slug } = await params;
   const property = getProperty(slug);
   if (!property) return { title: "Property not found" };
-  return { title: property.name, description: property.excerpt };
+  const url = `${SITE_URL}/portfolio/${slug}`;
+  return {
+    title: property.name,
+    description: property.excerpt,
+    alternates: { canonical: url },
+    openGraph: { title: property.name, description: property.excerpt, url, images: [{ url: property.image, width: 1200, height: 630, alt: property.name }] },
+    twitter: { card: "summary_large_image", title: property.name, description: property.excerpt, images: [property.image] },
+  };
 }
 
 export default async function PropertyPage({
@@ -79,8 +88,20 @@ export default async function PropertyPage({
     { Icon: ShieldCheck, label: "Security", value: "Gated & patrolled" },
   ];
 
+  const listingSchema = {
+    "@context": "https://schema.org",
+    "@type": "Residence",
+    name: property.name,
+    description: property.excerpt,
+    url: `${SITE_URL}/portfolio/${slug}`,
+    image: `${SITE_URL}${property.image}`,
+    numberOfAccommodationUnits: property.units,
+    address: { "@type": "PostalAddress", addressLocality: property.location, addressCountry: "UG" },
+  };
+
   return (
     <>
+      <JsonLd data={listingSchema} />
       <PageHero
         eyebrow={property.category}
         title={property.name}

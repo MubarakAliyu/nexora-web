@@ -9,6 +9,7 @@ import { CtaBanner } from "@/components/marketing/cta-banner";
 import { SectionIcon } from "@/components/marketing/section-icons";
 import { CtaButton } from "@/components/marketing/cta-button";
 import { services, serviceSlugs, getService } from "@/content/services";
+import { SITE_URL } from "@/lib/seo";
 
 export function generateStaticParams() {
   return serviceSlugs.map((slug) => ({ slug }));
@@ -22,9 +23,13 @@ export async function generateMetadata({
   const { slug } = await params;
   const service = getService(slug);
   if (!service) return { title: "Service not found" };
+  const url = `${SITE_URL}/services/${slug}`;
   return {
     title: service.title,
     description: service.promise,
+    alternates: { canonical: url },
+    openGraph: { title: service.title, description: service.promise, url, images: [{ url: service.heroImage, width: 1200, height: 630, alt: service.title }] },
+    twitter: { card: "summary_large_image", title: service.title, description: service.promise, images: [service.heroImage] },
   };
 }
 

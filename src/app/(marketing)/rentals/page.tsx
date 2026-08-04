@@ -1,12 +1,15 @@
 import type { Metadata } from "next";
+import { pageMeta } from "@/lib/seo";
 import { PageHero } from "@/components/marketing/page-hero";
 import { RentalBrowser } from "@/components/marketing/rental-browser";
 
-export const metadata: Metadata = {
+export const metadata: Metadata = pageMeta({
   title: "Rentals",
   description:
     "Browse Nexora's short-term and long-term rentals across Kampala and beyond — serviced apartments, homes and residences. Book a stay instantly or enquire about a long lease.",
-};
+  path: "/rentals",
+  ogImage: "/images/og/nexora-og-rentals.jpg",
+});
 
 export default function RentalsPage() {
   return (

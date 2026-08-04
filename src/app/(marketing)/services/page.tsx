@@ -1,4 +1,5 @@
 import type { Metadata } from "next";
+import { pageMeta } from "@/lib/seo";
 import Link from "next/link";
 import { ArrowRight } from "flowbite-react-icons/outline";
 import { Reveal, RevealGroup, RevealItem } from "@/components/motion";
@@ -8,11 +9,13 @@ import { ProcessFlow } from "@/components/marketing/process-flow";
 import { SectionIcon } from "@/components/marketing/section-icons";
 import { services, servicesIndexHero, servicesCta } from "@/content/services";
 
-export const metadata: Metadata = {
+export const metadata: Metadata = pageMeta({
   title: "Services",
   description:
     "Full-service property management from Nexora — property, rental and condominium management, housekeeping & cleaning, home & lifestyle services and asset optimization.",
-};
+  path: "/services",
+  ogImage: "/images/og/nexora-og-services.jpg",
+});
 
 export default function ServicesPage() {
   return (

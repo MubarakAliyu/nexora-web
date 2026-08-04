@@ -1,4 +1,5 @@
 import type { Metadata } from "next";
+import { pageMeta } from "@/lib/seo";
 import { PageHero } from "@/components/marketing/page-hero";
 import { PortfolioGrid } from "@/components/marketing/portfolio-grid";
 import { ParallaxFeature } from "@/components/marketing/parallax-feature";
@@ -11,11 +12,13 @@ import {
   portfolioCta,
 } from "@/content/portfolio";
 
-export const metadata: Metadata = {
+export const metadata: Metadata = pageMeta({
   title: "Portfolio",
   description:
     "Explore the residential towers, condominiums, commercial plazas and managed facilities under Nexora Property Management.",
-};
+  path: "/portfolio",
+  ogImage: "/images/og/nexora-og-portfolio.jpg",
+});
 
 export default function PortfolioPage() {
   return (

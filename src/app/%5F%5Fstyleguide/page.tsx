@@ -1,5 +1,6 @@
 import type { Metadata } from "next";
 import Image from "next/image";
+import { notFound } from "next/navigation";
 import { Heading, Text } from "@/components/ui/typography";
 import { Reveal, RevealGroup, RevealItem, CountUp, Parallax } from "@/components/motion";
 import { ComponentsShowcase } from "./components-showcase";
@@ -9,7 +10,7 @@ export const metadata: Metadata = {
   robots: { index: false, follow: false },
 };
 
-/** Hidden fidelity-check route (removed / guarded before production in Batch 12). */
+/** Hidden fidelity-check route — development only; 404s in production. */
 
 const palette = [
   { token: "--background", hex: "#F5F5F5", usage: "Page & card surfaces", className: "bg-background", text: "text-foreground" },
@@ -30,6 +31,7 @@ const typeScale = [
 ];
 
 export default function StyleGuidePage() {
+  if (process.env.NODE_ENV === "production") notFound();
   return (
     <main className="mx-auto max-w-5xl px-6 py-16 md:py-24">
       <header className="mb-16 border-b border-border pb-8">

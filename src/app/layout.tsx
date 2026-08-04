@@ -6,14 +6,29 @@
 import type { Metadata } from "next";
 import "@/styles/globals.css";
 import { MotionProvider } from "@/components/motion/motion-provider";
+import { SITE_URL, SITE_NAME, DEFAULT_OG } from "@/lib/seo";
 
 export const metadata: Metadata = {
+  metadataBase: new URL(SITE_URL),
   title: {
     default: "Nexora Property Management",
     template: "%s · Nexora Property Management",
   },
   description:
     "Nexora Property Management — managing properties, maximizing value. Premium rental, property, condominium and facility management in Kampala, Uganda.",
+  applicationName: SITE_NAME,
+  openGraph: {
+    siteName: SITE_NAME,
+    type: "website",
+    locale: "en_US",
+    url: SITE_URL,
+    images: [{ url: DEFAULT_OG, width: 1200, height: 630, alt: SITE_NAME }],
+  },
+  twitter: {
+    card: "summary_large_image",
+    images: [DEFAULT_OG],
+  },
+  robots: { index: true, follow: true },
   icons: {
     icon: [
       { url: "/favicon_io/favicon-32x32.png", sizes: "32x32", type: "image/png" },
