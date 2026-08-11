@@ -14,6 +14,7 @@ import { Timeline, TimelineItem } from "@/components/ui/timeline";
 import { EmptyState } from "@/components/ui/empty-state";
 import { Skeleton, SkeletonText } from "@/components/ui/skeleton";
 import { toast } from "@/components/ui/sonner";
+import { ConvertLeadDialog } from "@/components/admin/convert-lead-dialog";
 import { useAsync, debugErrorFlag } from "@/lib/use-async";
 import { formatUGX, formatDate, fromNow } from "@/lib/format";
 import { getLead, addLeadActivity, NOW_ISO, type LeadActivity, type Scope } from "@/lib/api/admin";
@@ -27,6 +28,7 @@ export default function LeadDetailPage() {
   const [kind, setKind] = React.useState<LeadActivity["kind"]>("note");
   const [text, setText] = React.useState("");
   const [busy, setBusy] = React.useState(false);
+  const [converting, setConverting] = React.useState<{ target: "owner" | "tenant" } | null>(null);
 
   const logActivity = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -52,7 +54,20 @@ export default function LeadDetailPage() {
   return (
     <div>
       <PageHeader title={data.name} subtitle={`Lead · ${data.service}`}
-        actions={<Button className="gap-2" onClick={() => toast.info("Convert to client", { description: "Conversion flow is mocked in this build." })}>Convert</Button>} />
+        actions={
+          data.convertedTo ? (
+            <Button asChild variant="outline" className="gap-2">
+              <Link href={`/admin/${data.convertedTo.type === "owner" ? "owners" : "tenants"}/${data.convertedTo.id}`}>
+                Converted → {data.convertedTo.type === "owner" ? "Owner" : "Tenant"}: {data.convertedTo.name}
+              </Link>
+            </Button>
+          ) : (
+            <div className="flex gap-2">
+              <Button variant="outline" onClick={() => setConverting({ target: "owner" })}>Convert to Owner</Button>
+              <Button onClick={() => setConverting({ target: "tenant" })}>Convert to Tenant</Button>
+            </div>
+          )
+        } />
 
       <div className="grid gap-4 lg:grid-cols-3">
         <div className="space-y-4 lg:col-span-1">
@@ -114,6 +129,8 @@ export default function LeadDetailPage() {
       </div>
 
       <div className="mt-8"><Link href="/admin/leads" className="text-body font-medium text-primary transition-colors hover:text-accent">← Back to leads</Link></div>
+
+      <ConvertLeadDialog lead={converting ? data : null} target={converting?.target ?? "owner"} onOpenChange={(o) => { if (!o) setConverting(null); }} onDone={reload} />
     </div>
   );
 }

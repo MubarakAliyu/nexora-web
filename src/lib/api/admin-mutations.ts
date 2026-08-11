@@ -6,6 +6,8 @@
  */
 import * as db from "@/lib/mock/db";
 import { recordMutation } from "@/lib/api/actions";
+import { useNotifications } from "@/lib/stores/notifications";
+import { createAgreement, type AgreementInput } from "@/lib/api/agreements";
 import type { Role } from "@/lib/roles";
 import type {
   Expense,
@@ -16,6 +18,7 @@ import type {
   LeadStatus,
   Lease,
   MaintenanceTicket,
+  MockUser,
   Owner,
   Payment,
   PaymentMethod,
@@ -455,27 +458,78 @@ export async function updateLead(id: string, patch: { status?: LeadStatus; owner
   return lead;
 }
 
-export async function convertLead(id: string, target: "owner" | "tenant"): Promise<{ ok: true; created: string }> {
+/* --------------------------------------------------- lead → account onboarding */
+
+export const genTempPassword = () => `TempPass-${Math.floor(1000 + Math.random() * 9000)}`;
+const LOGIN_URL = "nexora.co.ug/login";
+function notifyExtra(title: string, body: string, entityType: string, entityId: string) {
+  useNotifications.getState().pushSystem({ type: "system", title, body, entityType, entityId, action: "created" });
+}
+
+export interface ConvertOwnerInput {
+  name: string; email: string; phone: string; company?: string; nationality?: string;
+  bankName?: string; accountName?: string; accountNumber?: string;
+  tempPassword: string;
+  agreement?: AgreementInput | null;
+}
+
+export async function convertLeadToOwner(leadId: string, input: ConvertOwnerInput): Promise<{ ownerId: string }> {
   await mDelay();
-  const lead = db.leads.find((l) => l.id === id);
-  if (!lead) throw new NotFoundError(id);
-  let createdId = "";
-  if (target === "owner") {
-    const owner: Owner = { id: `own_${Date.now()}`, name: lead.name, email: lead.email, phone: lead.phone, since: db.NOW_ISO, propertyIds: [] };
-    db.owners.push(owner);
-    createdId = owner.id;
-  } else {
-    const tenant: Tenant = { id: `ten_${Date.now()}`, name: lead.name, email: lead.email, phone: lead.phone, propertyId: "", unitId: "", leaseId: "", status: "active", since: db.NOW_ISO };
-    db.tenants.push(tenant);
-    createdId = tenant.id;
-  }
+  const lead = db.leads.find((l) => l.id === leadId);
+  if (!lead) throw new NotFoundError(leadId);
+  const ownerId = `own_${Date.now()}`;
+  const owner: Owner = {
+    id: ownerId, name: input.name, email: input.email, phone: input.phone, since: db.NOW_ISO, propertyIds: [],
+    company: input.company, nationality: input.nationality,
+    bankName: input.bankName, accountNumber: input.accountNumber,
+  };
+  db.owners.push(owner);
+  const user: MockUser = { id: ownerId, name: input.name, email: input.email, password: input.tempPassword, role: "owner", ownerId, title: "Property Owner", requiresPasswordChange: true };
+  db.addUser(user);
+  if (input.agreement) await createAgreement({ ...input.agreement, ownerId });
   lead.status = "won";
+  lead.convertedTo = { type: "owner", id: ownerId, name: input.name };
+  // 1) Admin activation notification (with credentials) via recordMutation.
   recordMutation({
-    entityType: "lead", entityId: id, entityName: lead.name, action: "updated",
-    summary: `Converted lead ${lead.name} to ${target}`, after: { target, createdId },
-    notify: { type: "system", title: "Lead converted", body: `${lead.name} was converted to a ${target}.` },
+    entityType: "lead", entityId: leadId, entityName: input.name, action: "updated",
+    summary: `Lead converted to Owner — ${input.name} (${input.email})`,
+    after: { ownerId, email: input.email, agreement: !!input.agreement },
+    notify: { type: "system", title: "Owner Account Created — Activation Required", body: `Account created for ${input.name} (${input.email}). Temporary password: ${input.tempPassword}. Owner must change their password on first login.` },
   });
-  return { ok: true, created: createdId };
+  // 2) Simulated welcome email to the owner.
+  notifyExtra("Welcome to Nexora — Activate Your Account", `Hello ${input.name}, your Nexora Property Management owner account is ready. Log in at ${LOGIN_URL} with your temporary password to get started. You'll be asked to set a new password on first login.`, "owner", ownerId);
+  return { ownerId };
+}
+
+export interface ConvertTenantInput {
+  name: string; email: string; phone: string;
+  nin?: string; employer?: string; emergencyContact?: string;
+  tempPassword: string;
+}
+
+export async function convertLeadToTenant(leadId: string, input: ConvertTenantInput): Promise<{ tenantId: string }> {
+  await mDelay();
+  const lead = db.leads.find((l) => l.id === leadId);
+  if (!lead) throw new NotFoundError(leadId);
+  const tenantId = `ten_${Date.now()}`;
+  const tenant: Tenant = {
+    id: tenantId, name: input.name, email: input.email, phone: input.phone,
+    propertyId: "", unitId: "", leaseId: "", status: "active", since: db.NOW_ISO,
+    nin: input.nin, employer: input.employer, emergencyContact: input.emergencyContact,
+  };
+  db.tenants.push(tenant);
+  const user: MockUser = { id: tenantId, name: input.name, email: input.email, password: input.tempPassword, role: "tenant", tenantId, title: "Resident", requiresPasswordChange: true };
+  db.addUser(user);
+  lead.status = "won";
+  lead.convertedTo = { type: "tenant", id: tenantId, name: input.name };
+  recordMutation({
+    entityType: "lead", entityId: leadId, entityName: input.name, action: "updated",
+    summary: `Lead converted to Tenant — ${input.name} (${input.email})`,
+    after: { tenantId, email: input.email },
+    notify: { type: "system", title: "Tenant Account Created — Activation Required", body: `Account created for ${input.name} (${input.email}). Temporary password: ${input.tempPassword}. Tenant must change their password on first login. Create a lease from the Leases module.` },
+  });
+  notifyExtra("Welcome to Nexora — Activate Your Account", `Hello ${input.name}, your Nexora resident account is ready. Log in at ${LOGIN_URL} with your temporary password. You'll be asked to set a new password on first login.`, "tenant", tenantId);
+  return { tenantId };
 }
 
 export async function deleteLead(id: string): Promise<{ ok: true }> {

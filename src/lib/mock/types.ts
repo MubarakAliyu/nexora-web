@@ -25,6 +25,8 @@ export interface MockUser {
   tenantId?: string;
   staffId?: string;
   title?: string;
+  /** Forces a password change on first login (onboarded accounts). */
+  requiresPasswordChange?: boolean;
 }
 
 /* ------------------------------------------------------------- owners */
@@ -326,6 +328,8 @@ export interface Lead {
   createdAt: string; // ISO
   owner: string; // assigned staff name
   activities: LeadActivity[];
+  /** Set when the lead is converted — links to the created owner/tenant record. */
+  convertedTo?: { type: "owner" | "tenant"; id: string; name: string };
 }
 
 /* ------------------------------------------------------------- staff */

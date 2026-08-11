@@ -23,7 +23,8 @@ import { EmptyState } from "@/components/ui/empty-state";
 import { toast } from "@/components/ui/sonner";
 import { useAsync, debugErrorFlag } from "@/lib/use-async";
 import { formatUGX, formatDate } from "@/lib/format";
-import { listLeads, createLead, updateLead, convertLead, deleteLead, type Lead, type LeadStatus, type Scope } from "@/lib/api/admin";
+import { ConvertLeadDialog } from "@/components/admin/convert-lead-dialog";
+import { listLeads, createLead, updateLead, deleteLead, type Lead, type LeadStatus, type Scope } from "@/lib/api/admin";
 import { cn } from "@/lib/utils";
 
 const leadSchema = z.object({
@@ -86,38 +87,6 @@ function LeadFormDialog({ open, onOpenChange, editing, onDone }: { open: boolean
   );
 }
 
-function ConvertDialog({ lead, onOpenChange, onDone }: { lead: Lead | null; onOpenChange: (o: boolean) => void; onDone: () => void }) {
-  const [target, setTarget] = React.useState<"owner" | "tenant">("tenant");
-  const [busy, setBusy] = React.useState(false);
-  React.useEffect(() => { if (lead) setTarget("tenant"); }, [lead]);
-  const run = async () => {
-    if (!lead) return;
-    setBusy(true);
-    try { await convertLead(lead.id, target); toast.success("Lead converted", { description: `${lead.name} is now a ${target}.` }); onOpenChange(false); onDone(); }
-    catch { toast.error("Couldn’t convert lead"); }
-    finally { setBusy(false); }
-  };
-  return (
-    <Dialog open={!!lead} onOpenChange={onOpenChange}>
-      <DialogContent>
-        {lead && (
-          <>
-            <DialogHeader><DialogTitle>Convert {lead.name}</DialogTitle><DialogDescription>Create a new record from this lead’s details and mark it won.</DialogDescription></DialogHeader>
-            <Field label="Convert to" htmlFor="cv-target">
-              <select id="cv-target" className={selectClass} value={target} onChange={(e) => setTarget(e.target.value as "owner" | "tenant")}>
-                <option value="tenant">Tenant</option><option value="owner">Owner</option>
-              </select>
-            </Field>
-            <DialogFooter>
-              <DialogClose asChild><Button type="button" variant="outline">Cancel</Button></DialogClose>
-              <Button onClick={run} loading={busy}>Convert</Button>
-            </DialogFooter>
-          </>
-        )}
-      </DialogContent>
-    </Dialog>
-  );
-}
 
 const STAGES: { status: Lead["status"]; label: string }[] = [
   { status: "new", label: "New" },
@@ -135,7 +104,7 @@ export default function LeadsPage() {
   const [q, setQ] = React.useState("");
   const [formOpen, setFormOpen] = React.useState(false);
   const [editing, setEditing] = React.useState<Lead | null>(null);
-  const [converting, setConverting] = React.useState<Lead | null>(null);
+  const [converting, setConverting] = React.useState<{ lead: Lead; target: "owner" | "tenant" } | null>(null);
   const [deleting, setDeleting] = React.useState<Lead | null>(null);
   const scope: Scope = React.useMemo(() => ({ forceError: debugErrorFlag() }), []);
   const { data, loading, error, reload } = useAsync(() => listLeads({ status, q }, scope), [status, q, scope]);
@@ -154,7 +123,8 @@ export default function LeadsPage() {
         <RowActions actions={[
           { label: "View", icon: <Search size={16} />, onClick: () => router.push(`/admin/leads/${l.id}`) },
           { label: "Edit stage", icon: <PenNib size={16} />, onClick: () => { setEditing(l); setFormOpen(true); } },
-          { label: "Convert", icon: <UserAdd size={16} />, onClick: () => setConverting(l) },
+          { label: "Convert to Owner", icon: <UserAdd size={16} />, onClick: () => setConverting({ lead: l, target: "owner" }) },
+          { label: "Convert to Tenant", icon: <UserAdd size={16} />, onClick: () => setConverting({ lead: l, target: "tenant" }) },
           { label: "Delete", icon: <TrashBin size={16} />, onClick: () => setDeleting(l), danger: true, separatorBefore: true },
         ]} />
       ),
@@ -227,7 +197,7 @@ export default function LeadsPage() {
       )}
 
       <LeadFormDialog open={formOpen} onOpenChange={setFormOpen} editing={editing} onDone={reload} />
-      <ConvertDialog lead={converting} onOpenChange={(o) => { if (!o) setConverting(null); }} onDone={reload} />
+      <ConvertLeadDialog lead={converting?.lead ?? null} target={converting?.target ?? "owner"} onOpenChange={(o) => { if (!o) setConverting(null); }} onDone={reload} />
       <DeleteConfirmation open={!!deleting} onOpenChange={(o) => !o && setDeleting(null)} entityLabel="lead" entityName={deleting?.name ?? ""}
         onConfirm={async () => { if (!deleting) return; try { await deleteLead(deleting.id); toast.success("Lead deleted"); reload(); } catch { toast.error("Couldn’t delete lead"); } }} />
     </div>

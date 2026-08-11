@@ -532,13 +532,31 @@ export const staff: Staff[] = [
 
 /* -------------------------------------------------------------- users */
 
+// A freshly-onboarded owner used to demo the forced-password-change gate.
+export const owners_onboarded: Owner = { id: "own_newowner", name: "Newton Byaruhanga", email: "newowner@test.com", phone: "+256700123123", since: NOW.toISOString(), propertyIds: [] };
+owners.push(owners_onboarded);
+
 export const users: MockUser[] = [
   { id: "own_salim", name: "Salim Kato", email: "salim@gmail.com", password: "123456", role: "owner", ownerId: "own_salim", title: "Property Owner" },
   { id: "ten_mubarak", name: "Mubarak Aliyu", email: "mubarak@gmail.com", password: "123456", role: "tenant", tenantId: "ten_mubarak", title: "Resident" },
   { id: "stf_admin", name: "Aisha Nakato", email: "admin@nexora.co.ug", password: "123456", role: "super_admin", staffId: "stf_admin", title: "Super Administrator" },
   { id: "stf_manager", name: "David Okello", email: "manager@nexora.co.ug", password: "123456", role: "property_manager", staffId: "stf_manager", title: "Property Manager" },
   { id: "stf_finance", name: "Grace Namuli", email: "finance@nexora.co.ug", password: "123456", role: "finance_officer", staffId: "stf_finance", title: "Finance Officer" },
+  { id: "own_newowner", name: "Newton Byaruhanga", email: "newowner@test.com", password: "TempPass-1234", role: "owner", ownerId: "own_newowner", title: "Property Owner", requiresPasswordChange: true },
 ];
+
+/** Append a user account (onboarding). Returns the created user. */
+export function addUser(u: MockUser): MockUser {
+  users.push(u);
+  return u;
+}
+
+/** Change a user's password + clear the forced-change flag (first login). */
+export function changeUserPassword(userId: string, next: string): MockUser | undefined {
+  const u = users.find((x) => x.id === userId);
+  if (u) { u.password = next; u.requiresPasswordChange = false; }
+  return u;
+}
 
 /* ------------------------------------------------------- announcements */
 

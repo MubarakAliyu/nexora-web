@@ -11,6 +11,8 @@ export interface SessionUser {
   /** Domain links for identity-scoped portals (owner / tenant). */
   ownerId?: string;
   tenantId?: string;
+  /** Forces the first-login password-change gate. */
+  requiresPasswordChange?: boolean;
 }
 
 interface SessionState {
@@ -20,6 +22,8 @@ interface SessionState {
   login: (user: SessionUser) => void;
   logout: () => void;
   setPending: (user: SessionUser | null) => void;
+  /** Clear the first-login password-change requirement after a successful change. */
+  completePasswordChange: () => void;
 }
 
 /**
@@ -35,6 +39,8 @@ export const useSession = create<SessionState>()(
       login: (user) => set({ user, pending: null }),
       logout: () => set({ user: null, pending: null }),
       setPending: (pending) => set({ pending }),
+      completePasswordChange: () =>
+        set((s) => (s.user ? { user: { ...s.user, requiresPasswordChange: false } } : {})),
     }),
     { name: "nexora-session", partialize: (s) => ({ user: s.user }) },
   ),

@@ -5,7 +5,7 @@
  */
 
 import type { Role } from "@/lib/roles";
-import { findUser, users } from "@/lib/mock/db";
+import { findUser, users, changeUserPassword } from "@/lib/mock/db";
 
 export interface SessionUserPayload {
   id: string;
@@ -15,6 +15,7 @@ export interface SessionUserPayload {
   title?: string;
   ownerId?: string;
   tenantId?: string;
+  requiresPasswordChange?: boolean;
 }
 
 export interface AuthSession {
@@ -50,8 +51,22 @@ export async function login(email: string, password: string): Promise<AuthSessio
       title: u.title,
       ownerId: u.ownerId,
       tenantId: u.tenantId,
+      requiresPasswordChange: u.requiresPasswordChange,
     },
   };
+}
+
+export class WrongCurrentPasswordError extends Error {
+  constructor() { super("Your current password is incorrect."); this.name = "WrongCurrentPasswordError"; }
+}
+
+/** First-login password change: validate current, set new, clear the flag. */
+export async function changePassword(userId: string, current: string, next: string): Promise<{ ok: true }> {
+  await delay();
+  const u = users.find((x) => x.id === userId);
+  if (!u || u.password !== current) throw new WrongCurrentPasswordError();
+  changeUserPassword(userId, next);
+  return { ok: true };
 }
 
 export async function register(
