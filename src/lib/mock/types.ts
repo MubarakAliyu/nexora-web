@@ -49,6 +49,43 @@ export interface CommLog {
   summary: string;
 }
 
+/* ------------------------------------------------ management agreements */
+
+export type ContractType = "fixed_fee" | "revenue_sharing" | "hybrid";
+export type SettlementSchedule = "monthly" | "quarterly" | "on_demand";
+export type AgreementStatus = "active" | "expired" | "draft" | "terminated";
+
+/**
+ * The single source of truth for how Nexora earns from managing an owner's
+ * properties. Every commission/settlement calculation derives from this — no
+ * hardcoded percentages anywhere.
+ */
+export interface ManagementAgreement {
+  id: string;
+  ownerId: string;
+  ownerName: string; // denormalized for display
+  contractType: ContractType;
+  // fixed_fee
+  fixedAmount?: number;
+  fixedFrequency?: "monthly" | "quarterly" | "annual";
+  // revenue_sharing
+  commissionPercentage?: number;
+  // hybrid
+  hybridFixedAmount?: number;
+  hybridPercentage?: number;
+  // common
+  effectiveDate: string; // ISO
+  expiryDate: string; // ISO
+  settlementSchedule: SettlementSchedule;
+  payoutBankName?: string;
+  payoutAccountNumber?: string; // stored full; masked in display
+  payoutAccountName?: string;
+  status: AgreementStatus;
+  notes?: string;
+  createdAt: string;
+  updatedAt: string;
+}
+
 /* --------------------------------------------------------- properties */
 
 export type PropertyStatus = "managed" | "onboarding" | "prospect";

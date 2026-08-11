@@ -34,6 +34,7 @@ import type {
   LeadStatus,
   Lease,
   LeaseStatus,
+  ManagementAgreement,
   MaintenanceTicket,
   MockUser,
   Owner,
@@ -749,6 +750,88 @@ for (let i = 0; i < 5; i++) {
     owner: "Unassigned",
     activities: [{ id: `act_inq_${i}`, at: iso(createdMs), kind: "note", text: `Rental inquiry for ${p.name}. Preferred move-in within 60 days; lease duration 1 year.` }],
   });
+}
+
+/* -------------------------------------------------- management agreements */
+
+export const agreements: ManagementAgreement[] = [
+  {
+    id: "agr_salim", ownerId: "own_salim", ownerName: "Salim Kato",
+    contractType: "revenue_sharing", commissionPercentage: 15,
+    effectiveDate: "2026-01-01", expiryDate: "2026-12-31",
+    settlementSchedule: "monthly",
+    payoutBankName: "Stanbic Bank Uganda", payoutAccountNumber: "9030087651234", payoutAccountName: "Salim Kato",
+    status: "active", notes: "Flagship portfolio — reviewed annually.",
+    createdAt: daysAgo(190), updatedAt: daysAgo(40),
+  },
+  {
+    id: "agr_rehema", ownerId: "own_rehema", ownerName: "Rehema Ssali",
+    contractType: "fixed_fee", fixedAmount: 5_000_000, fixedFrequency: "annual",
+    effectiveDate: "2025-09-01", expiryDate: "2026-08-31",
+    settlementSchedule: "quarterly",
+    payoutBankName: "Absa Bank Uganda", payoutAccountNumber: "6002451188990", payoutAccountName: "Rehema Ssali",
+    status: "active",
+    createdAt: daysAgo(320), updatedAt: daysAgo(320),
+  },
+  {
+    id: "agr_patrick", ownerId: "own_patrick", ownerName: "Patrick Muwonge",
+    contractType: "revenue_sharing", commissionPercentage: 20,
+    effectiveDate: "2026-02-01", expiryDate: "2027-01-31",
+    settlementSchedule: "monthly",
+    payoutBankName: "Centenary Bank", payoutAccountNumber: "3100455667788", payoutAccountName: "Patrick Muwonge",
+    status: "active",
+    createdAt: daysAgo(160), updatedAt: daysAgo(160),
+  },
+  {
+    id: "agr_sarah", ownerId: "own_sarah", ownerName: "Sarah Nabbanja",
+    contractType: "hybrid", hybridFixedAmount: 2_000_000, fixedFrequency: "monthly", hybridPercentage: 10,
+    effectiveDate: "2026-03-01", expiryDate: "2027-02-28",
+    settlementSchedule: "monthly",
+    payoutBankName: "Stanbic Bank Uganda", payoutAccountNumber: "9030044559911", payoutAccountName: "Sarah Nabbanja",
+    status: "active", notes: "Base fee plus commission on revenue above the fee threshold.",
+    createdAt: daysAgo(120), updatedAt: daysAgo(120),
+  },
+  {
+    id: "agr_ivan", ownerId: "own_ivan", ownerName: "Ivan Katumba",
+    contractType: "revenue_sharing", commissionPercentage: 12,
+    effectiveDate: "2026-01-15", expiryDate: "2026-12-31",
+    settlementSchedule: "quarterly",
+    payoutBankName: "DFCU Bank", payoutAccountNumber: "0120033446677", payoutAccountName: "Ivan Katumba",
+    status: "active",
+    createdAt: daysAgo(175), updatedAt: daysAgo(60),
+  },
+  {
+    id: "agr_diana", ownerId: "own_diana", ownerName: "Diana Achieng",
+    contractType: "fixed_fee", fixedAmount: 8_000_000, fixedFrequency: "annual",
+    effectiveDate: "2025-11-01", expiryDate: "2026-10-31",
+    settlementSchedule: "on_demand",
+    payoutBankName: "Equity Bank Uganda", payoutAccountNumber: "1001299887766", payoutAccountName: "Diana Achieng",
+    status: "active",
+    createdAt: daysAgo(260), updatedAt: daysAgo(90),
+  },
+  // A historical (expired) agreement so the list demonstrates non-active status.
+  {
+    id: "agr_salim_prev", ownerId: "own_salim", ownerName: "Salim Kato",
+    contractType: "revenue_sharing", commissionPercentage: 12,
+    effectiveDate: "2024-01-01", expiryDate: "2025-12-31",
+    settlementSchedule: "monthly",
+    payoutBankName: "Stanbic Bank Uganda", payoutAccountNumber: "9030087651234", payoutAccountName: "Salim Kato",
+    status: "expired",
+    createdAt: daysAgo(730), updatedAt: daysAgo(200),
+  },
+];
+
+/** The active management agreement for an owner (single source of truth for fees). */
+export function getAgreementForOwner(ownerId: string): ManagementAgreement | undefined {
+  return agreements.find((a) => a.ownerId === ownerId && a.status === "active");
+}
+
+/** Settlement can proceed only with an active agreement + payout bank details on file. */
+export function isSettlementReady(ownerId: string): boolean {
+  const a = getAgreementForOwner(ownerId);
+  if (!a) return false;
+  const owner = owners.find((o) => o.id === ownerId);
+  return Boolean(a.payoutAccountNumber || owner?.accountNumber);
 }
 
 /* ------------------------------------------------------------ helpers */
