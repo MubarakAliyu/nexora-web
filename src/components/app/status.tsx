@@ -58,6 +58,8 @@ const STATUS: Record<string, { label: string; tone: Tone }> = {
   // rental inquiries (long-term) — mapped from lead stages
   quoted: { label: "Quoted", tone: "neutral" },
   converted: { label: "Converted", tone: "good" },
+  // agreements
+  draft: { label: "Draft", tone: "warn" },
   // expenses / staff
   approved: { label: "Approved", tone: "good" },
   reimbursed: { label: "Reimbursed", tone: "good" },

@@ -8,7 +8,7 @@
 import * as db from "@/lib/mock/db";
 import { recordMutation } from "@/lib/api/actions";
 import type {
-  ManagementAgreement, ContractType, SettlementSchedule, AgreementStatus,
+  ManagementAgreement, ContractType, SettlementSchedule,
 } from "@/lib/mock/types";
 
 export type { ManagementAgreement, ContractType, SettlementSchedule, AgreementStatus } from "@/lib/mock/types";
@@ -87,6 +87,45 @@ export function agreementRateLabel(a: ManagementAgreement): string {
 export const CONTRACT_TYPE_LABEL: Record<ContractType, string> = {
   fixed_fee: "Fixed Fee", revenue_sharing: "Revenue Sharing", hybrid: "Hybrid",
 };
+
+export interface AgreementFinancials {
+  grossRevenue: number;
+  commissionEarned: number;
+  netToOwner: number;
+  settledToOwner: number;
+  pending: number;
+}
+
+/** Gross revenue collected on an owner's properties (completed rent payments). */
+export function ownerGrossRevenue(ownerId: string): number {
+  const owner = db.owners.find((o) => o.id === ownerId);
+  const ids = new Set(owner?.propertyIds ?? []);
+  return db.payments
+    .filter((p) => p.status === "completed" && ids.has(p.propertyId))
+    .reduce((s, p) => s + p.amount, 0);
+}
+
+/** Financial summary for an agreement, calculated from real payment data. */
+export async function fetchAgreementFinancials(agreementId: string): Promise<AgreementFinancials> {
+  await mDelay(300);
+  const a = db.agreements.find((x) => x.id === agreementId);
+  if (!a) throw new Error("Agreement not found");
+  return agreementFinancials(a);
+}
+
+export function agreementFinancials(a: ManagementAgreement): AgreementFinancials {
+  const grossRevenue = ownerGrossRevenue(a.ownerId);
+  const commissionEarned = commissionForAgreement(a, grossRevenue);
+  const netToOwner = Math.max(0, grossRevenue - commissionEarned);
+  // The latest month's net is treated as still-pending settlement; the rest is settled.
+  const owner = db.owners.find((o) => o.id === a.ownerId);
+  const ids = new Set(owner?.propertyIds ?? []);
+  const months = new Set(db.payments.filter((p) => ids.has(p.propertyId)).map((p) => p.date.slice(0, 7)));
+  const monthCount = Math.max(1, months.size);
+  const pending = Math.round(netToOwner / monthCount);
+  const settledToOwner = Math.max(0, netToOwner - pending);
+  return { grossRevenue, commissionEarned, netToOwner, settledToOwner, pending };
+}
 
 /* --------------------------------------------------------- mutations */
 

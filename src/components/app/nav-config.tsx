@@ -17,6 +17,7 @@ import {
   Wallet,
   CalendarMonth,
   CalendarWeek,
+  FileDoc,
 } from "flowbite-react-icons/outline";
 import type { SidebarItem } from "@/components/ui/sidebar";
 import type { Role } from "@/lib/roles";
@@ -57,6 +58,7 @@ export function navForRole(role: Role): SidebarItem[] {
     properties: { label: "Properties", href: "/admin/properties", icon: <Building size={sz} /> },
     units: { label: "Units", href: "/admin/units", icon: <Home size={sz} /> },
     owners: { label: "Owners", href: "/admin/owners", icon: <UserCircle size={sz} /> },
+    agreements: { label: "Agreements", href: "/admin/agreements", icon: <FileDoc size={sz} /> },
     tenants: { label: "Tenants", href: "/admin/tenants", icon: <Users size={sz} /> },
     leases: { label: "Leases", href: "/admin/leases", icon: <FileLines size={sz} /> },
     finance: { label: "Finance", href: "/admin/finance", icon: <Cash size={sz} /> },
@@ -74,9 +76,9 @@ export function navForRole(role: Role): SidebarItem[] {
   const keysByRole: Record<Role, string[]> = {
     super_admin: Object.keys(all),
     ops_manager: Object.keys(all),
-    property_manager: ["dashboard", "properties", "units", "tenants", "leases", "maintenance", "leads", "bookings", "serviceBookings"],
+    property_manager: ["dashboard", "properties", "units", "owners", "agreements", "tenants", "leases", "maintenance", "leads", "bookings", "serviceBookings"],
     maintenance_officer: ["dashboard", "maintenance", "properties"],
-    finance_officer: ["dashboard", "finance", "wallet", "owners", "analytics", "announcements"],
+    finance_officer: ["dashboard", "finance", "owners", "agreements", "analytics", "announcements"],
     owner: [],
     tenant: [],
   };
