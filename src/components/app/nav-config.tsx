@@ -32,6 +32,7 @@ export function navForRole(role: Role): SidebarItem[] {
       { label: "Dashboard", href: "/owner", icon: <Grid size={sz} /> },
       { label: "My Properties", href: "/owner/properties", icon: <Building size={sz} /> },
       { label: "Financials", href: "/owner/financials", icon: <Cash size={sz} /> },
+      { label: "My Agreement", href: "/owner/agreement", icon: <FileDoc size={sz} /> },
       { label: "Reports", href: "/owner/reports", icon: <FileLines size={sz} /> },
       { label: "Documents", href: "/owner/documents", icon: <FileLines size={sz} /> },
       { label: "Notifications", href: "/owner/notifications", icon: <Bell size={sz} /> },
