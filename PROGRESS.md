@@ -13,6 +13,41 @@ Grep for `lucide` before every batch gate — it must return zero hits in `src/`
 
 ---
 
+## Revision Batch A ✅ COMPLETE — Agreements, Financial Overview, Notifications
+
+PM-feedback foundation batch. Commits: agreement data model → admin agreements module →
+owner agreement page → remove wallet → financial overview → rewire commissions → notification
+triggers.
+
+- **A1 Data model.** `ManagementAgreement` (fixed_fee / revenue_sharing / hybrid) — the single
+  source of truth for all commission/settlement math. Seeded for all 6 owners (Salim:
+  revenue_sharing 15% monthly, active) + one expired historical. Helpers
+  `getAgreementForOwner` / `isSettlementReady`; agreements API with commission math.
+- **A2 Admin module** (`/admin/agreements`): list (filters/sort/states) + detail with a
+  financial summary CALCULATED from real payments (Salim: 137.7M revenue → 20.7M @15% → 117M
+  net) + event timeline; create/edit (conditional fields, active-agreement warning),
+  terminate, delete — all via live engine. Nav after Owners for all admin roles.
+- **A3 Owner** (`/owner/agreement`): read-only agreement card (no edit/terminate/delete) +
+  no-agreement empty state. Nav after Financials.
+- **A4a Wallet removed** entirely — route, nav, store slice, withdraw/send + bank CRUD,
+  WalletTx/BankAccount/TxType/TxStatus, accessors; `Wallet` icon → `Landmark`.
+  `grep -ri wallet src/` → ZERO; `/admin/wallet` → 404.
+- **A4b Financial Overview** (`/admin/financial-overview`, wallet's slot): 4 KPI tiles
+  (total revenue / settlements / pending / Nexora earnings), rent-vs-service chart,
+  transaction history (filters + detail), Owner Settlements tab (agreement-driven; Process
+  Settlement preview shows Salim 137.7M → 20.7M → 117M, Process disabled → Batch D). Records
+  only — no proprietary wallet.
+- **A5 Commission rewired** — every hardcoded 0.08 / FEE_RATE replaced with the owner's
+  agreement: `admin.ts` getOwnerDetail (disbursements) + getOwnerFinancials (all fee calcs +
+  agreementLabel), `builders.ts` statement PDF (agreement ref + explicit commission calc),
+  owner-portal financials ("Revenue Sharing — 15%"). No hardcoded rates remain.
+- **A6 Notifications** — booking create fires **3** (admin + owner + guest, verified bell
+  +3); check-in/out/cancel → admin + owner (+ guest on cancel); service create → admin +
+  client; assign → admin + staff; complete → admin + client. Single-audience mock, so all
+  land in the active bell with audience-specific titles.
+
+Gate: `next build` clean, lint + tsc clean.
+
 ## 🏁 PROJECT COMPLETE — final summary
 
 Nexora Property Management frontend is **complete** (mock-data). Single Next.js 15 app;
