@@ -156,9 +156,15 @@ export default function OwnerFinancialsPage() {
             <div className="space-y-3">{Array.from({ length: 4 }).map((_, i) => <Skeleton key={i} className="h-6 w-full" />)}</div>
           ) : fin.data ? (
             <>
+              {fin.data.feeBreakdown.agreementLabel && (
+                <div className="mb-3 flex items-center gap-2 rounded-lg bg-surface-hover px-3 py-2 text-caption">
+                  <span className="text-muted">Your agreement:</span>
+                  <span className="font-medium text-primary">{fin.data.feeBreakdown.agreementLabel}</span>
+                </div>
+              )}
               <dl className="space-y-3 text-body">
                 <div className="flex justify-between gap-4"><dt className="text-muted">Gross revenue</dt><dd className="font-medium text-foreground">{formatUGXFull(fin.data.feeBreakdown.grossRevenue)}</dd></div>
-                <div className="flex justify-between gap-4"><dt className="text-muted">Management fee ({Math.round(fin.data.feeBreakdown.feeRate * 100)}%)</dt><dd className="text-foreground">−{formatUGXFull(fin.data.feeBreakdown.managementFee)}</dd></div>
+                <div className="flex justify-between gap-4"><dt className="text-muted">Management fee{fin.data.feeBreakdown.agreementType ? ` (${fin.data.feeBreakdown.agreementLabel})` : ` (${Math.round(fin.data.feeBreakdown.feeRate * 100)}%)`}</dt><dd className="text-foreground">−{formatUGXFull(fin.data.feeBreakdown.managementFee)}</dd></div>
                 <div className="flex justify-between gap-4"><dt className="text-muted">Property expenses</dt><dd className="text-foreground">−{formatUGXFull(fin.data.feeBreakdown.otherDeductions)}</dd></div>
               </dl>
               <div className="mt-4 border-t border-border pt-4">

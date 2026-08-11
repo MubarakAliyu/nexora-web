@@ -10,6 +10,7 @@
 
 import * as db from "@/lib/mock/db";
 import { recordMutation } from "@/lib/api/actions";
+import { monthlyCommission, effectiveRate, agreementRateLabel, CONTRACT_TYPE_LABEL } from "@/lib/api/agreements";
 import type {
   Activity,
   Announcement,
@@ -700,10 +701,11 @@ export async function getOwnerDetail(id: string, scope?: Scope): Promise<OwnerDe
   const outstanding = db.invoices
     .filter((i) => propIds.has(i.propertyId) && i.status !== "paid")
     .reduce((s, i) => s + (i.amount - i.paid), 0);
+  const ownerAgreement = db.getAgreementForOwner(id);
   const months = ["Feb", "Mar", "Apr", "May", "Jun", "Jul"];
   const disbursements = months.map((m, i) => {
     const gross = Math.round(monthlyRevenue * (0.9 + i * 0.02));
-    const fees = Math.round(gross * 0.08);
+    const fees = ownerAgreement ? monthlyCommission(ownerAgreement, gross) : 0;
     return {
       id: `dsb_${id}_${i}`,
       period: `${m} 2026`,
@@ -757,44 +759,50 @@ export async function getOwnerActivity(ownerId: string, scope?: Scope): Promise<
 
 export interface OwnerFinancials {
   series: { label: string; revenue: number; expenses: number; net: number }[];
-  feeBreakdown: { grossRevenue: number; feeRate: number; managementFee: number; otherDeductions: number; netDisbursement: number };
+  feeBreakdown: { grossRevenue: number; feeRate: number; managementFee: number; otherDeductions: number; netDisbursement: number; agreementType?: string; agreementLabel?: string };
   perProperty: { id: string; name: string; revenue: number; fee: number; expenses: number; net: number }[];
   totals: { revenue: number; expenses: number; fee: number; net: number };
 }
 
-const FEE_RATE = 0.08; // Nexora management fee — matches getOwnerDetail disbursements.
-
 /** Owner financials: revenue vs expenses over time, management-fee breakdown,
- *  net disbursement and a per-property table. Derives from the same property
- *  revenue + 8% fee as getOwnerDetail, so the headline numbers reconcile. */
+ *  net disbursement and a per-property table. The management fee derives ENTIRELY
+ *  from the owner's active agreement (no hardcoded rate), so it reconciles with
+ *  getOwnerDetail and the Financial Overview. */
 export async function getOwnerFinancials(ownerId: string, scope?: Scope): Promise<OwnerFinancials> {
   const owner = db.owners.find((o) => o.id === ownerId);
   if (!owner) throw new NotFoundError(ownerId);
   const properties = db.properties.filter((p) => owner.propertyIds.includes(p.id));
+  const agreement = db.getAgreementForOwner(ownerId);
+  const feeOf = (gross: number) => (agreement ? monthlyCommission(agreement, gross) : 0);
 
   const perProperty = properties.map((p) => {
     const revenue = p.monthlyRevenue;
-    const fee = Math.round(revenue * FEE_RATE);
+    const fee = feeOf(revenue);
     const expenses = db.expenses.filter((e) => e.propertyId === p.id).reduce((s, e) => s + e.amount, 0);
     return { id: p.id, name: p.name, revenue, fee, expenses, net: revenue - fee - expenses };
   });
 
   const grossRevenue = perProperty.reduce((s, p) => s + p.revenue, 0);
   const totalExpenses = perProperty.reduce((s, p) => s + p.expenses, 0);
-  const managementFee = Math.round(grossRevenue * FEE_RATE);
+  const managementFee = feeOf(grossRevenue);
   const netDisbursement = grossRevenue - managementFee - totalExpenses;
+  const feeRate = agreement ? effectiveRate(agreement, grossRevenue) : 0;
 
   const months = ["Feb", "Mar", "Apr", "May", "Jun", "Jul"];
   const series = months.map((m, i) => {
     const revenue = Math.round(grossRevenue * (0.9 + i * 0.02));
     const expenses = Math.round((totalExpenses / months.length) * (0.85 + i * 0.05));
-    return { label: m, revenue, expenses, net: revenue - Math.round(revenue * FEE_RATE) - expenses };
+    return { label: m, revenue, expenses, net: revenue - feeOf(revenue) - expenses };
   });
 
   return respond(
     {
       series,
-      feeBreakdown: { grossRevenue, feeRate: FEE_RATE, managementFee, otherDeductions: totalExpenses, netDisbursement },
+      feeBreakdown: {
+        grossRevenue, feeRate, managementFee, otherDeductions: totalExpenses, netDisbursement,
+        agreementType: agreement ? CONTRACT_TYPE_LABEL[agreement.contractType] : undefined,
+        agreementLabel: agreement ? `${CONTRACT_TYPE_LABEL[agreement.contractType]} — ${agreementRateLabel(agreement)}` : undefined,
+      },
       perProperty,
       totals: { revenue: grossRevenue, expenses: totalExpenses, fee: managementFee, net: netDisbursement },
     },

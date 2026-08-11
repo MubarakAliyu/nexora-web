@@ -73,6 +73,23 @@ export function commissionForAgreement(agreement: ManagementAgreement, grossReve
   }
 }
 
+/** Commission on a single month's gross revenue under this agreement. */
+export function monthlyCommission(a: ManagementAgreement, monthlyGross: number): number {
+  switch (a.contractType) {
+    case "revenue_sharing":
+      return Math.round(monthlyGross * ((a.commissionPercentage ?? 0) / 100));
+    case "fixed_fee":
+      return Math.round((a.fixedAmount ?? 0) / PERIOD_MONTHS[a.fixedFrequency ?? "annual"]);
+    case "hybrid":
+      return Math.round((a.hybridFixedAmount ?? 0) / PERIOD_MONTHS[a.fixedFrequency ?? "monthly"] + monthlyGross * ((a.hybridPercentage ?? 0) / 100));
+  }
+}
+
+/** Effective commission rate for a given gross (drives displayed %). */
+export function effectiveRate(a: ManagementAgreement, gross: number): number {
+  return gross > 0 ? monthlyCommission(a, gross) / gross : 0;
+}
+
 /** Human rate label for tables/badges, e.g. "15%" or "UGX 5,000,000/yr". */
 export function agreementRateLabel(a: ManagementAgreement): string {
   const money = (n: number) => new Intl.NumberFormat("en-UG").format(n);
