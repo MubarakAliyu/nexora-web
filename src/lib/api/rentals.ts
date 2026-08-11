@@ -7,6 +7,7 @@
 
 import * as db from "@/lib/mock/db";
 import { recordMutation } from "@/lib/api/actions";
+import { useNotifications } from "@/lib/stores/notifications";
 import type {
   Booking,
   Property,
@@ -20,6 +21,18 @@ export type { Booking, RentalListing, ServiceBooking, ServiceBookingKind } from 
 export type { RentalType, RentalPaymentMode, ShortTermPricing, BookingStatus } from "@/lib/mock/types";
 
 const mDelay = (ms = 450) => new Promise((r) => setTimeout(r, ms));
+
+/**
+ * Fire an extra audience-tagged notification (recordMutation already fires the
+ * primary/admin one). The store is single-audience in this mock, so every
+ * notification lands in the active bell — audience-specific titles keep them
+ * distinguishable, and a real backend would route by `entityType`/recipient.
+ */
+function notify(title: string, body: string, entityType: string, entityId: string) {
+  useNotifications.getState().pushSystem({ type: "system", title, body, entityType, entityId, action: "created" });
+}
+const money = (n: number) => `UGX ${new Intl.NumberFormat("en-UG").format(n)}`;
+const dateShort = (iso: string) => new Date(iso).toLocaleDateString("en-GB", { day: "numeric", month: "short" });
 
 /** Monthly-equivalent price used for filtering/sorting either rental type. */
 export function monthlyPrice(p: Property): number {
@@ -159,6 +172,8 @@ export async function createBooking(input: BookingInput): Promise<Booking> {
     createdAt: new Date().toISOString(),
   };
   db.bookings.unshift(booking);
+  const dates = `${dateShort(booking.checkIn)}–${dateShort(booking.checkOut)}`;
+  // Admin (primary, via recordMutation)
   recordMutation({
     entityType: "booking",
     entityId: booking.id,
@@ -166,8 +181,12 @@ export async function createBooking(input: BookingInput): Promise<Booking> {
     action: "created",
     summary: `New booking ${booking.reference} — ${property.name} (${nights} nights)`,
     after: { guest: booking.guestName, total: booking.total, checkIn: booking.checkIn },
-    notify: { type: "system", title: "New booking", body: `${booking.guestName} booked ${property.name} for ${nights} nights.` },
+    notify: { type: "system", title: "New booking received", body: `${booking.guestName} at ${property.name}, ${dates}` },
   });
+  // Owner of the property
+  notify("Your property was booked", `${property.name}, ${dates}, ${money(booking.total)}`, "booking", booking.id);
+  // Guest / tenant
+  notify("Booking confirmed", `${property.name}, ref ${booking.reference}`, "booking", booking.id);
   return booking;
 }
 
@@ -261,8 +280,10 @@ export async function createServiceBooking(input: ServiceBookingInput): Promise<
     action: "created",
     summary: `New ${input.kind} booking ${booking.reference} — ${input.category}`,
     after: { name: booking.name, category: booking.category, date: booking.date },
-    notify: { type: "system", title: "New service booking", body: `${booking.name} booked ${input.category}.` },
+    notify: { type: "system", title: "New service booking", body: `${input.category} for ${booking.name}, ${dateShort(booking.date)}` },
   });
+  // Client
+  notify("Service booking confirmed", `${input.category}, ${dateShort(booking.date)}`, "service-booking", booking.id);
   return booking;
 }
 
@@ -414,16 +435,28 @@ export async function updateBookingStatus(id: string, status: "confirmed" | "che
   if (!booking) throw new Error("Booking not found");
   const before = booking.status;
   booking.status = status;
+  const unit = booking.unitLabel ?? "unit";
+  // Admin (primary) + owner + (guest on cancel) — audience-specific titles.
+  const admin = { title: "Booking updated", body: `${booking.reference} is now ${status.replace("_", "-")}.` };
+  let owner = { title: "Booking updated on your property", body: `${booking.propertyName}` };
+  if (status === "checked_in") {
+    admin.title = "Guest checked in"; admin.body = `${booking.guestName} at ${unit}`;
+    owner = { title: "Guest checked in at your property", body: `${booking.propertyName}, ${unit}` };
+  } else if (status === "checked_out") {
+    admin.title = "Guest checked out"; admin.body = `${booking.guestName} from ${unit}`;
+    owner = { title: "Guest checked out", body: `${booking.propertyName}, ${unit}` };
+  } else if (status === "cancelled") {
+    admin.title = "Booking cancelled"; admin.body = `${booking.guestName}, ${booking.propertyName}`;
+    owner = { title: "Booking cancelled on your property", body: `${booking.propertyName}, ${dateShort(booking.checkIn)}–${dateShort(booking.checkOut)}` };
+  }
   recordMutation({
-    entityType: "booking",
-    entityId: id,
-    entityName: booking.reference,
-    action: "updated",
+    entityType: "booking", entityId: id, entityName: booking.reference, action: "updated",
     summary: `Booking ${booking.reference} → ${status.replace("_", "-")}`,
-    before: { status: before },
-    after: { status },
-    notify: { type: "system", title: "Booking updated", body: `${booking.reference} is now ${status.replace("_", "-")}.` },
+    before: { status: before }, after: { status },
+    notify: { type: "system", title: admin.title, body: admin.body },
   });
+  notify(owner.title, owner.body, "booking", id);
+  if (status === "cancelled") notify("Your booking has been cancelled", `ref ${booking.reference}`, "booking", id);
   return booking;
 }
 
@@ -462,6 +495,9 @@ export async function updateServiceBookingStatus(id: string, status: import("@/l
   if (!sb) throw new Error("Service booking not found");
   const before = sb.status;
   sb.status = status;
+  const admin = status === "completed"
+    ? { title: "Service completed", body: `${sb.category} for ${sb.name}` }
+    : { title: "Service booking updated", body: `${sb.reference} is now ${status.replace("_", " ")}.` };
   recordMutation({
     entityType: "service-booking",
     entityId: id,
@@ -470,8 +506,11 @@ export async function updateServiceBookingStatus(id: string, status: import("@/l
     summary: `Service booking ${sb.reference} → ${status.replace("_", " ")}`,
     before: { status: before },
     after: { status },
-    notify: { type: "system", title: "Service booking updated", body: `${sb.reference} is now ${status.replace("_", " ")}.` },
+    notify: { type: "system", title: admin.title, body: admin.body },
   });
+  if (status === "completed") {
+    notify("Your service has been completed", `Your ${sb.category.toLowerCase()} service is done — thank you for choosing Nexora.`, "service-booking", id);
+  }
   return sb;
 }
 
@@ -490,6 +529,8 @@ export async function assignServiceBooking(id: string, assignee: string): Promis
     after: { assignee, status: sb.status },
     notify: { type: "system", title: "Service booking assigned", body: `${sb.reference} assigned to ${assignee}.` },
   });
+  // Assigned staff member
+  notify("New job assigned", `${sb.category} at ${sb.location}, ${dateShort(sb.date)}`, "service-booking", id);
   return sb;
 }
 
