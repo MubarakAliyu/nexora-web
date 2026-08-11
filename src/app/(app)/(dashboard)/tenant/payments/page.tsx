@@ -3,7 +3,7 @@
 import * as React from "react";
 import Link from "next/link";
 import {
-  Cash, Receipt, CreditCardPlus, CheckCircle, MobilePhone, Wallet, ArrowRight, Download,
+  Cash, Receipt, CreditCardPlus, CheckCircle, MobilePhone, Landmark, ArrowRight, Download,
 } from "flowbite-react-icons/outline";
 import { PageHeader } from "@/components/app/page-header";
 import { StatusBadge } from "@/components/app/status";
@@ -28,7 +28,7 @@ import { getTenant, payInvoice, type Invoice, type Payment, type PaymentMethod, 
 const METHODS: { id: PaymentMethod; label: string; hint: string; Icon: React.ComponentType<{ size?: number; className?: string }> }[] = [
   { id: "mobile_money", label: "Mobile Money", hint: "MTN / Airtel", Icon: MobilePhone },
   { id: "card", label: "Debit / Credit Card", hint: "Visa / Mastercard", Icon: CreditCardPlus },
-  { id: "bank", label: "Bank Transfer", hint: "Direct deposit", Icon: Wallet },
+  { id: "bank", label: "Bank Transfer", hint: "Direct deposit", Icon: Landmark },
 ];
 
 type Step = "method" | "processing" | "confirmed";

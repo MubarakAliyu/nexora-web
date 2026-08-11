@@ -190,6 +190,7 @@ export interface StatementPdfData {
   rows: StatementRow[];
   totals: { collected: number; expenses: number; fee: number; net: number };
   disbursement: { amount: number; date: string; account: string; ref: string };
+  agreement?: { ref: string; basis: string; commissionCalc: string };
 }
 
 export function StatementDoc({ d }: { d: StatementPdfData }) {
@@ -207,6 +208,8 @@ export function StatementDoc({ d }: { d: StatementPdfData }) {
           <View style={[s.block, { textAlign: "right" }]}>
             <Text style={s.label}>Statement period</Text>
             <Text style={s.strong}>{d.period}</Text>
+            {d.agreement && <Text style={s.metaLine}>Agreement {d.agreement.ref}</Text>}
+            {d.agreement && <Text style={s.metaLine}>{d.agreement.basis}</Text>}
           </View>
         </View>
 
@@ -241,6 +244,7 @@ export function StatementDoc({ d }: { d: StatementPdfData }) {
 
         <View style={s.note}>
           <Text style={s.noteTitle}>Disbursement</Text>
+          {d.agreement && <Text>Management commission: {d.agreement.commissionCalc}</Text>}
           <Text>Net amount of {money(d.disbursement.amount)} disbursed on {d.disbursement.date} to account {d.disbursement.account}. Reference {d.disbursement.ref}.</Text>
         </View>
 

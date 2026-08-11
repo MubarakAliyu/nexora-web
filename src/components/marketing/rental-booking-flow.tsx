@@ -6,7 +6,7 @@ import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
 import type { DateRange } from "react-day-picker";
-import { CheckCircle, AngleLeft, CreditCard, MobilePhone, Wallet } from "flowbite-react-icons/outline";
+import { CheckCircle, AngleLeft, CreditCard, MobilePhone, Landmark } from "flowbite-react-icons/outline";
 import { Calendar } from "@/components/ui/calendar";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
@@ -33,7 +33,7 @@ type Step = "dates" | "guests" | "summary" | "payment" | "confirmed";
 const PAYMENTS = [
   { id: "flutterwave", label: "Flutterwave", Icon: CreditCard, hint: "Card & bank" },
   { id: "mobile_money", label: "Mobile Money", Icon: MobilePhone, hint: "MTN / Airtel" },
-  { id: "card", label: "Debit / Credit Card", Icon: Wallet, hint: "Visa / Mastercard" },
+  { id: "card", label: "Debit / Credit Card", Icon: Landmark, hint: "Visa / Mastercard" },
 ];
 
 function nightsBetween(from?: Date, to?: Date) {

@@ -7,7 +7,8 @@ import * as db from "@/lib/mock/db";
 import type { Invoice, Payment, Lease } from "@/lib/mock/types";
 import type { InvoicePdfData, ReceiptPdfData, StatementPdfData, LeasePdfData, PdfPayload } from "./documents";
 import { slugFile } from "./download";
-import { formatDate } from "@/lib/format";
+import { formatDate, formatUGX } from "@/lib/format";
+import { commissionForAgreement, agreementRateLabel, CONTRACT_TYPE_LABEL } from "@/lib/api/agreements";
 
 const cap = (s: string) => s.charAt(0).toUpperCase() + s.slice(1);
 const pName = (id: string) => db.properties.find((p) => p.id === id)?.name ?? "—";
@@ -58,24 +59,37 @@ export function leasePdfForProperty(propertyId: string): { payload: PdfPayload; 
   return lease ? leasePdf(lease) : null;
 }
 
-const FEE_RATE = 0.08;
 export function statementPdf(ownerId: string, period?: string): { payload: PdfPayload; filename: string } {
   const owner = db.owners.find((o) => o.id === ownerId);
   const properties = db.properties.filter((p) => owner?.propertyIds.includes(p.id));
+  // Commission is driven entirely by the owner's management agreement — no
+  // hardcoded rate. The effective rate spreads the agreement's total commission
+  // proportionally across properties so per-row fees sum to the true total.
+  const agreement = db.getAgreementForOwner(ownerId);
+  const totalCollected = properties.reduce((s, p) => s + p.monthlyRevenue, 0);
+  const totalCommission = agreement ? commissionForAgreement(agreement, totalCollected) : 0;
+  const effRate = totalCollected > 0 ? totalCommission / totalCollected : 0;
   const rows = properties.map((p) => {
     const collected = p.monthlyRevenue;
-    const fee = Math.round(collected * FEE_RATE);
+    const fee = Math.round(collected * effRate);
     const expenses = db.expenses.filter((e) => e.propertyId === p.id).reduce((s, e) => s + e.amount, 0);
     return { property: p.name, units: p.units, collected, expenses, fee, net: collected - fee - expenses };
   });
   const totals = rows.reduce((a, r) => ({ collected: a.collected + r.collected, expenses: a.expenses + r.expenses, fee: a.fee + r.fee, net: a.net + r.net }), { collected: 0, expenses: 0, fee: 0, net: 0 });
-  const bank = db.bankAccounts.find((b) => b.primary) ?? db.bankAccounts[0];
+  const acct = agreement?.payoutAccountNumber || owner?.accountNumber;
   const per = period ?? monthOf(db.NOW_ISO);
   const data: StatementPdfData = {
     ownerName: owner?.name ?? "Owner", email: owner?.email ?? "", period: per,
     propertiesCount: properties.length, unitsCount: properties.reduce((s, p) => s + p.units, 0),
     rows, totals,
-    disbursement: { amount: totals.net, date: "5th of the month", account: bank ? `••${bank.accountNumber.slice(-4)}` : "—", ref: `DSB-${slugFile(per).slice(0, 6).toUpperCase()}` },
+    disbursement: { amount: totals.net, date: "5th of the month", account: acct ? `••${acct.slice(-4)}` : "—", ref: `DSB-${slugFile(per).slice(0, 6).toUpperCase()}` },
+    agreement: agreement
+      ? {
+          ref: `AGR-${agreement.id.replace(/\D/g, "").slice(-6).padStart(6, "0") || agreement.id.slice(-6).toUpperCase()}`,
+          basis: `${CONTRACT_TYPE_LABEL[agreement.contractType]} — ${agreementRateLabel(agreement)}`,
+          commissionCalc: `${CONTRACT_TYPE_LABEL[agreement.contractType]} (${agreementRateLabel(agreement)}) on ${formatUGX(totalCollected)} = ${formatUGX(totalCommission)}`,
+        }
+      : undefined,
   };
   return { payload: { kind: "statement", data }, filename: `Nexora-Statement-${slugFile(owner?.name ?? "Owner")}-${slugFile(per)}` };
 }
