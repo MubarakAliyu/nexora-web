@@ -11,6 +11,9 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { Field } from "@/components/forms/field";
+import {
+  Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter, DialogClose,
+} from "@/components/ui/dialog";
 import { toast } from "@/components/ui/sonner";
 import { useSession } from "@/lib/stores/session";
 
@@ -33,6 +36,9 @@ function initials(name: string) {
 export default function OwnerProfilePage() {
   const user = useSession((s) => s.user);
   const [showAccount, setShowAccount] = React.useState(false);
+  const [bankConfirmOpen, setBankConfirmOpen] = React.useState(false);
+  const [pending, setPending] = React.useState<Values | null>(null);
+  const initialBank = React.useRef({ bankName: "", accountName: "", accountNumber: "", swift: "" });
   const { register, handleSubmit, watch, formState: { errors, isSubmitting } } = useForm<Values>({
     resolver: zodResolver(schema),
     defaultValues: {
@@ -49,9 +55,43 @@ export default function OwnerProfilePage() {
   const acct = watch("accountNumber") ?? "";
   const masked = acct.length > 4 ? `•••• •••• ${acct.slice(-4)}` : acct;
 
-  const onSubmit = async (_v: Values) => {
+  React.useEffect(() => {
+    initialBank.current = {
+      bankName: "Stanbic Bank Uganda",
+      accountName: user?.name ?? "Salim Kato",
+      accountNumber: "9030012345678",
+      swift: "SBICUGKX",
+    };
+  }, [user]);
+
+  const persist = async () => {
     await new Promise((r) => setTimeout(r, 700));
     toast.success("Profile updated", { description: "Your details have been saved." });
+  };
+
+  const onSubmit = async (v: Values) => {
+    const b = initialBank.current;
+    const bankChanged =
+      v.bankName !== b.bankName || v.accountName !== b.accountName ||
+      v.accountNumber !== b.accountNumber || v.swift !== b.swift;
+    // Disbursement account changes are money-sensitive — confirm before saving.
+    if (bankChanged) {
+      setPending(v);
+      setBankConfirmOpen(true);
+      return;
+    }
+    await persist();
+  };
+
+  const confirmBankChange = async () => {
+    setBankConfirmOpen(false);
+    if (!pending) return;
+    initialBank.current = {
+      bankName: pending.bankName, accountName: pending.accountName,
+      accountNumber: pending.accountNumber, swift: pending.swift,
+    };
+    setPending(null);
+    await persist();
   };
 
   return (
@@ -103,6 +143,25 @@ export default function OwnerProfilePage() {
           <Button type="submit" loading={isSubmitting}>Save changes</Button>
         </div>
       </form>
+
+      {/* Disbursement-change confirmation — money-sensitive */}
+      <Dialog open={bankConfirmOpen} onOpenChange={setBankConfirmOpen}>
+        <DialogContent className="max-w-md">
+          <DialogHeader>
+            <DialogTitle>Confirm disbursement change</DialogTitle>
+            <DialogDescription>
+              You’re updating the account where Nexora sends your net payouts. Future disbursements
+              will go to <span className="font-medium text-foreground">{pending?.bankName}</span>
+              {pending?.accountNumber ? ` · ••••${pending.accountNumber.slice(-4)}` : ""}. Please make
+              sure these details are correct.
+            </DialogDescription>
+          </DialogHeader>
+          <DialogFooter>
+            <DialogClose asChild><Button variant="outline">Cancel</Button></DialogClose>
+            <Button onClick={confirmBankChange}>Confirm change</Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }

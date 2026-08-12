@@ -749,6 +749,109 @@ export async function getOwnerDetail(id: string, scope?: Scope): Promise<OwnerDe
   );
 }
 
+/* -------------------------------------------------- owner dashboard snapshot */
+
+export interface OwnerSnapshot {
+  units: { total: number; occupied: number; vacant: number; notice: number; maintenance: number };
+  settlement: {
+    nextPeriod: string | null;
+    nextNet: number;
+    nextDate: string | null;
+    paidToDate: number;
+    pending: number;
+  };
+  transactions: {
+    id: string;
+    date: string;
+    type: "rent_in" | "disbursement";
+    label: string;
+    amount: number;
+    direction: "in" | "out";
+    status: string;
+  }[];
+}
+
+/**
+ * Read-only snapshot for the Owner dashboard: unit occupancy split, the next
+ * pending settlement vs what's already been paid, and a merged transaction feed
+ * (rent received in, disbursements out). Settlement figures use the SAME
+ * disbursement model as `getOwnerDetail`, so the two reconcile exactly.
+ */
+export async function getOwnerSnapshot(ownerId: string, scope?: Scope): Promise<OwnerSnapshot> {
+  const owner = db.owners.find((o) => o.id === ownerId);
+  if (!owner) throw new NotFoundError(ownerId);
+  const propIds = new Set(owner.propertyIds);
+  const properties = db.properties.filter((p) => propIds.has(p.id));
+  const units = db.units.filter((u) => propIds.has(u.propertyId));
+  const count = (s: UnitStatus) => units.filter((u) => u.status === s).length;
+
+  // Settlement — mirror getOwnerDetail's disbursement schedule.
+  const monthlyRevenue = properties.reduce((s, p) => s + p.monthlyRevenue, 0);
+  const agreement = db.getAgreementForOwner(ownerId);
+  const months = ["Feb", "Mar", "Apr", "May", "Jun", "Jul"];
+  const disbursements = months.map((m, i) => {
+    const gross = Math.round(monthlyRevenue * (0.9 + i * 0.02));
+    const fees = agreement ? monthlyCommission(agreement, gross) : 0;
+    return {
+      id: `dsb_${ownerId}_${i}`,
+      period: `${m} 2026`,
+      net: gross - fees,
+      date: `2026-${String(i + 2).padStart(2, "0")}-05`,
+      status: (i < months.length - 1 ? "paid" : "scheduled") as "paid" | "scheduled",
+    };
+  });
+  const paid = disbursements.filter((d) => d.status === "paid");
+  const next = disbursements.find((d) => d.status === "scheduled") ?? null;
+  const paidToDate = paid.reduce((s, d) => s + d.net, 0);
+
+  // Merged transaction feed — completed rent payments in, disbursements out.
+  const rentIn = db.payments
+    .filter((p) => propIds.has(p.propertyId) && p.status === "completed")
+    .map((p) => {
+      const t = db.tenants.find((x) => x.id === p.tenantId);
+      return {
+        id: `tx_${p.id}`,
+        date: p.date,
+        type: "rent_in" as const,
+        label: `Rent — ${t?.name ?? "tenant"} · ${propertyName(p.propertyId)}`,
+        amount: p.amount,
+        direction: "in" as const,
+        status: "completed",
+      };
+    });
+  const disbOut = disbursements.map((d) => ({
+    id: `tx_${d.id}`,
+    date: d.date,
+    type: "disbursement" as const,
+    label: `Disbursement — ${d.period}`,
+    amount: d.net,
+    direction: "out" as const,
+    status: d.status === "paid" ? "paid" : "pending",
+  }));
+  const transactions = [...rentIn, ...disbOut].sort((a, b) => (a.date < b.date ? 1 : -1)).slice(0, 10);
+
+  return respond(
+    {
+      units: {
+        total: units.length,
+        occupied: count("occupied"),
+        vacant: count("vacant"),
+        notice: count("notice"),
+        maintenance: count("maintenance"),
+      },
+      settlement: {
+        nextPeriod: next?.period ?? null,
+        nextNet: next?.net ?? 0,
+        nextDate: next?.date ?? null,
+        paidToDate,
+        pending: next?.net ?? 0,
+      },
+      transactions,
+    },
+    { error: scope?.forceError },
+  );
+}
+
 const toM = (n: number) => `${(n / 1_000_000).toFixed(1)}M`;
 
 /** Activity feed scoped to a single owner's properties (payments, completed

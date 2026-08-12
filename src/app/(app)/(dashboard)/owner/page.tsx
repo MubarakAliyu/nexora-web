@@ -2,7 +2,7 @@
 
 import * as React from "react";
 import Link from "next/link";
-import { Building, Home, ChartLineUp, Cash, Receipt, AngleRight, CalendarMonth } from "flowbite-react-icons/outline";
+import { Building, Home, ChartLineUp, Cash, Receipt, AngleRight, CalendarMonth, ArrowUp, ArrowDown, CheckCircle } from "flowbite-react-icons/outline";
 import { PageHeader } from "@/components/app/page-header";
 import { OwnerPropertyCard } from "@/components/app/owner-property-card";
 import { StatusBadge } from "@/components/app/status";
@@ -16,9 +16,9 @@ import { EmptyState } from "@/components/ui/empty-state";
 import { Button } from "@/components/ui/button";
 import { useAsync, debugErrorFlag } from "@/lib/use-async";
 import { useSession } from "@/lib/stores/session";
-import { fromNow, formatDate } from "@/lib/format";
+import { fromNow, formatDate, formatUGX } from "@/lib/format";
 import {
-  getDashboardStats, getRevenueSeries, getOccupancySeries, getOwnerActivity, listProperties, NOW_ISO, type Scope,
+  getDashboardStats, getRevenueSeries, getOccupancySeries, getOwnerActivity, getOwnerSnapshot, listProperties, NOW_ISO, type Scope,
 } from "@/lib/api/admin";
 import { listBookings } from "@/lib/api/rentals";
 
@@ -36,6 +36,7 @@ export default function OwnerDashboardPage() {
   const revenue = useAsync(() => getRevenueSeries(scope), [scope]);
   const occupancy = useAsync(() => getOccupancySeries(scope), [scope]);
   const activity = useAsync(() => getOwnerActivity(ownerId ?? "", scope), [ownerId, scope]);
+  const snapshot = useAsync(() => getOwnerSnapshot(ownerId ?? "", scope), [ownerId, scope]);
   const properties = useAsync(() => listProperties(undefined, scope), [scope]);
   const bookings = useAsync(() => listBookings({ ownerId }), [ownerId]);
   const recentBookings = (bookings.data ?? []).slice(0, 6);
@@ -63,6 +64,78 @@ export default function OwnerDashboardPage() {
           <StatCard label="Outstanding" value={<MoneyStat value={stats.data.outstanding} />} icon={<Receipt size={22} />} hint="across portfolio" />
         </div>
       ) : null}
+
+      {/* Units occupancy + settlement */}
+      <div className="grid gap-4 lg:grid-cols-2">
+        <Card className="p-6">
+          <div className="mb-4 flex items-center justify-between">
+            <h2 className="font-heading text-h3 font-semibold text-foreground">Units</h2>
+            <span className="text-caption text-muted">occupied vs vacant</span>
+          </div>
+          {snapshot.loading ? (
+            <div className="space-y-3">{Array.from({ length: 3 }).map((_, i) => <Skeleton key={i} className="h-6 w-full" />)}</div>
+          ) : snapshot.error ? (
+            <EmptyState title="Couldn’t load units" description={snapshot.error} action={<Button variant="outline" size="sm" onClick={snapshot.reload}>Try again</Button>} />
+          ) : snapshot.data ? (
+            <>
+              <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
+                {[
+                  { label: "Occupied", value: snapshot.data.units.occupied },
+                  { label: "Vacant", value: snapshot.data.units.vacant },
+                  { label: "On notice", value: snapshot.data.units.notice },
+                  { label: "Maintenance", value: snapshot.data.units.maintenance },
+                ].map((s) => (
+                  <div key={s.label} className="rounded-xl border border-border p-3">
+                    <p className="font-heading text-h2 font-semibold text-foreground">{s.value}</p>
+                    <p className="text-caption text-muted">{s.label}</p>
+                  </div>
+                ))}
+              </div>
+              {snapshot.data.units.total > 0 && (
+                <div className="mt-4">
+                  <div className="mb-1.5 flex justify-between text-caption text-muted">
+                    <span>{snapshot.data.units.occupied} of {snapshot.data.units.total} occupied</span>
+                    <span>{Math.round((snapshot.data.units.occupied / snapshot.data.units.total) * 100)}%</span>
+                  </div>
+                  <div className="h-2 overflow-hidden rounded-full bg-surface-hover">
+                    <div className="h-full rounded-full bg-primary" style={{ width: `${(snapshot.data.units.occupied / snapshot.data.units.total) * 100}%` }} />
+                  </div>
+                </div>
+              )}
+            </>
+          ) : null}
+        </Card>
+
+        <Card className="p-6">
+          <div className="mb-4 flex items-center justify-between">
+            <h2 className="font-heading text-h3 font-semibold text-foreground">Settlement</h2>
+            <Link href="/owner/financials" className="inline-flex items-center gap-1 text-caption font-medium text-primary transition-colors hover:text-accent">
+              Financials <AngleRight size={14} />
+            </Link>
+          </div>
+          {snapshot.loading ? (
+            <div className="space-y-3">{Array.from({ length: 3 }).map((_, i) => <Skeleton key={i} className="h-8 w-full" />)}</div>
+          ) : snapshot.data ? (
+            <div className="space-y-4">
+              <div className="rounded-xl border border-primary/20 bg-primary/5 p-4">
+                <div className="flex items-center justify-between">
+                  <p className="text-caption uppercase tracking-wide text-muted">Next settlement{snapshot.data.settlement.nextPeriod ? ` · ${snapshot.data.settlement.nextPeriod}` : ""}</p>
+                  <StatusBadge status="pending" />
+                </div>
+                <p className="mt-1 font-heading text-h2 font-semibold text-primary">{formatUGX(snapshot.data.settlement.pending)}</p>
+                {snapshot.data.settlement.nextDate && <p className="mt-0.5 text-caption text-muted">Scheduled {formatDate(snapshot.data.settlement.nextDate)}</p>}
+              </div>
+              <div className="flex items-center justify-between rounded-xl border border-border p-4">
+                <div className="flex items-center gap-2">
+                  <span className="text-primary"><CheckCircle size={18} /></span>
+                  <p className="text-body text-muted">Paid to date</p>
+                </div>
+                <p className="font-heading text-h3 font-semibold text-foreground">{formatUGX(snapshot.data.settlement.paidToDate)}</p>
+              </div>
+            </div>
+          ) : null}
+        </Card>
+      </div>
 
       {/* Charts */}
       <div className="grid gap-4 lg:grid-cols-2">
@@ -130,6 +203,40 @@ export default function OwnerDashboardPage() {
           )}
         </Card>
       </div>
+
+      {/* Transaction history */}
+      <Card className="p-6">
+        <div className="mb-5 flex items-center justify-between">
+          <h2 className="font-heading text-h3 font-semibold text-foreground">Transaction history</h2>
+          <span className="text-caption text-muted">rent received &amp; disbursements</span>
+        </div>
+        {snapshot.loading ? (
+          <div className="space-y-3">{Array.from({ length: 5 }).map((_, i) => <Skeleton key={i} className="h-12 w-full" />)}</div>
+        ) : snapshot.error ? (
+          <EmptyState title="Couldn’t load transactions" description={snapshot.error} action={<Button variant="outline" size="sm" onClick={snapshot.reload}>Try again</Button>} />
+        ) : snapshot.data && snapshot.data.transactions.length > 0 ? (
+          <ul className="divide-y divide-border">
+            {snapshot.data.transactions.map((t) => (
+              <li key={t.id} className="flex items-center justify-between gap-3 py-3">
+                <div className="flex min-w-0 items-center gap-3">
+                  <span className={t.direction === "in" ? "text-primary" : "text-muted"}>
+                    {t.direction === "in" ? <ArrowDown size={18} /> : <ArrowUp size={18} />}
+                  </span>
+                  <div className="min-w-0">
+                    <p className="truncate text-body font-medium text-foreground">{t.label}</p>
+                    <p className="truncate text-caption text-muted">{formatDate(t.date)} · {t.status}</p>
+                  </div>
+                </div>
+                <p className={`shrink-0 font-medium tabular-nums ${t.direction === "in" ? "text-foreground" : "text-muted"}`}>
+                  {t.direction === "in" ? "+" : "−"}{formatUGX(t.amount)}
+                </p>
+              </li>
+            ))}
+          </ul>
+        ) : (
+          <EmptyState title="No transactions yet" description="Rent received and disbursements will appear here." />
+        )}
+      </Card>
 
       {/* Properties quick glance */}
       <div>
