@@ -142,6 +142,12 @@ export interface Property {
   bedrooms?: number;
   /** Units currently available to rent/book. */
   availableUnits?: number;
+  /* ---- richer configuration (7-step creation) ---- */
+  description?: string;
+  bathrooms?: number;
+  videos?: string[];
+  floorPlans?: string[];
+  documents?: string[];
 }
 
 /** A property guaranteed to carry rental-listing config (post-seed). */

@@ -235,6 +235,13 @@ export interface PropertyInput {
   cleaningFee?: number;
   /* long-term pricing */
   annualRent?: number;
+  /* richer 7-step config */
+  description?: string;
+  bathrooms?: number;
+  buildingsConfig?: { name: string; floors: number }[];
+  videos?: string[];
+  floorPlans?: string[];
+  documents?: string[];
 }
 
 /** Build the rental-config slice of a Property from a PropertyInput. */
@@ -246,6 +253,11 @@ function rentalConfigFrom(input: Partial<PropertyInput>): Partial<Property> {
   if (input.maxStay != null) out.maxStay = input.maxStay;
   if (input.bedrooms != null) out.bedrooms = input.bedrooms;
   if (input.amenities) out.amenities = input.amenities;
+  if (input.description != null) out.description = input.description;
+  if (input.bathrooms != null) out.bathrooms = input.bathrooms;
+  if (input.videos) out.videos = input.videos;
+  if (input.floorPlans) out.floorPlans = input.floorPlans;
+  if (input.documents) out.documents = input.documents;
   if (input.rentalType === "short-term") {
     out.shortTerm = {
       daily: input.dailyRate ?? 0,
@@ -264,6 +276,10 @@ function rentalConfigFrom(input: Partial<PropertyInput>): Partial<Property> {
 export async function createProperty(input: PropertyInput): Promise<Property> {
   await new Promise((r) => setTimeout(r, 500));
   const id = slugify(input.name);
+  const buildings = input.buildingsConfig?.length
+    ? input.buildingsConfig.map((b, i) => ({ id: `bld_${id}_${i + 1}`, name: b.name || `Block ${String.fromCharCode(65 + i)}`, floors: Math.max(1, b.floors), units: Math.max(1, b.floors) }))
+    : [{ id: `bld_${id}_1`, name: "Main Block", floors: Math.max(1, Math.ceil(input.units / 4)), units: input.units }];
+  const totalUnits = input.buildingsConfig?.length ? buildings.reduce((s, b) => s + b.units, 0) : input.units;
   const property: Property = {
     id,
     name: input.name,
@@ -272,16 +288,16 @@ export async function createProperty(input: PropertyInput): Promise<Property> {
     image: input.image ?? "/images/properties/apartment-facade.jpg",
     ownerId: input.ownerId ?? db.owners[0]?.id ?? "own_salim",
     status: input.status ?? "onboarding",
-    units: input.units,
+    units: totalUnits,
     occupancy: 0,
     monthlyRevenue: 0,
-    buildings: [{ id: `bld_${id}_1`, name: "Main Block", floors: Math.max(1, Math.ceil(input.units / 4)), units: input.units }],
+    buildings,
     since: db.NOW_ISO,
     rentalType: input.rentalType ?? "long-term",
     rentalPayment: input.rentalPayment ?? (input.rentalType === "short-term" ? "online" : "manual"),
     amenities: input.amenities ?? [],
     bedrooms: input.bedrooms ?? 0,
-    availableUnits: input.units,
+    availableUnits: totalUnits,
     ...rentalConfigFrom(input),
   };
   db.properties.unshift(property);
@@ -304,11 +320,18 @@ export async function updateProperty(id: string, patch: Partial<PropertyInput>):
   const property = db.properties.find((p) => p.id === id);
   if (!property) throw new NotFoundError(id);
   const before = { name: property.name, location: property.location, status: property.status, units: property.units };
+  let buildings = property.buildings;
+  let units = patch.units ?? property.units;
+  if (patch.buildingsConfig?.length) {
+    buildings = patch.buildingsConfig.map((b, i) => ({ id: `bld_${property.id}_${i + 1}`, name: b.name || `Block ${String.fromCharCode(65 + i)}`, floors: Math.max(1, b.floors), units: Math.max(1, b.floors) }));
+    units = buildings.reduce((s, b) => s + b.units, 0);
+  }
   Object.assign(property, {
     name: patch.name ?? property.name,
     location: patch.location ?? property.location,
     category: patch.category ?? property.category,
-    units: patch.units ?? property.units,
+    units,
+    buildings,
     status: patch.status ?? property.status,
     ...rentalConfigFrom(patch),
   });
