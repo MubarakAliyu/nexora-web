@@ -41,7 +41,8 @@ export default function TwoFactorPage() {
     if (res.ok) {
       setSession(pending);
       toast.success("Verified", { description: `Welcome back, ${pending.name.split(" ")[0]}.` });
-      router.replace(portalForRole(pending.role));
+      // Onboarded accounts must set a new password before reaching their portal.
+      router.replace(pending.requiresPasswordChange ? "/change-password" : portalForRole(pending.role));
     } else {
       setError("That code isn’t right. Try again.");
       toast.error("Invalid code", { description: "Enter your 6-digit verification code." });

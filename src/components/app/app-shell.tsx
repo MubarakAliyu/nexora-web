@@ -89,6 +89,12 @@ export function AppShell({ children }: { children: React.ReactNode }) {
     if (mounted && !user) router.replace("/login");
   }, [mounted, user, router]);
 
+  // First-login gate — an onboarded account must set a new password before it
+  // can reach any dashboard route.
+  React.useEffect(() => {
+    if (mounted && user?.requiresPasswordChange) router.replace("/change-password");
+  }, [mounted, user, router]);
+
   React.useEffect(() => setDrawerOpen(false), [pathname]);
 
   // Apply dark theme to <html> — scoped to dashboard routes (AppShell only
