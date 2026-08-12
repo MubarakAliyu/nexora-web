@@ -22,7 +22,7 @@ import { toast } from "@/components/ui/sonner";
 import { useAsync, debugErrorFlag } from "@/lib/use-async";
 import { formatUGX, formatDate } from "@/lib/format";
 import {
-  listTickets, createTicket, updateTicket, closeTicket, deleteTicket, propertyName, unitLabel, tenantName, propertyOptions, unitOptions,
+  listTickets, createTicket, updateTicket, closeTicket, deleteTicket, propertyName, unitLabel, tenantName, propertyOptions, unitOptions, staffOptions,
   type MaintenanceTicket, type TicketStatus, type TicketCategory, type TicketPriority, type Scope,
 } from "@/lib/api/admin";
 import { cn } from "@/lib/utils";
@@ -34,7 +34,6 @@ const COLUMNS: { status: TicketStatus; label: string }[] = [
   { status: "completed", label: "Completed" },
   { status: "closed", label: "Closed" },
 ];
-const TECHS = ["James Odoi", "Fred Wanyama", "Peter Ssemakula", "Alex Mugume"];
 const TICKET_CATS: TicketCategory[] = ["plumbing", "electrical", "hvac", "appliance", "structural", "cleaning", "security", "other"];
 const PRIORITIES: TicketPriority[] = ["low", "medium", "high", "urgent"];
 
@@ -279,7 +278,7 @@ function TicketDialog({ ticket, onClose, onSaved, onDelete }: { ticket: Maintena
               <Field label="Technician" htmlFor="tk-tech">
                 <select id="tk-tech" className={selectClass} value={assignee} onChange={(e) => setAssignee(e.target.value)}>
                   <option value="">Unassigned</option>
-                  {TECHS.map((t) => <option key={t} value={t}>{t}</option>)}
+                  {staffOptions().map((s) => <option key={s.id} value={s.name}>{s.name}{s.availability !== "available" ? ` (${s.availability})` : ""}</option>)}
                 </select>
               </Field>
               <Field label="Cost (UGX)" htmlFor="tk-cost">

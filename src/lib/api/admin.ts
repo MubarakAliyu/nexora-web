@@ -10,6 +10,8 @@
 
 import * as db from "@/lib/mock/db";
 import { recordMutation } from "@/lib/api/actions";
+import { incrementStaffJobs } from "@/lib/api/admin-mutations";
+import type { Role } from "@/lib/roles";
 import { monthlyCommission, effectiveRate, agreementRateLabel, CONTRACT_TYPE_LABEL } from "@/lib/api/agreements";
 import type {
   Activity,
@@ -656,6 +658,66 @@ export async function listStaff(scope?: Scope): Promise<Staff[]> {
   return respond([...db.staff], { error: scope?.forceError });
 }
 
+/** Active staff for cross-module assignment dropdowns (maintenance, services). */
+export function staffOptions(): { id: string; name: string; role: Role; availability: string }[] {
+  return db.staff
+    .filter((s) => s.status === "active")
+    .map((s) => ({ id: s.id, name: s.name, role: s.role, availability: s.availability ?? "available" }));
+}
+
+export interface StaffAssignment {
+  id: string;
+  kind: "maintenance" | "service";
+  ref: string;
+  title: string;
+  status: string;
+  date: string;
+}
+
+export interface StaffDetail {
+  member: Staff;
+  assignments: StaffAssignment[];
+  performance: {
+    totalJobs: number;
+    completed: number;
+    active: number;
+    completionRate: number; // %
+    avgPerMonth: number;
+  };
+}
+
+/** Staff member with derived assignments (maintenance tickets + service
+ *  bookings assigned by name) and performance metrics. */
+export async function getStaffMember(id: string, scope?: Scope): Promise<StaffDetail> {
+  const member = db.staff.find((s) => s.id === id);
+  if (!member) throw new NotFoundError(id);
+  const tickets: StaffAssignment[] = db.tickets
+    .filter((t) => t.assignee === member.name)
+    .map((t) => ({ id: t.id, kind: "maintenance", ref: t.ref, title: t.title, status: t.status, date: t.updatedAt }));
+  const services: StaffAssignment[] = db.serviceBookings
+    .filter((b) => b.assignee === member.name)
+    .map((b) => ({ id: b.id, kind: "service", ref: b.reference, title: `${b.category} — ${b.name}`, status: b.status, date: b.date }));
+  const assignments = [...tickets, ...services].sort((a, b) => (a.date < b.date ? 1 : -1));
+  const completed = assignments.filter((a) => a.status === "completed" || a.status === "closed").length;
+  const active = assignments.filter((a) => a.status !== "completed" && a.status !== "closed" && a.status !== "cancelled").length;
+  const totalJobs = Math.max(assignments.length, member.assignedJobs ?? 0);
+  const monthsOnTeam = Math.max(1, Math.round((Date.now() - new Date(member.since).getTime()) / (30 * DAY_MS)));
+  return respond(
+    {
+      member,
+      assignments,
+      performance: {
+        totalJobs,
+        completed,
+        active,
+        completionRate: assignments.length ? Math.round((completed / assignments.length) * 100) : 0,
+        avgPerMonth: Math.round((totalJobs / monthsOnTeam) * 10) / 10,
+      },
+    },
+    { error: scope?.forceError },
+  );
+}
+
 /* --------------------------------------------------------------- lookups */
 
 /** Small helper for filter dropdowns — id/name pairs, never throws/awaits. */
@@ -1003,6 +1065,8 @@ export async function updateTicket(
   if (patch.assignee !== undefined) t.assignee = patch.assignee || undefined;
   if (patch.cost !== undefined) t.cost = patch.cost || undefined;
   if (t.status !== "open" && !t.assignee) t.assignee = "James Odoi";
+  // Assigning to a new technician bumps their job counter.
+  if (t.assignee && t.assignee !== before.assignee) incrementStaffJobs(t.assignee);
   t.updatedAt = db.NOW_ISO;
   recordMutation({
     entityType: "ticket",
@@ -1021,7 +1085,9 @@ export async function assignTicket(id: string, assignee: string): Promise<Mainte
   await new Promise((r) => setTimeout(r, 350));
   const t = db.tickets.find((x) => x.id === id);
   if (!t) throw new NotFoundError(id);
+  const prev = t.assignee;
   t.assignee = assignee;
+  if (assignee && assignee !== prev) incrementStaffJobs(assignee);
   if (t.status === "open") t.status = "assigned";
   t.updatedAt = db.NOW_ISO;
   return t;

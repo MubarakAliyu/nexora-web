@@ -1,7 +1,8 @@
 "use client";
 
 import * as React from "react";
-import { Users, Plus, PenNib, TrashBin } from "flowbite-react-icons/outline";
+import { useRouter } from "next/navigation";
+import { Users, Plus, PenNib, TrashBin, Search } from "flowbite-react-icons/outline";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
@@ -9,6 +10,7 @@ import { PageHeader } from "@/components/app/page-header";
 import { StatusBadge } from "@/components/app/status";
 import { RowActions } from "@/components/app/row-actions";
 import { DeleteConfirmation } from "@/components/app/delete-confirmation";
+import { AvailabilityBadge } from "@/components/admin/availability-badge";
 import { DataTable, type Column } from "@/components/ui/data-table";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { Button } from "@/components/ui/button";
@@ -20,7 +22,7 @@ import {
 import { toast } from "@/components/ui/sonner";
 import { useAsync, debugErrorFlag } from "@/lib/use-async";
 import { formatDate } from "@/lib/format";
-import { listStaff, inviteStaff, updateStaff, removeStaff, type Staff, type Scope } from "@/lib/api/admin";
+import { listStaff, inviteStaff, updateStaff, removeStaff, cycleStaffAvailability, type Staff, type Scope } from "@/lib/api/admin";
 import { adminRoles, roleLabels, type Role } from "@/lib/roles";
 
 function initials(name: string) {
@@ -32,16 +34,17 @@ const inviteSchema = z.object({
   email: z.string().email("Enter a valid email"),
   role: z.string().min(1, "Choose a role"),
   department: z.string().optional(),
+  phone: z.string().optional(),
 });
 type InviteValues = z.infer<typeof inviteSchema>;
 
 function InviteDialog({ open, onOpenChange, onDone }: { open: boolean; onOpenChange: (o: boolean) => void; onDone: () => void }) {
   const { register, handleSubmit, reset, formState: { errors, isSubmitting } } = useForm<InviteValues>({
-    resolver: zodResolver(inviteSchema), defaultValues: { name: "", email: "", role: "property_manager", department: "" },
+    resolver: zodResolver(inviteSchema), defaultValues: { name: "", email: "", role: "property_manager", department: "", phone: "" },
   });
-  React.useEffect(() => { if (open) reset({ name: "", email: "", role: "property_manager", department: "" }); }, [open, reset]);
+  React.useEffect(() => { if (open) reset({ name: "", email: "", role: "property_manager", department: "", phone: "" }); }, [open, reset]);
   const onSubmit = async (v: InviteValues) => {
-    try { await inviteStaff({ name: v.name, email: v.email, role: v.role as Role, department: v.department }); toast.success("Invitation sent", { description: `${v.name} was invited as ${roleLabels[v.role as Role]}.` }); onOpenChange(false); onDone(); }
+    try { await inviteStaff({ name: v.name, email: v.email, role: v.role as Role, department: v.department, phone: v.phone }); toast.success("Invitation sent", { description: `${v.name} was invited as ${roleLabels[v.role as Role]}.` }); onOpenChange(false); onDone(); }
     catch { toast.error("Couldn’t send invite"); }
   };
   return (
@@ -57,7 +60,8 @@ function InviteDialog({ open, onOpenChange, onDone }: { open: boolean; onOpenCha
                 {adminRoles.map((r) => <option key={r} value={r}>{roleLabels[r]}</option>)}
               </select>
             </Field>
-            <Field label="Department (optional)" htmlFor="st-dep"><Input id="st-dep" {...register("department")} /></Field>
+            <Field label="Department" htmlFor="st-dep"><Input id="st-dep" placeholder="e.g. Operations" {...register("department")} /></Field>
+            <Field label="Phone" htmlFor="st-phone"><Input id="st-phone" placeholder="+256 7…" {...register("phone")} /></Field>
           </div>
           <DialogFooter>
             <DialogClose asChild><Button type="button" variant="outline">Cancel</Button></DialogClose>
@@ -72,12 +76,16 @@ function InviteDialog({ open, onOpenChange, onDone }: { open: boolean; onOpenCha
 function EditStaffDialog({ member, onOpenChange, onDone }: { member: Staff | null; onOpenChange: (o: boolean) => void; onDone: () => void }) {
   const [role, setRole] = React.useState<Role>("property_manager");
   const [status, setStatus] = React.useState<Staff["status"]>("active");
+  const [department, setDepartment] = React.useState("");
+  const [phone, setPhone] = React.useState("");
   const [busy, setBusy] = React.useState(false);
-  React.useEffect(() => { if (member) { setRole(member.role); setStatus(member.status); } }, [member]);
+  React.useEffect(() => {
+    if (member) { setRole(member.role); setStatus(member.status); setDepartment(member.department ?? ""); setPhone(member.phone ?? ""); }
+  }, [member]);
   const save = async () => {
     if (!member) return;
     setBusy(true);
-    try { await updateStaff(member.id, { role, status }); toast.success("Staff updated", { description: `${member.name} saved.` }); onOpenChange(false); onDone(); }
+    try { await updateStaff(member.id, { role, status, department, phone }); toast.success("Staff updated", { description: `${member.name} saved.` }); onOpenChange(false); onDone(); }
     catch { toast.error("Couldn’t update staff"); }
     finally { setBusy(false); }
   };
@@ -98,6 +106,8 @@ function EditStaffDialog({ member, onOpenChange, onDone }: { member: Staff | nul
                   <option value="active">Active</option><option value="invited">Invited</option><option value="suspended">Deactivated</option>
                 </select>
               </Field>
+              <Field label="Department" htmlFor="es-dep"><Input id="es-dep" value={department} onChange={(e) => setDepartment(e.target.value)} /></Field>
+              <Field label="Phone" htmlFor="es-phone"><Input id="es-phone" value={phone} onChange={(e) => setPhone(e.target.value)} /></Field>
             </div>
             <DialogFooter>
               <DialogClose asChild><Button type="button" variant="outline">Cancel</Button></DialogClose>
@@ -110,12 +120,43 @@ function EditStaffDialog({ member, onOpenChange, onDone }: { member: Staff | nul
   );
 }
 
+const DEPARTMENTS = ["Executive", "Property Management", "Finance", "Operations", "Maintenance"];
+
 export default function StaffPage() {
+  const router = useRouter();
   const [inviteOpen, setInviteOpen] = React.useState(false);
   const [editing, setEditing] = React.useState<Staff | null>(null);
   const [removing, setRemoving] = React.useState<Staff | null>(null);
+  const [deactivating, setDeactivating] = React.useState<Staff | null>(null);
+  const [q, setQ] = React.useState("");
+  const [dept, setDept] = React.useState("all");
+  const [availability, setAvailability] = React.useState("all");
+  const [status, setStatus] = React.useState("all");
   const scope: Scope = React.useMemo(() => ({ forceError: debugErrorFlag() }), []);
   const { data, loading, error, reload } = useAsync(() => listStaff(scope), [scope]);
+
+  const rows = (data ?? []).filter((s) => {
+    if (q && !`${s.name} ${s.email}`.toLowerCase().includes(q.toLowerCase())) return false;
+    if (dept !== "all" && s.department !== dept) return false;
+    if (availability !== "all" && (s.availability ?? "available") !== availability) return false;
+    if (status !== "all" && s.status !== status) return false;
+    return true;
+  });
+
+  const cycle = async (s: Staff) => {
+    try { const m = await cycleStaffAvailability(s.id); toast.success(`${s.name} is now ${m.availability}`); reload(); }
+    catch { toast.error("Couldn’t update availability"); }
+  };
+
+  const doDeactivate = async (s: Staff) => {
+    try { await updateStaff(s.id, { status: "suspended" }); toast.success("Deactivated", { description: s.name }); reload(); }
+    catch { toast.error("Couldn’t update"); }
+  };
+
+  const doReactivate = async (s: Staff) => {
+    try { await updateStaff(s.id, { status: "active" }); toast.success("Reactivated", { description: s.name }); reload(); }
+    catch { toast.error("Couldn’t update"); }
+  };
 
   const columns: Column<Staff>[] = [
     {
@@ -129,14 +170,24 @@ export default function StaffPage() {
     },
     { key: "role", header: "Role", sortable: true, render: (s) => roleLabels[s.role] },
     { key: "department", header: "Department", render: (s) => s.department ?? <span className="text-muted">—</span> },
+    {
+      key: "availability", header: "Availability",
+      render: (s) => (
+        <AvailabilityBadge value={s.availability ?? "available"} onClick={(e) => { e.stopPropagation(); cycle(s); }} />
+      ),
+    },
+    { key: "assignedJobs", header: "Jobs", align: "right", render: (s) => <span className="tabular-nums text-foreground">{s.assignedJobs ?? 0}</span> },
     { key: "status", header: "Status", render: (s) => <StatusBadge status={s.status} /> },
     { key: "since", header: "Joined", sortable: true, align: "right", render: (s) => formatDate(s.since) },
     {
       key: "actions", header: "", align: "right",
       render: (s) => (
         <RowActions actions={[
+          { label: "View profile", icon: <Users size={16} />, onClick: () => router.push(`/admin/staff/${s.id}`) },
           { label: "Edit", icon: <PenNib size={16} />, onClick: () => setEditing(s) },
-          { label: s.status === "suspended" ? "Reactivate" : "Deactivate", onClick: async () => { try { await updateStaff(s.id, { status: s.status === "suspended" ? "active" : "suspended" }); toast.success(s.status === "suspended" ? "Reactivated" : "Deactivated", { description: s.name }); reload(); } catch { toast.error("Couldn’t update"); } } },
+          s.status === "suspended"
+            ? { label: "Reactivate", onClick: () => doReactivate(s) }
+            : { label: "Deactivate", onClick: () => setDeactivating(s) },
           { label: "Remove", icon: <TrashBin size={16} />, onClick: () => setRemoving(s), danger: true, separatorBefore: true },
         ]} />
       ),
@@ -147,20 +198,64 @@ export default function StaffPage() {
     <div>
       <PageHeader
         title="Staff"
-        subtitle="Internal team members, roles and access"
+        subtitle="Internal team members, roles, availability and assignments"
         actions={<Button onClick={() => setInviteOpen(true)} className="gap-2"><Plus size={18} /> Invite</Button>}
       />
 
-      <DataTable columns={columns} data={data ?? []} getRowId={(s) => s.id} loading={loading} error={error} onRetry={reload}
-        emptyTitle="No staff yet" emptyDescription="Invite your first team member." pageSize={10} />
+      <div className="mb-4 flex flex-col gap-3 sm:flex-row sm:items-center">
+        <div className="relative sm:max-w-xs sm:flex-1">
+          <Search size={18} className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-muted" />
+          <Input value={q} onChange={(e) => setQ(e.target.value)} placeholder="Search name or email…" aria-label="Search staff" className="h-10 pl-10" />
+        </div>
+        <select className={`${selectClass} sm:w-48`} value={dept} onChange={(e) => setDept(e.target.value)} aria-label="Filter by department">
+          <option value="all">All departments</option>
+          {DEPARTMENTS.map((d) => <option key={d} value={d}>{d}</option>)}
+        </select>
+        <select className={`${selectClass} sm:w-40`} value={availability} onChange={(e) => setAvailability(e.target.value)} aria-label="Filter by availability">
+          <option value="all">All availability</option>
+          <option value="available">Available</option>
+          <option value="busy">Busy</option>
+          <option value="off">Off</option>
+        </select>
+        <select className={`${selectClass} sm:w-36`} value={status} onChange={(e) => setStatus(e.target.value)} aria-label="Filter by status">
+          <option value="all">All statuses</option>
+          <option value="active">Active</option>
+          <option value="invited">Invited</option>
+          <option value="suspended">Deactivated</option>
+        </select>
+      </div>
+
+      <DataTable columns={columns} data={rows} getRowId={(s) => s.id} loading={loading} error={error} onRetry={reload}
+        onRowClick={(s) => router.push(`/admin/staff/${s.id}`)}
+        emptyTitle="No staff found" emptyDescription="Try adjusting your search or filters." pageSize={10} />
 
       <div className="mt-6 flex items-start gap-3 rounded-lg border border-border bg-surface-hover/40 p-4">
         <span className="text-muted"><Users size={20} /></span>
-        <p className="text-caption text-muted">Granular per-module permissions and activity logs per user arrive in Phase 2. Role-based access is configured under Settings → Roles &amp; Permissions.</p>
+        <p className="text-caption text-muted">Click an availability chip to cycle it (available → busy → off). Assignments and performance are on each member’s profile.</p>
       </div>
 
       <InviteDialog open={inviteOpen} onOpenChange={setInviteOpen} onDone={reload} />
       <EditStaffDialog member={editing} onOpenChange={(o) => { if (!o) setEditing(null); }} onDone={reload} />
+
+      {/* Deactivation warning — active assignments must be reassigned */}
+      <Dialog open={!!deactivating} onOpenChange={(o) => !o && setDeactivating(null)}>
+        <DialogContent className="max-w-md">
+          <DialogHeader>
+            <DialogTitle>Deactivate {deactivating?.name}?</DialogTitle>
+            <DialogDescription>
+              They’ll lose dashboard access and won’t appear in assignment dropdowns.
+              {(deactivating?.assignedJobs ?? 0) > 0 && (
+                <> This member currently has <span className="font-medium text-foreground">{deactivating?.assignedJobs} job(s)</span> on record — reassign any active work first.</>
+              )}
+            </DialogDescription>
+          </DialogHeader>
+          <DialogFooter>
+            <DialogClose asChild><Button variant="outline">Cancel</Button></DialogClose>
+            <Button onClick={() => { if (deactivating) { doDeactivate(deactivating); setDeactivating(null); } }}>Deactivate</Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
       <DeleteConfirmation open={!!removing} onOpenChange={(o) => !o && setRemoving(null)} entityLabel="staff member" entityName={removing?.name ?? ""}
         onConfirm={async () => { if (!removing) return; try { await removeStaff(removing.id); toast.success("Staff removed"); reload(); } catch { toast.error("Couldn’t remove staff"); } }} />
     </div>

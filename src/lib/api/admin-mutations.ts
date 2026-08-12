@@ -25,6 +25,7 @@ import type {
   PermissionSet,
   RoleDef,
   Staff,
+  StaffAvailability,
   Tenant,
   TicketCategory,
   TicketPriority,
@@ -567,6 +568,7 @@ export interface StaffInput {
   email: string;
   role: Role;
   department?: string;
+  phone?: string;
 }
 
 export async function inviteStaff(input: StaffInput): Promise<Staff> {
@@ -579,6 +581,9 @@ export async function inviteStaff(input: StaffInput): Promise<Staff> {
     status: "invited",
     since: db.NOW_ISO,
     department: input.department,
+    phone: input.phone,
+    availability: "available",
+    assignedJobs: 0,
   };
   db.staff.push(member);
   recordMutation({
@@ -589,19 +594,49 @@ export async function inviteStaff(input: StaffInput): Promise<Staff> {
   return member;
 }
 
-export async function updateStaff(id: string, patch: { role?: Role; status?: Staff["status"] }): Promise<Staff> {
+export async function updateStaff(
+  id: string,
+  patch: { role?: Role; status?: Staff["status"]; department?: string; phone?: string; availability?: StaffAvailability },
+): Promise<Staff> {
   await mDelay();
   const member = db.staff.find((s) => s.id === id);
   if (!member) throw new NotFoundError(id);
   const before = { role: member.role, status: member.status };
   if (patch.role) member.role = patch.role;
   if (patch.status) member.status = patch.status;
+  if (patch.department !== undefined) member.department = patch.department;
+  if (patch.phone !== undefined) member.phone = patch.phone;
+  if (patch.availability) member.availability = patch.availability;
   recordMutation({
     entityType: "staff", entityId: id, entityName: member.name, action: "updated",
     summary: `Updated ${member.name} (${member.role}, ${member.status})`, before, after: { role: member.role, status: member.status },
     notify: { type: "system", title: "Staff updated", body: `${member.name} account was updated.` },
   });
   return member;
+}
+
+/** Cycle a staff member's availability (available → busy → off → available).
+ *  Lightweight — no notification, just a live-state bump. */
+export async function cycleStaffAvailability(id: string): Promise<Staff> {
+  await mDelay();
+  const member = db.staff.find((s) => s.id === id);
+  if (!member) throw new NotFoundError(id);
+  const order: StaffAvailability[] = ["available", "busy", "off"];
+  const nextIdx = (order.indexOf(member.availability ?? "available") + 1) % order.length;
+  member.availability = order[nextIdx];
+  recordMutation({
+    entityType: "staff", entityId: id, entityName: member.name, action: "updated",
+    summary: `${member.name} is now ${member.availability}`, after: { availability: member.availability },
+    notify: false,
+  });
+  return member;
+}
+
+/** Increment a staff member's job counter when they're assigned work in another
+ *  module (maintenance / services). No-op if the name matches no active staff. */
+export function incrementStaffJobs(name: string): void {
+  const member = db.staff.find((s) => s.name === name);
+  if (member) member.assignedJobs = (member.assignedJobs ?? 0) + 1;
 }
 
 export async function removeStaff(id: string): Promise<{ ok: true }> {

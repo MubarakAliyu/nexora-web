@@ -340,14 +340,20 @@ export interface Lead {
 
 /* ------------------------------------------------------------- staff */
 
+export type StaffAvailability = "available" | "busy" | "off";
+
 export interface Staff {
   id: string;
   name: string;
   email: string;
   role: Role;
   status: "active" | "invited" | "suspended";
-  since: string;
+  since: string; // join date (ISO)
   department?: string;
+  phone?: string;
+  availability?: StaffAvailability;
+  /** Running count of jobs assigned across maintenance + services. */
+  assignedJobs?: number;
 }
 
 /* ------------------------------------------------------ announcements */

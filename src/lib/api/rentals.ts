@@ -7,6 +7,7 @@
 
 import * as db from "@/lib/mock/db";
 import { recordMutation } from "@/lib/api/actions";
+import { incrementStaffJobs } from "@/lib/api/admin-mutations";
 import { useNotifications } from "@/lib/stores/notifications";
 import type {
   Booking,
@@ -518,7 +519,9 @@ export async function assignServiceBooking(id: string, assignee: string): Promis
   await mDelay(300);
   const sb = db.serviceBookings.find((s) => s.id === id);
   if (!sb) throw new Error("Service booking not found");
+  const prev = sb.assignee;
   sb.assignee = assignee;
+  if (assignee && assignee !== prev) incrementStaffJobs(assignee);
   if (sb.status === "new") sb.status = "assigned";
   recordMutation({
     entityType: "service-booking",

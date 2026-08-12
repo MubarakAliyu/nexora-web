@@ -522,12 +522,12 @@ export const leads: Lead[] = Array.from({ length: 18 }, (_, i) => {
 /* ------------------------------------------------------------------ staff */
 
 export const staff: Staff[] = [
-  { id: "stf_admin", name: "Aisha Nakato", email: "admin@nexora.co.ug", role: "super_admin", status: "active", since: daysAgo(900) },
-  { id: "stf_manager", name: "David Okello", email: "manager@nexora.co.ug", role: "property_manager", status: "active", since: daysAgo(600) },
-  { id: "stf_finance", name: "Grace Namuli", email: "finance@nexora.co.ug", role: "finance_officer", status: "active", since: daysAgo(540) },
-  { id: "stf_ops", name: "Moses Nsubuga", email: emailOf("Moses Nsubuga", "nexora.co.ug"), role: "ops_manager", status: "active", since: daysAgo(480) },
-  { id: "stf_maint", name: "James Odoi", email: emailOf("James Odoi", "nexora.co.ug"), role: "maintenance_officer", status: "active", since: daysAgo(360) },
-  { id: "stf_pm2", name: "Sharon Kirabo", email: emailOf("Sharon Kirabo", "nexora.co.ug"), role: "property_manager", status: "invited", since: daysAgo(20) },
+  { id: "stf_admin", name: "Aisha Nakato", email: "admin@nexora.co.ug", role: "super_admin", status: "active", since: daysAgo(900), department: "Executive", phone: "+256 772 100 001", availability: "available", assignedJobs: 0 },
+  { id: "stf_manager", name: "David Okello", email: "manager@nexora.co.ug", role: "property_manager", status: "active", since: daysAgo(600), department: "Property Management", phone: "+256 772 100 002", availability: "busy", assignedJobs: 6 },
+  { id: "stf_finance", name: "Grace Namuli", email: "finance@nexora.co.ug", role: "finance_officer", status: "active", since: daysAgo(540), department: "Finance", phone: "+256 772 100 003", availability: "available", assignedJobs: 2 },
+  { id: "stf_ops", name: "Moses Nsubuga", email: emailOf("Moses Nsubuga", "nexora.co.ug"), role: "ops_manager", status: "active", since: daysAgo(480), department: "Operations", phone: "+256 772 100 004", availability: "available", assignedJobs: 4 },
+  { id: "stf_maint", name: "James Odoi", email: emailOf("James Odoi", "nexora.co.ug"), role: "maintenance_officer", status: "active", since: daysAgo(360), department: "Maintenance", phone: "+256 772 100 005", availability: "busy", assignedJobs: 9 },
+  { id: "stf_pm2", name: "Sharon Kirabo", email: emailOf("Sharon Kirabo", "nexora.co.ug"), role: "property_manager", status: "invited", since: daysAgo(20), department: "Property Management", phone: "+256 772 100 006", availability: "off", assignedJobs: 0 },
 ];
 
 /* -------------------------------------------------------------- users */
