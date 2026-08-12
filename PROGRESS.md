@@ -48,6 +48,47 @@ triggers.
 
 Gate: `next build` clean, lint + tsc clean.
 
+---
+
+## Revision Batch B ✅ COMPLETE — Onboarding, Password Gate, Property Wizard, Owner Lockdown, Staff
+
+PM-feedback batch 2. Six commits: B1 onboarding → B2 password gate → B3 property wizard →
+B4 owner restriction → B5 staff expansion. **85 pages build clean; lint + tsc clean.**
+
+- **B1 Owner + Tenant onboarding.** "Convert to Owner/Tenant" lead dialogs
+  (`convert-lead-dialog.tsx`) with personal / bank / agreement / account sections + an
+  auto-generated temp password (regenerate). On submit: creates the Owner/Tenant record + a
+  User account (`requiresPasswordChange: true`) + optional management agreement + bank on
+  profile, marks the lead **Converted** (`convertedTo` link on detail), and fires TWO
+  notifications (admin activation w/ credentials + simulated welcome email) + toast + audit.
+  Verified: owner conversion bell +3 (incl. agreement), tenant +2.
+- **B2 Forced password change.** `/change-password` (auth brand layout) — strength meter,
+  zod (min 8 · uppercase · number · match · new≠current). Reached from 2FA when the account
+  requires it, and guarded by the AppShell (any onboarded user is bounced here until done);
+  clears the flag on success. Seed `newowner@test.com` / `TempPass-1234`.
+- **B3 7-step property wizard** (`property-wizard.tsx`, replaces the old single-form dialog):
+  Basic → Rental config → Structure (building repeater) → Pricing → Amenities (chips) →
+  Media (images/videos/floor plans) → Documents + review. Step indicator, back/next with
+  per-step validation, short/long-term conditional branches, annual = monthly ×12 auto-calc,
+  units derived from buildings. Create + edit both via the live engine; old dialog deleted.
+  Verified end-to-end (2 buildings → 8 units, edit pre-fill).
+- **B4 Owner portal restriction.** Owner portal is read-only outside self-service: only the
+  profile and notification-preferences pages mutate. Disbursement/bank changes now require a
+  confirmation dialog before saving (money-sensitive; non-bank edits save directly). New
+  `getOwnerSnapshot()` powers dashboard additions — occupied/vacant unit split, next pending
+  vs paid settlement, and a merged rent-in / disbursement-out transaction feed (reconciles
+  with `getOwnerDetail` + Financials).
+- **B5 Staff module expansion.** Staff model gains phone / department / availability /
+  `assignedJobs`. List: search + department/availability/status filters, Jobs column, and an
+  availability chip that cycles (available → busy → off). New `/admin/staff/[id]` detail with
+  Profile / Assignments / Performance tabs (assignments derive from tickets + service
+  bookings by name; performance = totals, completion rate, monthly avg). Invite captures
+  department + phone; deactivation warns when jobs are on record. Cross-module assignment
+  (maintenance technician + service booking) pulls the live active-staff list and increments
+  the assignee's job counter — verified Grace 2 → 3 after a maintenance assign.
+
+Gate: `npm run build` clean (85 pages), lint + tsc clean. **STOP for review before Revision Batch C.**
+
 ## 🏁 PROJECT COMPLETE — final summary
 
 Nexora Property Management frontend is **complete** (mock-data). Single Next.js 15 app;
