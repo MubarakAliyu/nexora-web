@@ -346,6 +346,22 @@ for (const u of units) {
 
 export const MUBARAK_LEASE_ID = tenants.find((t) => t.id === "ten_mubarak")!.leaseId;
 
+// --- Revision C: guarantee at least two leases inside the 30-day expiry window
+// so "Expiring Soon" (and the tenant countdown) are visible without manipulation.
+{
+  // Mubarak's lease → expires in 21 days (drives the tenant-portal countdown).
+  const mub = leases.find((l) => l.id === MUBARAK_LEASE_ID);
+  if (mub) {
+    mub.end = iso(NOW.getTime() + 21 * DAY);
+    mub.status = "active";
+  }
+  // A second active lease → expires in 11 days (urgent, pulsing dot).
+  const other = leases.find((l) => l.status === "active" && l.id !== MUBARAK_LEASE_ID);
+  if (other) {
+    other.end = iso(NOW.getTime() + 11 * DAY);
+  }
+}
+
 /* ---------------------------------------------------- invoices + payments */
 
 export const invoices: Invoice[] = [];

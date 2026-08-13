@@ -209,7 +209,23 @@ export interface Tenant {
 
 /* ------------------------------------------------------------- leases */
 
-export type LeaseStatus = "active" | "expiring" | "expired" | "terminated" | "pending";
+export type LeaseStatus =
+  | "active"
+  | "expiring"
+  | "expiring_soon"
+  | "expired"
+  | "terminated"
+  | "pending"
+  | "renewal_requested"
+  | "pending_renewal";
+
+/** Security-deposit lifecycle. `held` is the default while a lease is live. */
+export type DepositStatus =
+  | "held"
+  | "refunded"
+  | "partially_refunded"
+  | "deducted"
+  | "forfeited";
 
 export interface Lease {
   id: string;
@@ -224,6 +240,17 @@ export interface Lease {
   frequency: "monthly" | "quarterly" | "annually";
   dueDay?: number;
   gracePeriod?: number;
+  /* ---- deposit settlement (Revision C) ---- */
+  depositStatus?: DepositStatus;
+  depositRefundAmount?: number;
+  depositDeductionAmount?: number;
+  depositReason?: string;
+  depositSettledAt?: string; // ISO
+  depositAdditionalOwed?: number;
+  /* ---- renewal request (Revision C) ---- */
+  renewalRequestedAt?: string; // ISO
+  renewalRequestedEnd?: string; // ISO — tenant's preferred new end date
+  renewalNotes?: string;
 }
 
 /* ------------------------------------------------------ finance */

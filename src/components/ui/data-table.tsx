@@ -41,6 +41,8 @@ interface DataTableProps<T> {
   error?: string | null;
   onRetry?: () => void;
   onRowClick?: (row: T) => void;
+  /** Optional per-row class (e.g. highlight expiring leases). */
+  rowClassName?: (row: T) => string | undefined;
   emptyTitle?: string;
   emptyDescription?: string;
 }
@@ -59,6 +61,7 @@ export function DataTable<T>({
   error = null,
   onRetry,
   onRowClick,
+  rowClassName,
   emptyTitle = "No records",
   emptyDescription = "There is nothing to show here yet.",
 }: DataTableProps<T>) {
@@ -198,7 +201,7 @@ export function DataTable<T>({
                   key={id}
                   data-state={isSelected ? "selected" : undefined}
                   onClick={onRowClick ? () => onRowClick(row) : undefined}
-                  className={cn(onRowClick && "cursor-pointer")}
+                  className={cn(onRowClick && "cursor-pointer", rowClassName?.(row))}
                 >
                   {selectable && (
                     <TableCell className="w-12" onClick={(e) => e.stopPropagation()}>

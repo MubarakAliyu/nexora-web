@@ -1,5 +1,7 @@
 import { Badge } from "@/components/ui/badge";
 import { cn } from "@/lib/utils";
+import { leaseView } from "@/lib/lease";
+import type { Lease } from "@/lib/mock/types";
 
 /**
  * Palette-only status system (no green/red — six tokens). Problems draw the eye
@@ -27,9 +29,18 @@ const STATUS: Record<string, { label: string; tone: Tone }> = {
   // leases
   active: { label: "Active", tone: "good" },
   expiring: { label: "Expiring", tone: "bad" },
+  expiring_soon: { label: "Expiring Soon", tone: "bad" },
   expired: { label: "Expired", tone: "bad" },
   terminated: { label: "Terminated", tone: "bad" },
   pending: { label: "Pending", tone: "warn" },
+  renewal_requested: { label: "Renewal Requested", tone: "neutral" },
+  pending_renewal: { label: "Pending Renewal", tone: "neutral" },
+  // deposits
+  held: { label: "Held", tone: "neutral" },
+  refunded: { label: "Refunded", tone: "good" },
+  partially_refunded: { label: "Partially Refunded", tone: "warn" },
+  deducted: { label: "Deducted", tone: "bad" },
+  forfeited: { label: "Forfeited", tone: "bad" },
   // invoices / payments
   paid: { label: "Paid", tone: "good" },
   overdue: { label: "Overdue", tone: "bad" },
@@ -70,6 +81,26 @@ const STATUS: Record<string, { label: string; tone: Tone }> = {
 export function StatusBadge({ status, className }: { status: string; className?: string }) {
   const s = STATUS[status] ?? { label: status, tone: "neutral" as Tone };
   return <Badge className={cn(toneClass[s.tone], className)}>{s.label}</Badge>;
+}
+
+/**
+ * Lease badge using the COMPUTED display status (expiring soon / expired derived
+ * from the end date). Adds a pulsing amber dot when expiry is within 14 days.
+ */
+export function LeaseStatusBadge({ lease, nowIso, className }: { lease: Lease; nowIso: string; className?: string }) {
+  const v = leaseView(lease, nowIso);
+  const s = STATUS[v.status] ?? { label: v.status, tone: "neutral" as Tone };
+  return (
+    <Badge className={cn(toneClass[s.tone], "gap-1.5", className)}>
+      {v.urgent && (
+        <span className="relative flex h-1.5 w-1.5" aria-hidden>
+          <span className="absolute inline-flex h-full w-full motion-safe:animate-ping rounded-full bg-primary opacity-75" />
+          <span className="relative inline-flex h-1.5 w-1.5 rounded-full bg-primary" />
+        </span>
+      )}
+      {s.label}
+    </Badge>
+  );
 }
 
 const PRIORITY: Record<string, Tone> = { low: "neutral", medium: "warn", high: "warn", urgent: "bad" };
