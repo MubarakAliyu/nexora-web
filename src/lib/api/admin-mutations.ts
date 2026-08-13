@@ -9,6 +9,27 @@ import { recordMutation } from "@/lib/api/actions";
 import { useNotifications } from "@/lib/stores/notifications";
 import { createAgreement, type AgreementInput } from "@/lib/api/agreements";
 import type { Role } from "@/lib/roles";
+import type { NotificationType } from "@/lib/api/notifications";
+
+/**
+ * Push an extra in-app notification for a secondary recipient (tenant / owner /
+ * inspector). The mock store is single-audience, so these land in the active
+ * bell with a recipient-specific title — the established pattern for multi-party
+ * events. Use alongside `recordMutation` (which handles the primary/admin one).
+ */
+export function pushNotify(
+  type: NotificationType,
+  title: string,
+  body: string,
+  entityType: string,
+  entityId: string,
+  action = "updated",
+) {
+  useNotifications.getState().pushSystem({ type, title, body, entityType, entityId, action });
+}
+
+const money = (n: number) => `UGX ${Math.round(n).toLocaleString("en-UG")}`;
+const dateOf = (iso: string) => new Date(iso).toLocaleDateString("en-GB", { day: "numeric", month: "short", year: "numeric" });
 import type {
   Expense,
   ExpenseCategory,
@@ -184,12 +205,16 @@ export async function createLease(input: LeaseInput): Promise<Lease> {
   db.leases.unshift(lease);
   if (unit) { unit.status = "occupied"; unit.tenantId = input.tenantId; unit.leaseId = lease.id; }
   if (tenant) { tenant.status = "active"; tenant.unitId = input.unitId; tenant.leaseId = lease.id; tenant.propertyId = unit?.propertyId ?? tenant.propertyId; }
+  const propName = db.properties.find((p) => p.id === lease.propertyId)?.name ?? "the property";
   recordMutation({
     entityType: "lease", entityId: lease.id, entityName: tenant?.name ?? lease.id, action: "created",
     summary: `Created lease for ${tenant?.name ?? "tenant"} on unit ${unit?.label ?? ""}`,
     after: { rent: lease.rent, start: lease.start, end: lease.end },
     notify: { type: "lease", title: "Lease created", body: `A lease was created for ${tenant?.name ?? "a tenant"} on unit ${unit?.label ?? ""}.` },
   });
+  // C6 — notify the tenant + owner directly.
+  pushNotify("lease", "Your lease is active", `Your lease for ${unit?.label ?? "your unit"} at ${propName} is now active. Monthly rent: ${money(lease.rent)}. Start date: ${dateOf(lease.start)}.`, "lease", lease.id, "created");
+  pushNotify("lease", "New tenant assigned", `New tenant ${tenant?.name ?? "a tenant"} has been assigned to ${unit?.label ?? "a unit"}, ${propName}.`, "lease", lease.id, "created");
   return lease;
 }
 
