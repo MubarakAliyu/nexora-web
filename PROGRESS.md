@@ -89,6 +89,56 @@ B4 owner restriction → B5 staff expansion. **85 pages build clean; lint + tsc 
 
 Gate: `npm run build` clean (85 pages), lint + tsc clean. **STOP for review before Revision Batch C.**
 
+---
+
+## Revision Batch C ✅ COMPLETE — Lease Enhancements, Deposit Settlement, Move-Out, Tenant Actions
+
+PM-feedback batch 3. Six commits: C1 lease statuses → C2 deposit statuses + termination →
+C3 move-out wizard → C4 settlement PDF → C5 tenant lease page → C6 notification triggers.
+**Build clean (exit 0), lint + tsc clean throughout.**
+
+- **C1 Enhanced lease statuses + auto-computation.** New statuses `expiring_soon`,
+  `renewal_requested`, `pending_renewal` (+ deposit statuses, see C2). `lib/lease.ts`
+  `leaseView()` derives the DISPLAY status from the end date — Active → **Expiring Soon**
+  within 30 days, **Expired** once past — without mutating the stored status, plus an
+  urgency flag (≤14 days) that adds a pulsing dot via `LeaseStatusBadge`. Admin table:
+  computed badge, Expiring-Soon filter + amber left-border row highlight, alert card listing
+  "{tenant} — {unit} — expires in {X} days". Dashboard `getAlerts` shows the same countdown.
+  Manage dialog: countdown + recommended-action banner (Initiate Renewal / Send Reminder).
+  Seed guarantees 2 leases in-window: **Mubarak Aliyu A-407 @21d**, **Julius Namuli C-202
+  @11d (urgent/pulsing)**. Verified live: badges, filter (2 rows), highlight, urgency dot,
+  banner, reminder toast.
+- **C2 Deposit status expansion + termination dialog.** Deposit lifecycle `held` /
+  `refunded` / `partially_refunded` / `deducted` / `forfeited` with amounts + reasons on the
+  lease. Termination dialog: 4-option deposit outcome (Fully Refund / Partially Refund /
+  Deduct / Forfeit) with conditional fields (refund/deduction split + reason; full-deduct +
+  optional additional-owed; forfeiture reason). On submit: deposit settled, a Finance expense
+  booked for deductions (category `admin`, "Deposit Deduction — {reason}"), tenant + owner
+  notified, full audit. Deposit outcome text shown on admin lease detail + tenant page.
+  Verified live: partial-refund termination toast + conditional fields.
+- **C3 Move-out & deposit settlement module.** `/admin/leases/[id]/move-out` 5-step wizard
+  (Initiate → Inspection → Financial Assessment → Approve → Complete). Inspection = 8
+  categories (condition / notes / repair cost / photo stub) with auto-summed damage; financial
+  step computes deposit − damages − outstanding rent = refund / amount owed (colour-coded);
+  Approve runs `settleMoveOut` through the live engine (lease terminated, unit vacated, deposit
+  settled, per-category expenses booked, unpaid invoices cleared, tenant/owner/inspector
+  notifications, toast, audit); Complete shows a success state + generates the settlement PDF.
+  `initiateMoveOut` (step 1) notifies tenant + inspector and bumps the inspector's job count.
+  Verified live through Step 2 (8 categories, initiate toast, inspector list from staff).
+- **C4 Deposit settlement statement PDF.** New branded PDF type — header/logo, parties, lease
+  summary, per-category inspection table, financial calculation (deposit − damages − rent =
+  net), deposit outcome, signature block, branded footer.
+- **C5 Tenant lease page.** Expiry countdown + lease-progress bar (amber <30d, red expired);
+  Request Renewal dialog → `renewal_requested` + admin/tenant notifications, button becomes
+  disabled "Renewal Requested — Pending Review"; dedicated Security Deposit status card with
+  per-outcome copy; four hover-lift quick actions (payments, maintenance, WhatsApp, lease PDF).
+- **C6 Notification triggers.** `pushNotify` helper (multi-party, single-audience mock). Wired:
+  lease created → tenant + owner; renewal reminder → tenant; renewal requested → admin + tenant
+  confirm; renewed → tenant + owner; terminated → tenant + owner (with deposit outcome);
+  move-out initiated → tenant + inspector; move-out processed → tenant + owner + inspector.
+
+Gate: `npm run build` clean, lint + tsc clean. **STOP for review before Revision Batch D.**
+
 ## 🏁 PROJECT COMPLETE — final summary
 
 Nexora Property Management frontend is **complete** (mock-data). Single Next.js 15 app;
