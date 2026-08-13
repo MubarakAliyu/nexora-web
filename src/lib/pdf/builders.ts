@@ -5,7 +5,9 @@
  */
 import * as db from "@/lib/mock/db";
 import type { Invoice, Payment, Lease } from "@/lib/mock/types";
-import type { InvoicePdfData, ReceiptPdfData, StatementPdfData, LeasePdfData, DepositSettlementPdfData, PdfPayload } from "./documents";
+import type { InvoicePdfData, ReceiptPdfData, StatementPdfData, LeasePdfData, DepositSettlementPdfData, SettlementStatementPdfData, PdfPayload } from "./documents";
+import { computeOwnerSettlement } from "@/lib/api/settlement";
+import type { SettlementRecord } from "@/lib/mock/types";
 import { slugFile } from "./download";
 import { formatDate, formatUGX } from "@/lib/format";
 import { commissionForAgreement, agreementRateLabel, CONTRACT_TYPE_LABEL } from "@/lib/api/agreements";
@@ -85,6 +87,23 @@ export function depositSettlementPdf(input: DepositSettlementInput): { payload: 
     refund: input.refund, additionalOwed: input.additionalOwed, outcome: input.outcome, note: input.note,
   };
   return { payload: { kind: "deposit", data }, filename: `Nexora-Deposit-Settlement-${ref}` };
+}
+
+export function settlementStatementPdf(rec: SettlementRecord): { payload: PdfPayload; filename: string } {
+  const c = computeOwnerSettlement(rec.ownerId, rec.periodStart, rec.periodEnd);
+  const data: SettlementStatementPdfData = {
+    ref: `STL-${rec.id.replace(/\D/g, "").slice(-6)}`, date: formatDate(rec.processedAt), period: rec.period,
+    ownerName: rec.ownerName, agreementType: rec.agreementType ? CONTRACT_TYPE_LABEL[rec.agreementType] : "—", rate: rec.agreementRate ?? "—",
+    rentItems: c.rentPayments.map((r) => ({ tenant: r.label, unit: r.sub, amount: r.amount, date: r.date ? formatDate(r.date) : "" })),
+    grossRevenue: rec.grossRevenue,
+    managementFee: rec.managementFee, feeMath: c.feeMath,
+    expenseItems: c.expenseItems.map((e) => ({ property: e.label, category: e.sub, amount: e.amount })),
+    expenses: rec.expenses, depositDeductions: rec.depositDeductions,
+    netPayout: rec.netPayout,
+    bankName: c.bankName ?? "—", bankMasked: rec.bankMasked, reference: `STL-${rec.id.slice(-6).toUpperCase()}`,
+    processedOn: formatDate(rec.processedAt),
+  };
+  return { payload: { kind: "settlement", data }, filename: `Nexora-Settlement-${slugFile(rec.ownerName)}-${slugFile(rec.period)}` };
 }
 
 export function statementPdf(ownerId: string, period?: string): { payload: PdfPayload; filename: string } {
