@@ -1,202 +1,188 @@
 "use client";
 
 import * as React from "react";
-import { Cash, Receipt, ChartLineUp, Download, CalendarMonth, FileLines } from "flowbite-react-icons/outline";
+import { Cash, Receipt, ChartLineUp, Download, CalendarMonth, FileLines, ChartPie, ClipboardList } from "flowbite-react-icons/outline";
 import { PageHeader } from "@/components/app/page-header";
 import { StatusBadge } from "@/components/app/status";
 import { Card } from "@/components/ui/card";
 import { StatCard } from "@/components/ui/stat-card";
 import { Button } from "@/components/ui/button";
-import { selectClass } from "@/components/forms/field";
-import { BarChart } from "@/components/ui/chart";
+import { Input } from "@/components/ui/input";
+import { Field } from "@/components/forms/field";
+import { BarChart, AreaChart } from "@/components/ui/chart";
 import { DataTable, type Column } from "@/components/ui/data-table";
-import { Skeleton, SkeletonChart } from "@/components/ui/skeleton";
+import { SkeletonChart } from "@/components/ui/skeleton";
 import { EmptyState } from "@/components/ui/empty-state";
 import { useAsync, debugErrorFlag } from "@/lib/use-async";
 import { useSession } from "@/lib/stores/session";
+import { useLive } from "@/lib/stores/live";
 import { downloadPdf } from "@/lib/pdf/download";
-import { statementPdf } from "@/lib/pdf/builders";
+import { statementPdf, settlementStatementPdf } from "@/lib/pdf/builders";
+import { generateCSV } from "@/lib/csv";
 import { formatUGX, formatUGXFull, formatDate } from "@/lib/format";
+import { getOwnerFinancials, listProperties, type Scope } from "@/lib/api/admin";
 import {
-  getOwnerDetail, getOwnerFinancials, type OwnerFinancials, type OwnerDetail, type Scope,
-} from "@/lib/api/admin";
-import { listRentals, listBookings } from "@/lib/api/rentals";
-
-type PerProperty = OwnerFinancials["perProperty"][number];
-type Disbursement = OwnerDetail["disbursements"][number];
+  computeOwnerSettlement, listSettlements, defaultSettlementPeriod,
+  type SettlementRecord,
+} from "@/lib/api/settlement";
 
 export default function OwnerFinancialsPage() {
   const ownerId = useSession((s) => s.user?.ownerId) ?? "";
-  const [range, setRange] = React.useState("ytd");
+  const rev = useLive((s) => s.revision);
+  const period0 = React.useMemo(() => defaultSettlementPeriod(), []);
+  const [from, setFrom] = React.useState(period0.from);
+  const [to, setTo] = React.useState(period0.to);
   const scope: Scope = React.useMemo(() => ({ forceError: debugErrorFlag() }), []);
 
+  // Reconciled settlement view over the selected period (same engine as admin).
+  const calc = React.useMemo(
+    () => (ownerId ? computeOwnerSettlement(ownerId, from, to) : null),
+    [ownerId, from, to],
+  );
+
   const fin = useAsync(() => getOwnerFinancials(ownerId, scope), [ownerId, scope]);
-  const detail = useAsync(() => getOwnerDetail(ownerId, scope), [ownerId, scope]);
-  const bookings = useAsync(() => listBookings({ ownerId }), [ownerId]);
-  const rentals = useAsync(() => listRentals({ rentalType: "all" }), []);
+  const properties = useAsync(() => listProperties(undefined, { ownerId }), [ownerId, rev]);
+  const settlements = useAsync(() => listSettlements(ownerId), [ownerId, rev]);
 
-  // Split revenue by source: short-term booking income vs long-term lease income.
-  const bookingRevenue = (bookings.data ?? [])
-    .filter((b) => b.status !== "cancelled")
-    .reduce((s, b) => s + b.total, 0);
-  const ownedShortTerm = (rentals.data ?? []).filter((p) => p.ownerId === ownerId && p.rentalType === "short-term").length;
-  const ownedLongTerm = (rentals.data ?? []).filter((p) => p.ownerId === ownerId && p.rentalType === "long-term").length;
-  const leaseRevenue = detail.data ? detail.data.financials.ytdRevenue : 0;
-  const totalRevenue = leaseRevenue + bookingRevenue;
-  const hasBoth = ownedShortTerm > 0 && ownedLongTerm > 0;
+  const pendingRent = React.useMemo(() => {
+    // invoiced but unpaid on this owner's properties — from getOwnerFinancials perProperty is net; use fin totals if present
+    return fin.data ? Math.max(0, (fin.data.totals.revenue) - (calc?.grossRevenue ?? 0)) : 0;
+  }, [fin.data, calc]);
 
-  const perPropColumns: Column<PerProperty>[] = [
-    { key: "name", header: "Property", sortable: true, render: (p) => <span className="font-medium text-foreground">{p.name}</span> },
-    { key: "revenue", header: "Gross revenue", sortable: true, align: "right", render: (p) => formatUGX(p.revenue) },
-    { key: "fee", header: "Mgmt fee", align: "right", render: (p) => <span className="text-muted">−{formatUGX(p.fee)}</span> },
-    { key: "expenses", header: "Expenses", align: "right", render: (p) => <span className="text-muted">−{formatUGX(p.expenses)}</span> },
-    { key: "net", header: "Net to you", sortable: true, align: "right", render: (p) => <span className="font-medium text-foreground">{formatUGX(p.net)}</span> },
+  const hasSettlement = (settlements.data ?? []).length > 0;
+  const lastSettlement = (settlements.data ?? [])[0];
+
+  const settlementCols: Column<SettlementRecord>[] = [
+    { key: "processedAt", header: "Date", sortable: true, render: (s) => formatDate(s.processedAt) },
+    { key: "period", header: "Period", render: (s) => s.period },
+    { key: "grossRevenue", header: "Gross", align: "right", render: (s) => formatUGX(s.grossRevenue) },
+    { key: "managementFee", header: "Mgmt fee", align: "right", render: (s) => <span className="text-muted">−{formatUGX(s.managementFee)}</span> },
+    { key: "expenses", header: "Expenses", align: "right", render: (s) => <span className="text-muted">−{formatUGX(s.expenses)}</span> },
+    { key: "netPayout", header: "Net payout", align: "right", render: (s) => <span className="font-medium text-foreground">{formatUGX(s.netPayout)}</span> },
+    { key: "status", header: "Status", render: (s) => <StatusBadge status={s.status === "completed" ? "paid" : "pending"} /> },
+    { key: "dl", header: "", align: "right", render: (s) => <Button size="sm" variant="outline" onClick={() => { const { payload, filename } = settlementStatementPdf(s); downloadPdf(payload, filename); }}>Statement</Button> },
   ];
 
-  const disbColumns: Column<Disbursement>[] = [
-    { key: "period", header: "Period", render: (d) => <span className="font-medium text-foreground">{d.period}</span> },
-    { key: "net", header: "Net payout", align: "right", render: (d) => formatUGX(d.net) },
-    { key: "date", header: "Date", render: (d) => formatDate(d.date) },
-    { key: "status", header: "Status", render: (d) => <StatusBadge status={d.status === "paid" ? "paid" : "pending"} /> },
-  ];
+  const byProperty = (fin.data?.perProperty ?? []).map((p) => ({ name: p.name, revenue: Math.round(p.revenue / 1_000_000) }));
+  const overTime = (fin.data?.series ?? []).map((s) => ({ month: s.label, revenue: Math.round(s.revenue / 1_000_000) }));
+
+  const exportOccupancy = () => {
+    generateCSV(properties.data ?? [], [
+      { header: "Property", accessor: (p) => p.name },
+      { header: "Location", accessor: (p) => p.location },
+      { header: "Units", accessor: (p) => p.units },
+      { header: "Occupancy %", accessor: (p) => p.occupancy },
+    ], "occupancy-report");
+  };
+  const exportRevenue = () => {
+    generateCSV(fin.data?.perProperty ?? [], [
+      { header: "Property", accessor: (p) => p.name },
+      { header: "Gross Revenue", accessor: (p) => p.revenue },
+      { header: "Management Fee", accessor: (p) => p.fee },
+      { header: "Expenses", accessor: (p) => p.expenses },
+      { header: "Net", accessor: (p) => p.net },
+    ], "revenue-report");
+  };
+
+  const status = hasSettlement ? "paid" : "pending";
+  const now = new Date();
+  const nextSettlement = new Date(now.getFullYear(), now.getMonth() + 1, 5);
 
   return (
     <div className="space-y-8">
       <PageHeader
         title="Financials"
-        subtitle="Exactly what your portfolio earns, what Nexora deducts, and what reaches you"
+        subtitle="Agreement-driven — exactly what your portfolio earns, what Nexora deducts, and what reaches you"
         actions={
-          <div className="flex items-center gap-2">
-            <select className={`${selectClass} w-40`} value={range} onChange={(e) => setRange(e.target.value)} aria-label="Date range">
-              <option value="month">This month</option>
-              <option value="quarter">This quarter</option>
-              <option value="ytd">Year to date</option>
-              <option value="12m">Last 12 months</option>
-            </select>
-            <Button variant="outline" className="gap-2" onClick={() => { const { payload, filename } = statementPdf(ownerId); downloadPdf(payload, filename); }}>
-              <Download size={18} /> Export
-            </Button>
+          <div className="flex flex-wrap items-center gap-2">
+            <Field label="" htmlFor="of-from"><Input id="of-from" type="date" value={from} onChange={(e) => setFrom(e.target.value)} aria-label="Period start" className="h-10" /></Field>
+            <Field label="" htmlFor="of-to"><Input id="of-to" type="date" value={to} onChange={(e) => setTo(e.target.value)} aria-label="Period end" className="h-10" /></Field>
           </div>
         }
       />
 
-      {/* KPI row from getOwnerDetail (same figures as the admin Owner record) */}
-      {detail.loading ? (
-        <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-4">
-          {Array.from({ length: 4 }).map((_, i) => <Card key={i} className="p-6"><Skeleton className="h-4 w-20" /><Skeleton className="mt-3 h-8 w-28" /></Card>)}
-        </div>
-      ) : detail.error ? (
-        <EmptyState title="Couldn’t load financials" description={detail.error} action={<Button variant="outline" size="sm" onClick={detail.reload}>Try again</Button>} />
-      ) : detail.data ? (
-        <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-4">
-          <StatCard label="Gross revenue / mo" value={formatUGX(detail.data.financials.monthlyRevenue)} icon={<Cash size={22} />} />
-          <StatCard label="YTD revenue" value={formatUGX(detail.data.financials.ytdRevenue)} icon={<ChartLineUp size={22} />} />
-          <StatCard label="Disbursed to you" value={formatUGX(detail.data.financials.disbursed)} icon={<Cash size={22} />} hint="net, year to date" />
-          <StatCard label="Outstanding" value={formatUGX(detail.data.financials.outstanding)} icon={<Receipt size={22} />} hint={detail.data.financials.outstanding > 0 ? "in arrears" : "all settled"} />
-        </div>
-      ) : null}
-
-      {/* Revenue by source — booking income vs lease income */}
-      {detail.data && (
-        <Card className="p-6">
-          <div className="mb-4 flex items-center justify-between">
-            <h2 className="font-heading text-h3 font-semibold text-foreground">Revenue by source</h2>
-            <span className="text-caption text-muted">
-              {hasBoth ? "You hold both short- and long-term rentals" : ownedShortTerm > 0 ? "Short-term portfolio" : "Long-term portfolio"} · YTD
-            </span>
-          </div>
-          <div className="grid gap-4 sm:grid-cols-2">
-            <div className="rounded-xl border border-border p-5">
-              <div className="flex items-center gap-2 text-caption font-medium uppercase tracking-wide text-muted">
-                <FileLines size={16} className="text-primary" /> Long-term lease income
-              </div>
-              <p className="mt-2 font-heading text-h2 font-semibold text-foreground">{formatUGX(leaseRevenue)}</p>
-              <p className="mt-1 text-caption text-muted">{ownedLongTerm} long-term propert{ownedLongTerm === 1 ? "y" : "ies"} · rent collection</p>
-            </div>
-            <div className="rounded-xl border border-border p-5">
-              <div className="flex items-center gap-2 text-caption font-medium uppercase tracking-wide text-muted">
-                <CalendarMonth size={16} className="text-primary" /> Short-term booking income
-              </div>
-              <p className="mt-2 font-heading text-h2 font-semibold text-foreground">{formatUGX(bookingRevenue)}</p>
-              <p className="mt-1 text-caption text-muted">{ownedShortTerm} short-term propert{ownedShortTerm === 1 ? "y" : "ies"} · stay bookings</p>
-            </div>
-          </div>
-          {totalRevenue > 0 && (
-            <div className="mt-4 flex h-2.5 overflow-hidden rounded-full bg-surface-hover" role="img" aria-label="Revenue split">
-              <div className="bg-primary" style={{ width: `${Math.round((leaseRevenue / totalRevenue) * 100)}%` }} />
-              <div className="bg-accent" style={{ width: `${Math.round((bookingRevenue / totalRevenue) * 100)}%` }} />
-            </div>
-          )}
-        </Card>
-      )}
-
-      {/* Revenue vs expenses + fee breakdown */}
-      <div className="grid gap-4 lg:grid-cols-3">
-        <Card className="p-6 lg:col-span-2">
-          <div className="mb-4 flex items-center justify-between">
-            <h2 className="font-heading text-h3 font-semibold text-foreground">Revenue vs expenses</h2>
-            <span className="text-caption text-muted">UGX · last 6 months</span>
-          </div>
-          {fin.loading ? <SkeletonChart className="border-0 p-0" /> : fin.error ? (
-            <EmptyState title="Couldn’t load chart" description={fin.error} action={<Button variant="outline" size="sm" onClick={fin.reload}>Try again</Button>} />
-          ) : (
-            <BarChart
-              data={(fin.data?.series ?? []).map((s) => ({ month: s.label, revenue: Math.round(s.revenue / 1_000_000), expenses: Math.round(s.expenses / 1_000_000) }))}
-              xKey="month"
-              series={[{ key: "revenue", label: "Revenue (M)" }, { key: "expenses", label: "Expenses (M)" }]}
-              height={280}
-            />
-          )}
-        </Card>
-
-        {/* Management-fee breakdown → net disbursement */}
-        <Card className="flex flex-col p-6">
-          <h2 className="mb-4 font-heading text-h3 font-semibold text-foreground">How your payout is calculated</h2>
-          {fin.loading ? (
-            <div className="space-y-3">{Array.from({ length: 4 }).map((_, i) => <Skeleton key={i} className="h-6 w-full" />)}</div>
-          ) : fin.data ? (
-            <>
-              {fin.data.feeBreakdown.agreementLabel && (
-                <div className="mb-3 flex items-center gap-2 rounded-lg bg-surface-hover px-3 py-2 text-caption">
-                  <span className="text-muted">Your agreement:</span>
-                  <span className="font-medium text-primary">{fin.data.feeBreakdown.agreementLabel}</span>
-                </div>
-              )}
-              <dl className="space-y-3 text-body">
-                <div className="flex justify-between gap-4"><dt className="text-muted">Gross revenue</dt><dd className="font-medium text-foreground">{formatUGXFull(fin.data.feeBreakdown.grossRevenue)}</dd></div>
-                <div className="flex justify-between gap-4"><dt className="text-muted">Management fee{fin.data.feeBreakdown.agreementType ? ` (${fin.data.feeBreakdown.agreementLabel})` : ` (${Math.round(fin.data.feeBreakdown.feeRate * 100)}%)`}</dt><dd className="text-foreground">−{formatUGXFull(fin.data.feeBreakdown.managementFee)}</dd></div>
-                <div className="flex justify-between gap-4"><dt className="text-muted">Property expenses</dt><dd className="text-foreground">−{formatUGXFull(fin.data.feeBreakdown.otherDeductions)}</dd></div>
-              </dl>
-              <div className="mt-4 border-t border-border pt-4">
-                <p className="text-caption uppercase tracking-wide text-muted">Net disbursement</p>
-                <p className="mt-1 font-heading text-h1 font-semibold text-primary">{formatUGX(fin.data.feeBreakdown.netDisbursement)}</p>
-                <p className="mt-1 text-caption text-muted">Paid to your account monthly, on the 5th.</p>
-              </div>
-            </>
-          ) : (
-            <EmptyState title="Unavailable" description="Couldn’t load the breakdown." />
-          )}
-        </Card>
-      </div>
-
-      {/* Per-property breakdown */}
+      {/* SECTION 1 — Revenue */}
       <section>
-        <h2 className="mb-4 font-heading text-h3 font-semibold text-foreground">Per-property breakdown</h2>
-        <DataTable
-          columns={perPropColumns} data={fin.data?.perProperty ?? []} getRowId={(p) => p.id}
-          loading={fin.loading} error={fin.error} onRetry={fin.reload}
-          emptyTitle="No data" emptyDescription="Property financials will appear here." pageSize={8}
-        />
+        <h2 className="mb-3 font-heading text-h3 font-semibold text-foreground">Revenue</h2>
+        <div className="grid grid-cols-1 gap-4 sm:grid-cols-3">
+          <StatCard label="Gross revenue" value={formatUGX(calc?.grossRevenue ?? 0)} icon={<Cash size={22} />} hint="rent + service" />
+          <StatCard label="Collected rent" value={formatUGX(calc?.grossRent ?? 0)} icon={<ChartLineUp size={22} />} hint="confirmed payments" />
+          <StatCard label="Pending payments" value={formatUGX(pendingRent)} icon={<Receipt size={22} />} hint="invoiced, unpaid" />
+        </div>
+        <div className="mt-4 grid gap-4 lg:grid-cols-2">
+          <Card className="p-6">
+            <div className="mb-4 flex items-center justify-between"><h3 className="font-heading text-h3 font-semibold text-foreground">Revenue by property</h3><span className="text-caption text-muted">UGX M</span></div>
+            {fin.loading ? <SkeletonChart className="border-0 p-0" /> : <BarChart data={byProperty} xKey="name" series={[{ key: "revenue", label: "Revenue" }]} height={260} />}
+          </Card>
+          <Card className="p-6">
+            <div className="mb-4 flex items-center justify-between"><h3 className="font-heading text-h3 font-semibold text-foreground">Revenue over time</h3><span className="text-caption text-muted">UGX M · 6 months</span></div>
+            {fin.loading ? <SkeletonChart className="border-0 p-0" /> : <AreaChart data={overTime} xKey="month" series={[{ key: "revenue", label: "Revenue" }]} height={260} />}
+          </Card>
+        </div>
       </section>
 
-      {/* Disbursement history */}
+      {/* SECTION 2 — Deductions */}
       <section>
-        <h2 className="mb-4 font-heading text-h3 font-semibold text-foreground">Disbursement history</h2>
-        <DataTable
-          columns={disbColumns} data={detail.data?.disbursements ?? []} getRowId={(d) => d.id}
-          loading={detail.loading} error={detail.error} onRetry={detail.reload}
-          emptyTitle="No disbursements" emptyDescription="Payouts will appear here." pageSize={8}
-        />
+        <h2 className="mb-3 font-heading text-h3 font-semibold text-foreground">Deductions</h2>
+        <Card className="p-6">
+          <dl className="divide-y divide-border">
+            <div className="flex items-center justify-between py-3">
+              <dt className="text-body text-muted">Management fee <span className="ml-2 rounded-full bg-primary/10 px-2 py-0.5 text-caption font-medium text-primary">{calc?.agreementTypeLabel} — {calc?.rateLabel}</span></dt>
+              <dd className="font-medium text-foreground">−{formatUGXFull(calc?.managementFee ?? 0)}</dd>
+            </div>
+            <div className="flex items-center justify-between py-3"><dt className="text-body text-muted">Property expenses</dt><dd className="text-foreground">−{formatUGXFull(calc?.expenses ?? 0)}</dd></div>
+            <div className="flex items-center justify-between py-3"><dt className="text-body text-muted">Taxes</dt><dd className="text-muted">UGX 0 <span className="text-caption">(Phase 2)</span></dd></div>
+            <div className="flex items-center justify-between py-3"><dt className="text-body text-muted">Other charges</dt><dd className="text-foreground">{calc && calc.depositDeductions > 0 ? `−${formatUGXFull(calc.depositDeductions)}` : "None"}</dd></div>
+            <div className="flex items-center justify-between py-3"><dt className="font-semibold text-foreground">Total deductions</dt><dd className="font-semibold text-foreground">−{formatUGXFull(calc?.totalDeductions ?? 0)}</dd></div>
+          </dl>
+        </Card>
+      </section>
+
+      {/* SECTION 3 — Net Payout */}
+      <section>
+        <h2 className="mb-3 font-heading text-h3 font-semibold text-foreground">Net payout</h2>
+        <Card className="p-6">
+          <div className="flex flex-col justify-between gap-4 sm:flex-row sm:items-center">
+            <div>
+              <p className="text-caption uppercase tracking-wide text-muted">Amount payable</p>
+              <p className="mt-1 font-heading text-h1 font-semibold text-primary">{formatUGX(Math.max(0, calc?.netPayout ?? 0))}</p>
+            </div>
+            <div className="space-y-1 text-caption sm:text-right">
+              <div className="flex items-center gap-2 sm:justify-end"><span className="text-muted">Payment status</span><StatusBadge status={status} /></div>
+              <p className="text-muted">Last settlement: <span className="text-foreground">{lastSettlement ? formatDate(lastSettlement.processedAt) : "—"}</span></p>
+              <p className="text-muted">Next expected: <span className="text-foreground">{formatDate(nextSettlement.toISOString())}</span></p>
+            </div>
+          </div>
+        </Card>
+      </section>
+
+      {/* SECTION 4 — Settlement History */}
+      <section>
+        <h2 className="mb-3 font-heading text-h3 font-semibold text-foreground">Settlement history</h2>
+        {hasSettlement ? (
+          <DataTable columns={settlementCols} data={settlements.data ?? []} getRowId={(s) => s.id} loading={settlements.loading} pageSize={8} />
+        ) : (
+          <EmptyState icon={<Cash size={22} />} title="No settlements processed yet" description="Your first settlement will be processed per your agreement schedule." />
+        )}
+      </section>
+
+      {/* SECTION 5 — Reports */}
+      <section>
+        <h2 className="mb-3 font-heading text-h3 font-semibold text-foreground">Reports</h2>
+        <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-4">
+          {[
+            { label: "Monthly Statement", icon: <FileLines size={20} />, action: () => { const { payload, filename } = statementPdf(ownerId); downloadPdf(payload, filename); } },
+            { label: "Annual Statement", icon: <CalendarMonth size={20} />, action: () => { const { payload, filename } = statementPdf(ownerId, `Year ${new Date().getFullYear()}`); downloadPdf(payload, filename); } },
+            { label: "Occupancy Report (CSV)", icon: <ChartPie size={20} />, action: exportOccupancy },
+            { label: "Revenue Report (CSV)", icon: <ClipboardList size={20} />, action: exportRevenue },
+          ].map((r) => (
+            <button key={r.label} type="button" onClick={r.action} className="flex flex-col items-start gap-3 rounded-xl border border-border bg-surface-elevated p-5 text-left transition-all hover:-translate-y-0.5 hover:border-primary/40 hover:shadow-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary">
+              <span className="text-primary">{r.icon}</span>
+              <span className="text-body font-medium text-foreground">{r.label}</span>
+              <span className="inline-flex items-center gap-1 text-caption text-primary"><Download size={14} /> Download</span>
+            </button>
+          ))}
+        </div>
       </section>
     </div>
   );
