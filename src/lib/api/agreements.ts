@@ -108,6 +108,7 @@ export const CONTRACT_TYPE_LABEL: Record<ContractType, string> = {
 export interface AgreementFinancials {
   grossRevenue: number;
   commissionEarned: number;
+  expenses: number;
   netToOwner: number;
   settledToOwner: number;
   pending: number;
@@ -122,6 +123,13 @@ export function ownerGrossRevenue(ownerId: string): number {
     .reduce((s, p) => s + p.amount, 0);
 }
 
+/** Total expenses logged against an owner's properties. */
+export function ownerExpenses(ownerId: string): number {
+  const owner = db.owners.find((o) => o.id === ownerId);
+  const ids = new Set(owner?.propertyIds ?? []);
+  return db.expenses.filter((e) => ids.has(e.propertyId)).reduce((s, e) => s + e.amount, 0);
+}
+
 /** Financial summary for an agreement, calculated from real payment data. */
 export async function fetchAgreementFinancials(agreementId: string): Promise<AgreementFinancials> {
   await mDelay(300);
@@ -133,7 +141,10 @@ export async function fetchAgreementFinancials(agreementId: string): Promise<Agr
 export function agreementFinancials(a: ManagementAgreement): AgreementFinancials {
   const grossRevenue = ownerGrossRevenue(a.ownerId);
   const commissionEarned = commissionForAgreement(a, grossRevenue);
-  const netToOwner = Math.max(0, grossRevenue - commissionEarned);
+  const expenses = ownerExpenses(a.ownerId);
+  // Canonical owner net = gross − commission − property expenses (reconciles across
+  // admin Financial Overview, admin Agreements detail and the owner portal).
+  const netToOwner = Math.max(0, grossRevenue - commissionEarned - expenses);
   // The latest month's net is treated as still-pending settlement; the rest is settled.
   const owner = db.owners.find((o) => o.id === a.ownerId);
   const ids = new Set(owner?.propertyIds ?? []);
@@ -141,7 +152,7 @@ export function agreementFinancials(a: ManagementAgreement): AgreementFinancials
   const monthCount = Math.max(1, months.size);
   const pending = Math.round(netToOwner / monthCount);
   const settledToOwner = Math.max(0, netToOwner - pending);
-  return { grossRevenue, commissionEarned, netToOwner, settledToOwner, pending };
+  return { grossRevenue, commissionEarned, expenses, netToOwner, settledToOwner, pending };
 }
 
 /* --------------------------------------------------------- mutations */

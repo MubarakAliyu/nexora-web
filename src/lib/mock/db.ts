@@ -19,6 +19,7 @@ import type {
   BookingStatus,
   Building,
   ServiceBooking,
+  SettlementRecord,
   ServiceBookingStatus,
   PermissionSet,
   RoleDef,
@@ -863,6 +864,9 @@ export function isSettlementReady(ownerId: string): boolean {
   const owner = owners.find((o) => o.id === ownerId);
   return Boolean(a.payoutAccountNumber || owner?.accountNumber);
 }
+
+/** Processed owner settlements (Revision D). In-memory ledger, resets on reload. */
+export const settlements: SettlementRecord[] = [];
 
 /* ------------------------------------------------------------ helpers */
 

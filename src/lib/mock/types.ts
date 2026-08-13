@@ -88,6 +88,33 @@ export interface ManagementAgreement {
   updatedAt: string;
 }
 
+/* ---------------------------------------------- owner settlements (Rev D) */
+
+/** A processed owner payout for a period — the record created by the
+ *  settlement workflow. Money movement is external; this is the ledger entry. */
+export interface SettlementRecord {
+  id: string;
+  ownerId: string;
+  ownerName: string;
+  period: string; // e.g. "June 2026"
+  periodStart: string; // ISO date
+  periodEnd: string; // ISO date
+  grossRevenue: number;
+  serviceRevenue: number;
+  managementFee: number;
+  expenses: number;
+  depositDeductions: number;
+  netPayout: number;
+  bankMasked: string;
+  status: "completed" | "pending";
+  processedAt: string; // ISO
+  processedBy: string;
+  note?: string;
+  agreementId?: string;
+  agreementType?: ContractType;
+  agreementRate?: string;
+}
+
 /* --------------------------------------------------------- properties */
 
 export type PropertyStatus = "managed" | "onboarding" | "prospect";

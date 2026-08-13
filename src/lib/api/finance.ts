@@ -7,8 +7,9 @@
 import * as db from "@/lib/mock/db";
 import {
   getAgreementForOwner, commissionForAgreement, agreementFinancials, agreementRateLabel,
-  ownerGrossRevenue, CONTRACT_TYPE_LABEL,
+  ownerGrossRevenue, ownerExpenses, CONTRACT_TYPE_LABEL,
 } from "@/lib/api/agreements";
+import { hasSettlementForPeriod, defaultSettlementPeriod } from "@/lib/api/settlement";
 import type { ContractType } from "@/lib/mock/types";
 
 const mDelay = (ms = 400) => new Promise((r) => setTimeout(r, ms));
@@ -51,6 +52,10 @@ export async function getFinancialKpis(scope?: { forceError?: boolean }): Promis
     pendingPayouts += f.pending;
     nexoraEarnings += f.commissionEarned;
   }
+  // Processed settlements (Rev D) move value from pending → settled.
+  const processed = db.settlements.reduce((s, r) => s + r.netPayout, 0);
+  totalSettlements += processed;
+  pendingPayouts = Math.max(0, pendingPayouts - processed);
   return { totalRevenue: rentRevenue + serviceRevenue, totalSettlements, pendingPayouts, nexoraEarnings };
 }
 
@@ -145,6 +150,17 @@ function allTransactions(): FinanceTxRow[] {
     });
   });
 
+  // Processed settlements (Rev D) — real ledger entries, outgoing.
+  db.settlements.forEach((r) => {
+    rows.push({
+      id: `tx_${r.id}`, date: r.processedAt, kind: "Owner Settlement",
+      description: `Settlement to ${r.ownerName} for ${r.period}`,
+      amount: r.netPayout, direction: "out", status: "completed",
+      reference: `STL-${r.id.slice(-6).toUpperCase()}`,
+      entity: { label: r.ownerName, href: `/admin/owners/${r.ownerId}` }, ownerId: r.ownerId,
+    });
+  });
+
   // Owner settlements + Nexora commission, derived from each agreement.
   db.owners.forEach((owner) => {
     const a = getAgreementForOwner(owner.id);
@@ -195,6 +211,7 @@ export interface OwnerSettlement {
   rateLabel?: string;
   gross: number;
   commission: number;
+  expenses: number;
   net: number;
   commissionMath?: string;
   lastSettlement?: string;
@@ -219,23 +236,26 @@ export async function listOwnerSettlements(scope?: { forceError?: boolean }): Pr
   return db.owners.map((owner) => {
     const a = getAgreementForOwner(owner.id);
     if (!a) {
-      return { ownerId: owner.id, ownerName: owner.name, hasAgreement: false, gross: 0, commission: 0, net: 0, status: "no_agreement" as const, settlementReady: false };
+      return { ownerId: owner.id, ownerName: owner.name, hasAgreement: false, gross: 0, commission: 0, expenses: 0, net: 0, status: "no_agreement" as const, settlementReady: false };
     }
     const gross = ownerGrossRevenue(owner.id);
     const commission = commissionForAgreement(a, gross);
-    const f = agreementFinancials(a);
+    const expenses = ownerExpenses(owner.id);
     const acct = a.payoutAccountNumber || owner.accountNumber;
+    const period = defaultSettlementPeriod();
+    const settledThisPeriod = hasSettlementForPeriod(owner.id, period.to) || db.settlements.some((sr) => sr.ownerId === owner.id);
+    const lastRec = db.settlements.find((sr) => sr.ownerId === owner.id);
     return {
       ownerId: owner.id, ownerName: owner.name, hasAgreement: true,
       agreementType: a.contractType, agreementTypeLabel: CONTRACT_TYPE_LABEL[a.contractType],
       rateLabel: agreementRateLabel(a),
-      gross, commission, net: Math.max(0, gross - commission),
+      gross, commission, expenses, net: Math.max(0, gross - commission - expenses),
       commissionMath: a.contractType === "revenue_sharing"
         ? `${a.commissionPercentage}% of ${(gross / 1_000_000).toFixed(1)}M = ${(commission / 1_000_000).toFixed(1)}M`
         : `${agreementRateLabel(a)} → ${(commission / 1_000_000).toFixed(1)}M`,
-      lastSettlement: daysAgoIso(30),
+      lastSettlement: lastRec?.processedAt ?? daysAgoIso(30),
       nextSettlement: nextSettlementDate(a.settlementSchedule),
-      status: f.pending > 0 ? "pending" : "settled",
+      status: settledThisPeriod ? "settled" : "pending",
       payoutAccount: acct ? `•••• ${acct.slice(-4)}` : undefined,
       settlementReady: db.isSettlementReady(owner.id),
     };

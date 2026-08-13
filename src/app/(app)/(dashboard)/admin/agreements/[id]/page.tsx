@@ -117,8 +117,8 @@ export default function AgreementDetailPage() {
             <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-4">
               <StatCard label="Total revenue managed" value={formatUGX(fin.data.grossRevenue)} icon={<Cash size={22} />} />
               <StatCard label="Commission earned" value={formatUGX(fin.data.commissionEarned)} icon={<ChartLineUp size={22} />} hint={`per ${CONTRACT_TYPE_LABEL[a.contractType].toLowerCase()}`} />
-              <StatCard label="Settled to owner" value={formatUGX(fin.data.settledToOwner)} icon={<Cash size={22} />} />
-              <StatCard label="Pending" value={formatUGX(fin.data.pending)} icon={<Receipt size={22} />} hint={fin.data.pending > 0 ? "unsettled" : "all settled"} />
+              <StatCard label="Property expenses" value={formatUGX(fin.data.expenses)} icon={<Receipt size={22} />} />
+              <StatCard label="Net to owner" value={formatUGX(fin.data.netToOwner)} icon={<Cash size={22} />} hint="gross − fee − expenses" />
             </div>
             <Card className="mt-4 p-6">
               <p className="text-caption font-medium uppercase tracking-wide text-muted">How the commission is calculated</p>
@@ -128,7 +128,7 @@ export default function AgreementDetailPage() {
                   : a.contractType === "fixed_fee"
                     ? `Fixed ${agreementRateLabel(a)} accrued over the agreement period = ${formatUGX(fin.data.commissionEarned)}.`
                     : `Base fee + ${a.hybridPercentage}% of gross revenue = ${formatUGX(fin.data.commissionEarned)}.`}
-                {" "}The remainder, {formatUGX(fin.data.netToOwner)}, is net to the owner.
+                {" "}After the fee and {formatUGX(fin.data.expenses)} property expenses, {formatUGX(fin.data.netToOwner)} is net to the owner.
               </p>
             </Card>
           </>
