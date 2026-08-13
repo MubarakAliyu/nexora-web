@@ -322,19 +322,103 @@ export function LeaseDoc({ d }: { d: LeasePdfData }) {
   );
 }
 
+/* -------------------------------------------------- deposit settlement */
+
+export interface DepositSettlementPdfData {
+  ref: string; date: string;
+  tenantName: string; propertyName: string; unitLabel: string;
+  leaseStart: string; leaseEnd: string; rent: number; deposit: number;
+  inspection: { category: string; condition: string; cost: number; notes?: string }[];
+  totalDamage: number; outstandingRent: number;
+  refund: number; additionalOwed: number; outcome: string;
+  note?: string;
+}
+
+export function DepositSettlementDoc({ d }: { d: DepositSettlementPdfData }) {
+  const net = d.refund > 0 ? `${money(d.refund)} refund` : d.additionalOwed > 0 ? `${money(d.additionalOwed)} owed by tenant` : "No refund due";
+  return (
+    <Document title={`Deposit Settlement ${d.ref}`} author="Nexora Property Management">
+      <Page size="A4" style={s.page}>
+        <Header title="DEPOSIT SETTLEMENT STATEMENT" />
+        <View style={s.row}>
+          <View style={s.block}>
+            <Text style={s.label}>Tenant</Text>
+            <Text style={[s.strong, s.metaLine]}>{d.tenantName}</Text>
+            <Text style={s.label}>Property / Unit</Text>
+            <Text style={s.metaLine}>{d.propertyName} · {d.unitLabel}</Text>
+          </View>
+          <View style={s.block}>
+            <Text style={s.label}>Statement ref</Text>
+            <Text style={[s.strong, s.metaLine]}>{d.ref}</Text>
+            <Text style={s.label}>Date</Text>
+            <Text style={s.metaLine}>{d.date}</Text>
+          </View>
+        </View>
+
+        <Text style={s.clauseH}>Lease summary</Text>
+        <View style={s.table}>
+          <View style={s.tr}><Text style={s.cell}>Term</Text><Text style={s.cellRight}>{d.leaseStart} → {d.leaseEnd}</Text></View>
+          <View style={[s.tr, s.trAlt]}><Text style={s.cell}>Monthly rent</Text><Text style={s.cellRight}>{money(d.rent)}</Text></View>
+          <View style={s.tr}><Text style={s.cell}>Security deposit</Text><Text style={s.cellRight}>{money(d.deposit)}</Text></View>
+        </View>
+
+        <Text style={s.clauseH}>Inspection summary</Text>
+        <View style={s.table}>
+          <View style={s.th}><Text style={s.cell}>Area</Text><Text style={s.cell}>Condition</Text><Text style={s.cellRight}>Repair cost</Text></View>
+          {d.inspection.map((r, i) => (
+            <View key={i} style={i % 2 ? [s.tr, s.trAlt] : s.tr}>
+              <Text style={s.cell}>{r.category}{r.notes ? ` — ${r.notes}` : ""}</Text>
+              <Text style={s.cell}>{r.condition}</Text>
+              <Text style={s.cellRight}>{r.cost > 0 ? money(r.cost) : "—"}</Text>
+            </View>
+          ))}
+        </View>
+
+        <Text style={s.clauseH}>Financial calculation</Text>
+        <View style={s.totalsRow}><Text style={s.totalsLabel}>Security deposit</Text><Text style={s.totalsValue}>{money(d.deposit)}</Text></View>
+        <View style={s.totalsRow}><Text style={s.totalsLabel}>Less: damage repairs</Text><Text style={s.totalsValue}>-{money(d.totalDamage)}</Text></View>
+        <View style={s.totalsRow}><Text style={s.totalsLabel}>Less: outstanding rent</Text><Text style={s.totalsValue}>-{money(d.outstandingRent)}</Text></View>
+        <View style={s.grandRow}><Text style={s.grandLabel}>{d.refund > 0 ? "Net refund" : d.additionalOwed > 0 ? "Amount owed" : "Net settlement"}</Text><Text style={s.grandValue}>{net}</Text></View>
+
+        <View style={s.note}>
+          <Text style={s.noteTitle}>Deposit outcome: {d.outcome}</Text>
+          {d.note ? <Text>{d.note}</Text> : <Text>The above settlement has been assessed following the exit inspection of the unit.</Text>}
+        </View>
+
+        <View style={s.sigRow}>
+          <View style={s.sigCol}>
+            <Text style={s.strong}>For Nexora Property Management</Text>
+            <Text style={s.sigLine}>Name / Title / Signature</Text>
+            <Text style={{ fontSize: 8, color: c.muted, marginTop: 10 }}>Date: ____________________</Text>
+          </View>
+          <View style={s.sigCol}>
+            <Text style={s.strong}>Tenant</Text>
+            <Text style={s.sigLine}>{d.tenantName} / Signature</Text>
+            <Text style={{ fontSize: 8, color: c.muted, marginTop: 10 }}>Date: ____________________</Text>
+          </View>
+        </View>
+
+        <Footer note="Deposit settlement statement — issued by Nexora Property Management" />
+      </Page>
+    </Document>
+  );
+}
+
 /* --------------------------------------------------------- dispatcher */
 
 export type PdfPayload =
   | { kind: "invoice"; data: InvoicePdfData }
   | { kind: "receipt"; data: ReceiptPdfData }
   | { kind: "statement"; data: StatementPdfData }
-  | { kind: "lease"; data: LeasePdfData };
+  | { kind: "lease"; data: LeasePdfData }
+  | { kind: "deposit"; data: DepositSettlementPdfData };
 
 export function renderDocument(p: PdfPayload): React.ReactElement<DocumentProps> {
   const el =
     p.kind === "invoice" ? <InvoiceDoc d={p.data} />
     : p.kind === "receipt" ? <ReceiptDoc d={p.data} />
     : p.kind === "statement" ? <StatementDoc d={p.data} />
+    : p.kind === "deposit" ? <DepositSettlementDoc d={p.data} />
     : <LeaseDoc d={p.data} />;
   return el as unknown as React.ReactElement<DocumentProps>;
 }

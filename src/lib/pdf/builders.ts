@@ -5,7 +5,7 @@
  */
 import * as db from "@/lib/mock/db";
 import type { Invoice, Payment, Lease } from "@/lib/mock/types";
-import type { InvoicePdfData, ReceiptPdfData, StatementPdfData, LeasePdfData, PdfPayload } from "./documents";
+import type { InvoicePdfData, ReceiptPdfData, StatementPdfData, LeasePdfData, DepositSettlementPdfData, PdfPayload } from "./documents";
 import { slugFile } from "./download";
 import { formatDate, formatUGX } from "@/lib/format";
 import { commissionForAgreement, agreementRateLabel, CONTRACT_TYPE_LABEL } from "@/lib/api/agreements";
@@ -57,6 +57,34 @@ export function leasePdf(lease: Lease): { payload: PdfPayload; filename: string 
 export function leasePdfForProperty(propertyId: string): { payload: PdfPayload; filename: string } | null {
   const lease = db.leases.find((l) => l.propertyId === propertyId && l.status !== "terminated") ?? db.leases.find((l) => l.propertyId === propertyId);
   return lease ? leasePdf(lease) : null;
+}
+
+export interface DepositSettlementInput {
+  leaseId: string;
+  inspection: { category: string; condition: string; cost: number; notes?: string }[];
+  totalDamage: number;
+  outstandingRent: number;
+  refund: number;
+  additionalOwed: number;
+  outcome: string;
+  note?: string;
+}
+
+export function depositSettlementPdf(input: DepositSettlementInput): { payload: PdfPayload; filename: string } {
+  const lease = db.leases.find((l) => l.id === input.leaseId);
+  const tenant = db.tenants.find((t) => t.id === lease?.tenantId);
+  const unit = db.units.find((u) => u.id === lease?.unitId);
+  const ref = `DEP-${(lease?.id ?? "").replace(/[^a-zA-Z0-9]/g, "").slice(-6).toUpperCase() || "000000"}`;
+  const data: DepositSettlementPdfData = {
+    ref, date: formatDate(db.NOW_ISO),
+    tenantName: tenant?.name ?? "Tenant", propertyName: pName(lease?.propertyId ?? ""), unitLabel: unit?.label ?? "—",
+    leaseStart: formatDate(lease?.start ?? db.NOW_ISO), leaseEnd: formatDate(lease?.end ?? db.NOW_ISO),
+    rent: lease?.rent ?? 0, deposit: lease?.deposit ?? 0,
+    inspection: input.inspection,
+    totalDamage: input.totalDamage, outstandingRent: input.outstandingRent,
+    refund: input.refund, additionalOwed: input.additionalOwed, outcome: input.outcome, note: input.note,
+  };
+  return { payload: { kind: "deposit", data }, filename: `Nexora-Deposit-Settlement-${ref}` };
 }
 
 export function statementPdf(ownerId: string, period?: string): { payload: PdfPayload; filename: string } {
