@@ -10,7 +10,8 @@
 
 import * as db from "@/lib/mock/db";
 import { recordMutation } from "@/lib/api/actions";
-import { incrementStaffJobs } from "@/lib/api/admin-mutations";
+import { incrementStaffJobs, pushNotify } from "@/lib/api/admin-mutations";
+import { leaseView } from "@/lib/lease";
 import type { Role } from "@/lib/roles";
 import { monthlyCommission, effectiveRate, agreementRateLabel, CONTRACT_TYPE_LABEL } from "@/lib/api/agreements";
 import type {
@@ -130,9 +131,15 @@ export async function getAlerts(scope?: Scope): Promise<Alert[]> {
   const ids = scopedPropertyIds(scope);
   const inScope = (pid: string) => !ids || ids.has(pid);
   const alerts: Alert[] = [];
-  for (const l of db.leases.filter((x) => x.status === "expiring" && inScope(x.propertyId)).slice(0, 4)) {
+  const expiring = db.leases
+    .map((l) => ({ l, v: leaseView(l, db.NOW_ISO) }))
+    .filter((x) => x.v.expiringSoon && inScope(x.l.propertyId))
+    .sort((a, b) => a.v.daysToExpiry - b.v.daysToExpiry)
+    .slice(0, 4);
+  for (const { l, v } of expiring) {
     const t = db.tenants.find((x) => x.id === l.tenantId);
-    alerts.push({ id: `al_${l.id}`, kind: "lease", severity: "warning", text: `Lease expiring soon — ${t?.name ?? "tenant"}`, href: "/admin/leases" });
+    const u = db.units.find((x) => x.id === l.unitId);
+    alerts.push({ id: `al_${l.id}`, kind: "lease", severity: "warning", text: `${t?.name ?? "Tenant"} — ${u?.label ?? "unit"} — expires in ${Math.max(0, v.daysToExpiry)} days`, href: "/admin/leases" });
   }
   for (const i of db.invoices.filter((x) => x.status === "overdue" && inScope(x.propertyId)).slice(0, 4)) {
     const t = db.tenants.find((x) => x.id === i.tenantId);
@@ -572,9 +579,34 @@ export async function listLeases(filter?: LeaseFilter, scope?: Scope): Promise<L
   const ids = scopedPropertyIds(scope);
   let rows = ids ? db.leases.filter((l) => ids.has(l.propertyId)) : [...db.leases];
   if (scope?.tenantId) rows = rows.filter((l) => l.tenantId === scope.tenantId);
-  if (filter?.status && filter.status !== "all") rows = rows.filter((l) => l.status === filter.status);
+  // Filter on the COMPUTED display status so "Expiring Soon" / "Expired" match
+  // date-driven transitions (see lib/lease.ts), while explicit statuses pass through.
+  if (filter?.status && filter.status !== "all") {
+    rows = rows.filter((l) => leaseView(l, db.NOW_ISO).status === filter.status);
+  }
   if (filter?.propertyId && filter.propertyId !== "all") rows = rows.filter((l) => l.propertyId === filter.propertyId);
   return respond(rows, { error: scope?.forceError });
+}
+
+export interface LeaseDetail {
+  lease: Lease;
+  tenant?: Tenant;
+  unit?: Unit;
+  property?: Property;
+  outstandingRent: number;
+}
+
+/** Single lease with related records + outstanding rent (for the move-out flow). */
+export async function getLeaseDetail(id: string, scope?: Scope): Promise<LeaseDetail> {
+  const lease = db.leases.find((l) => l.id === id);
+  if (!lease) throw new NotFoundError(id);
+  const tenant = db.tenants.find((t) => t.id === lease.tenantId);
+  const unit = db.units.find((u) => u.id === lease.unitId);
+  const property = db.properties.find((p) => p.id === lease.propertyId);
+  const outstandingRent = db.invoices
+    .filter((i) => i.tenantId === lease.tenantId && i.status !== "paid")
+    .reduce((s, i) => s + (i.amount - i.paid), 0);
+  return respond({ lease, tenant, unit, property, outstandingRent }, { error: scope?.forceError });
 }
 
 /* --------------------------------------------------------------- finance */
@@ -1000,6 +1032,9 @@ export async function getOwnerFinancials(ownerId: string, scope?: Scope): Promis
 
 /* ============================================================ leases (mutations) */
 
+const _money = (n: number) => `UGX ${Math.round(n).toLocaleString("en-UG")}`;
+const _dateOf = (iso: string) => new Date(iso).toLocaleDateString("en-GB", { day: "numeric", month: "short", year: "numeric" });
+
 export async function renewLease(id: string, months = 12): Promise<Lease> {
   await new Promise((r) => setTimeout(r, 500));
   const lease = db.leases.find((l) => l.id === id);
@@ -1008,8 +1043,12 @@ export async function renewLease(id: string, months = 12): Promise<Lease> {
   end.setMonth(end.getMonth() + months);
   lease.end = end.toISOString();
   lease.status = "active";
+  lease.renewalRequestedAt = undefined;
+  lease.renewalRequestedEnd = undefined;
+  lease.renewalNotes = undefined;
   const tenant = db.tenants.find((t) => t.id === lease.tenantId);
   if (tenant && tenant.status !== "past") tenant.status = "active";
+  const propName = propertyName(lease.propertyId);
   recordMutation({
     entityType: "lease",
     entityId: id,
@@ -1018,26 +1057,232 @@ export async function renewLease(id: string, months = 12): Promise<Lease> {
     summary: `Renewed lease for ${tenant?.name ?? "tenant"} by ${months} months`,
     notify: { type: "lease", title: "Lease renewed", body: `${tenant?.name ?? "A tenant"}'s lease was renewed for ${months} months.` },
   });
+  // C6 — notify tenant + owner.
+  pushNotify("lease", "Your lease has been renewed!", `Your lease has been renewed. New end date: ${_dateOf(lease.end)}. Updated rent: ${_money(lease.rent)}.`, "lease", id, "renewed");
+  pushNotify("lease", "Lease renewed", `Lease renewed at ${unitLabel(lease.unitId)}, ${propName}. Tenant: ${tenant?.name ?? "tenant"}. New end date: ${_dateOf(lease.end)}.`, "lease", id, "renewed");
   return lease;
 }
 
-export async function terminateLease(id: string): Promise<Lease> {
+/** C1 — nudge the tenant about an upcoming expiry (no status change). */
+export async function sendRenewalReminder(id: string): Promise<Lease> {
+  await new Promise((r) => setTimeout(r, 300));
+  const lease = db.leases.find((l) => l.id === id);
+  if (!lease) throw new NotFoundError(id);
+  const view = leaseView(lease, db.NOW_ISO);
+  const tenant = db.tenants.find((t) => t.id === lease.tenantId);
+  recordMutation({
+    entityType: "lease", entityId: id, entityName: tenant?.name ?? id, action: "updated",
+    summary: `Sent renewal reminder to ${tenant?.name ?? "tenant"} (${Math.max(0, view.daysToExpiry)} days to expiry)`,
+    notify: false,
+  });
+  pushNotify("lease", "Your lease is expiring soon", `Your lease at ${unitLabel(lease.unitId)} expires in ${Math.max(0, view.daysToExpiry)} days. Contact Nexora about renewal.`, "lease", id, "updated");
+  return lease;
+}
+
+/** C5 — tenant-initiated renewal request. */
+export async function requestLeaseRenewal(id: string, input: { preferredEnd: string; notes?: string }): Promise<Lease> {
+  await new Promise((r) => setTimeout(r, 400));
+  const lease = db.leases.find((l) => l.id === id);
+  if (!lease) throw new NotFoundError(id);
+  lease.status = "renewal_requested";
+  lease.renewalRequestedAt = db.NOW_ISO;
+  lease.renewalRequestedEnd = input.preferredEnd;
+  lease.renewalNotes = input.notes;
+  const tenant = db.tenants.find((t) => t.id === lease.tenantId);
+  const propName = propertyName(lease.propertyId);
+  recordMutation({
+    entityType: "lease", entityId: id, entityName: tenant?.name ?? id, action: "updated",
+    summary: `Tenant initiated lease renewal request (preferred end ${_dateOf(input.preferredEnd)})`,
+    after: { status: "renewal_requested", preferredEnd: input.preferredEnd },
+    notify: { type: "lease", title: "Renewal requested", body: `Tenant ${tenant?.name ?? "a tenant"} has requested lease renewal for ${unitLabel(lease.unitId)}, ${propName}. Preferred new end date: ${_dateOf(input.preferredEnd)}.${input.notes ? ` Notes: ${input.notes}` : ""}` },
+  });
+  pushNotify("lease", "Renewal request submitted", "Your renewal request has been submitted. Nexora will review and contact you.", "lease", id, "updated");
+  return lease;
+}
+
+/* ---------------------------------------------------- deposit settlement */
+
+export type DepositOutcome = "full_refund" | "partial_refund" | "deduct" | "forfeit";
+
+export interface DepositOutcomeInput {
+  outcome: DepositOutcome;
+  refundAmount?: number;
+  deductionAmount?: number;
+  reason?: string;
+  additionalOwed?: number;
+  exitDate?: string;
+  terminationReason?: string;
+}
+
+const DEPOSIT_LABEL: Record<string, string> = {
+  refunded: "Refunded", partially_refunded: "Partially Refunded", deducted: "Deducted", forfeited: "Forfeited", held: "Held",
+};
+
+/** Apply a deposit outcome onto the lease record; returns the resolved status. */
+function applyDepositOutcome(lease: Lease, d: DepositOutcomeInput) {
+  lease.depositSettledAt = db.NOW_ISO;
+  lease.depositReason = d.reason;
+  if (d.outcome === "full_refund") {
+    lease.depositStatus = "refunded"; lease.depositRefundAmount = lease.deposit; lease.depositDeductionAmount = 0;
+  } else if (d.outcome === "partial_refund") {
+    const refund = Math.max(0, Math.min(lease.deposit, d.refundAmount ?? 0));
+    lease.depositStatus = "partially_refunded"; lease.depositRefundAmount = refund; lease.depositDeductionAmount = lease.deposit - refund;
+  } else if (d.outcome === "deduct") {
+    lease.depositStatus = "deducted"; lease.depositDeductionAmount = d.deductionAmount ?? lease.deposit; lease.depositRefundAmount = 0; lease.depositAdditionalOwed = d.additionalOwed;
+  } else {
+    lease.depositStatus = "forfeited"; lease.depositDeductionAmount = lease.deposit; lease.depositRefundAmount = 0;
+  }
+  return lease.depositStatus;
+}
+
+/** Record a Finance expense for a deposit deduction, linked to the property. */
+function addDepositExpense(propertyId: string, amount: number, reason: string) {
+  if (amount <= 0) return;
+  const exp: Expense = {
+    id: `exp_dep_${db.expenses.length + 1}_${Date.now()}`,
+    propertyId,
+    category: "admin",
+    vendor: "Deposit Settlement",
+    description: `Deposit Deduction — ${reason}`,
+    amount,
+    date: db.NOW_ISO,
+    status: "approved",
+  };
+  db.expenses.unshift(exp);
+}
+
+export async function terminateLease(id: string, deposit?: DepositOutcomeInput): Promise<Lease> {
   await new Promise((r) => setTimeout(r, 500));
   const lease = db.leases.find((l) => l.id === id);
   if (!lease) throw new NotFoundError(id);
+  const d: DepositOutcomeInput = deposit ?? { outcome: "full_refund" };
   lease.status = "terminated";
   const unit = db.units.find((u) => u.id === lease.unitId);
   if (unit) unit.status = "vacant";
   const tenant = db.tenants.find((t) => t.id === lease.tenantId);
   if (tenant) tenant.status = "past";
+  const status = applyDepositOutcome(lease, d);
+  const propName = propertyName(lease.propertyId);
+
+  // Deduction / partial refund → book an expense against the property.
+  const deduction = lease.depositDeductionAmount ?? 0;
+  if ((status === "partially_refunded" || status === "deducted") && deduction > 0) {
+    addDepositExpense(lease.propertyId, deduction, d.reason ?? "Deposit deduction");
+  }
+
+  const outcomeText = DEPOSIT_LABEL[status];
+  const detail =
+    status === "partially_refunded" ? ` ${_money(lease.depositRefundAmount ?? 0)} refunded, ${_money(deduction)} retained.`
+    : status === "deducted" ? ` ${_money(deduction)} applied${d.reason ? ` to ${d.reason}` : ""}.${d.additionalOwed ? ` Additional ${_money(d.additionalOwed)} owed.` : ""}`
+    : status === "refunded" ? ` ${_money(lease.deposit)} will be returned.`
+    : ` ${_money(lease.deposit)} retained.`;
+
   recordMutation({
-    entityType: "lease",
-    entityId: id,
-    entityName: tenant?.name ?? id,
-    action: "terminated",
-    summary: `Terminated lease for ${tenant?.name ?? "tenant"}; unit ${unit?.label ?? ""} released`,
-    notify: { type: "lease", title: "Lease terminated", body: `${tenant?.name ?? "A tenant"}'s lease was terminated.` },
+    entityType: "lease", entityId: id, entityName: tenant?.name ?? id, action: "terminated",
+    summary: `Terminated lease for ${tenant?.name ?? "tenant"}; unit ${unit?.label ?? ""} released. Deposit: ${outcomeText}.${detail}`,
+    after: { status: "terminated", depositStatus: status, refund: lease.depositRefundAmount, deduction, reason: d.reason },
+    notify: { type: "lease", title: "Lease terminated", body: `${tenant?.name ?? "A tenant"}'s lease was terminated. Deposit: ${outcomeText}.` },
   });
+  // C2/C5 — notify tenant + owner with deposit details.
+  pushNotify("lease", "Your lease has been terminated", `Your lease at ${unit?.label ?? "your unit"} has been terminated. Security deposit status: ${outcomeText}.${detail}`, "lease", id, "terminated");
+  pushNotify("lease", "Lease terminated", `Lease terminated at ${unit?.label ?? "a unit"}, ${propName}. Deposit: ${outcomeText}.`, "lease", id, "terminated");
+  return lease;
+}
+
+/* ---------------------------------------------------- move-out settlement */
+
+export interface MoveOutDamageLine { category: string; cost: number; notes?: string }
+export interface MoveOutSettlementInput {
+  moveOutDate: string;
+  inspectionDate: string;
+  inspector: string;
+  damageLines: MoveOutDamageLine[];
+  totalDamage: number;
+  outstandingRent: number;
+  outcome: DepositOutcome;
+  settlementNote?: string;
+}
+
+export interface MoveOutResult {
+  lease: Lease;
+  depositStatus: string;
+  refund: number;
+  additionalOwed: number;
+}
+
+/** C3 — comprehensive move-out settlement run through the live engine. */
+export async function settleMoveOut(id: string, input: MoveOutSettlementInput): Promise<MoveOutResult> {
+  await new Promise((r) => setTimeout(r, 600));
+  const lease = db.leases.find((l) => l.id === id);
+  if (!lease) throw new NotFoundError(id);
+  const tenant = db.tenants.find((t) => t.id === lease.tenantId);
+  const unit = db.units.find((u) => u.id === lease.unitId);
+  const propName = propertyName(lease.propertyId);
+
+  const deductions = input.totalDamage + input.outstandingRent;
+  const net = lease.deposit - deductions;
+  const refund = Math.max(0, net);
+  const additionalOwed = Math.max(0, -net);
+
+  // Map the computed net to a deposit outcome (respecting an explicit override).
+  const outcome: DepositOutcome = input.outcome;
+  const depositInput: DepositOutcomeInput = {
+    outcome,
+    refundAmount: refund,
+    deductionAmount: deductions,
+    additionalOwed,
+    reason: input.settlementNote || "Move-out settlement",
+  };
+
+  lease.status = "terminated";
+  if (unit) unit.status = "vacant";
+  if (tenant) tenant.status = "past";
+  const status = applyDepositOutcome(lease, depositInput);
+
+  // One expense per damaged category (linked to the property).
+  for (const line of input.damageLines) {
+    if (line.cost > 0) addDepositExpense(lease.propertyId, line.cost, line.category + (line.notes ? ` — ${line.notes}` : ""));
+  }
+  // Outstanding rent → mark this tenant's unpaid invoices as settled against the deposit.
+  if (input.outstandingRent > 0) {
+    for (const inv of db.invoices.filter((i) => i.tenantId === lease.tenantId && i.status !== "paid")) {
+      inv.paid = inv.amount; inv.status = "paid";
+    }
+  }
+
+  const outcomeText = DEPOSIT_LABEL[status];
+  const refundText = refund > 0 ? ` Refund due: ${_money(refund)}.` : additionalOwed > 0 ? ` Additional owed: ${_money(additionalOwed)}.` : " No refund due.";
+
+  recordMutation({
+    entityType: "lease", entityId: id, entityName: tenant?.name ?? id, action: "terminated",
+    summary: `Move-out processed for ${tenant?.name ?? "tenant"} from ${unit?.label ?? ""}. Deposit ${_money(lease.deposit)} − damages ${_money(input.totalDamage)} − rent ${_money(input.outstandingRent)} = ${net >= 0 ? _money(refund) + " refund" : _money(additionalOwed) + " owed"}. Outcome: ${outcomeText}.`,
+    after: { moveOutDate: input.moveOutDate, depositStatus: status, refund, additionalOwed, damages: input.totalDamage, outstandingRent: input.outstandingRent },
+    notify: { type: "lease", title: "Move-out processed", body: `${tenant?.name ?? "A tenant"} moved out of ${unit?.label ?? "a unit"}. Deposit: ${outcomeText}.` },
+  });
+  pushNotify("lease", "Your move-out has been processed", `Your move-out from ${unit?.label ?? "your unit"} has been processed. Deposit outcome: ${outcomeText}.${refundText}`, "lease", id, "terminated");
+  pushNotify("lease", "Tenant moved out", `Tenant ${tenant?.name ?? "a tenant"} has moved out of ${unit?.label ?? "a unit"}, ${propName}. Unit is now vacant. Deposit: ${outcomeText}.`, "lease", id, "terminated");
+  pushNotify("maintenance", "Inspection completed", `Inspection for ${unit?.label ?? "a unit"} has been completed and processed.`, "lease", id, "updated");
+
+  return { lease, depositStatus: status, refund, additionalOwed };
+}
+
+/** C3 Step 1 — schedule the move-out + inspection and notify the parties. */
+export async function initiateMoveOut(id: string, input: { moveOutDate: string; inspectionDate: string; inspector: string; notes?: string }): Promise<Lease> {
+  await new Promise((r) => setTimeout(r, 400));
+  const lease = db.leases.find((l) => l.id === id);
+  if (!lease) throw new NotFoundError(id);
+  const tenant = db.tenants.find((t) => t.id === lease.tenantId);
+  const unit = db.units.find((u) => u.id === lease.unitId);
+  const propName = propertyName(lease.propertyId);
+  if (input.inspector) incrementStaffJobs(input.inspector);
+  recordMutation({
+    entityType: "lease", entityId: id, entityName: tenant?.name ?? id, action: "updated",
+    summary: `Move-out initiated for ${tenant?.name ?? "tenant"} (${unit?.label ?? ""}); inspection ${_dateOf(input.inspectionDate)} · inspector ${input.inspector}`,
+    after: { moveOutDate: input.moveOutDate, inspectionDate: input.inspectionDate, inspector: input.inspector },
+    notify: false,
+  });
+  pushNotify("lease", "Your move-out has been initiated", `Your move-out has been initiated. An inspection is scheduled for ${_dateOf(input.inspectionDate)}.`, "lease", id, "updated");
+  pushNotify("maintenance", "Exit inspection assigned", `You've been assigned an exit inspection at ${unit?.label ?? "a unit"}, ${propName} on ${_dateOf(input.inspectionDate)}.`, "lease", id, "updated");
   return lease;
 }
 
