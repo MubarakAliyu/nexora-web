@@ -1279,7 +1279,7 @@ export async function initiateMoveOut(id: string, input: { moveOutDate: string; 
     entityType: "lease", entityId: id, entityName: tenant?.name ?? id, action: "updated",
     summary: `Move-out initiated for ${tenant?.name ?? "tenant"} (${unit?.label ?? ""}); inspection ${_dateOf(input.inspectionDate)} · inspector ${input.inspector}`,
     after: { moveOutDate: input.moveOutDate, inspectionDate: input.inspectionDate, inspector: input.inspector },
-    notify: false,
+    notify: { type: "lease", title: "Move-out initiated", body: `Move-out started for ${tenant?.name ?? "a tenant"} at ${unit?.label ?? "a unit"}. Inspection ${_dateOf(input.inspectionDate)}.` },
   });
   pushNotify("lease", "Your move-out has been initiated", `Your move-out has been initiated. An inspection is scheduled for ${_dateOf(input.inspectionDate)}.`, "lease", id, "updated");
   pushNotify("maintenance", "Exit inspection assigned", `You've been assigned an exit inspection at ${unit?.label ?? "a unit"}, ${propName} on ${_dateOf(input.inspectionDate)}.`, "lease", id, "updated");
@@ -1323,6 +1323,8 @@ export async function updateTicket(
     after: { status: t.status, assignee: t.assignee, cost: t.cost },
     notify: { type: "maintenance", title: "Ticket updated", body: `${t.ref} — ${t.title} is now ${t.status.replace("_", " ")}.` },
   });
+  // D3 — tenant maintenance-update notification.
+  if (t.status !== before.status) pushNotify("maintenance", "Maintenance update", `Your request ${t.ref} — ${t.title} is now ${t.status.replace("_", " ")}.`, "ticket", t.id, "updated");
   return t;
 }
 
@@ -1367,6 +1369,8 @@ export async function createInvoice(input: { tenantId: string; amount: number; d
     after: { number: inv.number, amount: inv.amount, status: inv.status },
     notify: { type: "payment", title: "Invoice generated", body: `${inv.number} was raised for ${tenant?.name ?? "a tenant"}.` },
   });
+  // D3 — tenant rent-due notification.
+  pushNotify("payment", "Rent due", `Invoice ${inv.number} for ${_money(inv.amount)} is due ${_dateOf(inv.due)}.`, "invoice", inv.id, "created");
   return inv;
 }
 

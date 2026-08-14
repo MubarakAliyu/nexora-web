@@ -30,6 +30,8 @@ export function pushNotify(
 
 const money = (n: number) => `UGX ${Math.round(n).toLocaleString("en-UG")}`;
 const dateOf = (iso: string) => new Date(iso).toLocaleDateString("en-GB", { day: "numeric", month: "short", year: "numeric" });
+const propName = (propertyId: string) => db.properties.find((p) => p.id === propertyId)?.name ?? "the property";
+const tenantNameById = (tenantId?: string) => db.tenants.find((t) => t.id === tenantId)?.name ?? "the tenant";
 import type {
   Expense,
   ExpenseCategory,
@@ -366,6 +368,9 @@ export async function payInvoice(input: PayInput): Promise<Payment> {
     after: { amount, invoice: invoice.number, method: input.method },
     notify: { type: "system", title: "Payment received", body: `${invoice.number}: ${payment.reference} recorded.` },
   });
+  // D3 — tenant receipt + owner revenue notifications.
+  pushNotify("payment", "Payment confirmed", `Your payment of ${money(amount)} for ${invoice.number} was received. Thank you.`, "payment", payment.id, "created");
+  pushNotify("payment", "Revenue generated", `Rent of ${money(amount)} received from ${tenantNameById(invoice.tenantId)} at ${propName(invoice.propertyId)}.`, "payment", payment.id, "created");
   return payment;
 }
 
@@ -400,8 +405,11 @@ export async function createTicket(input: TicketInput): Promise<MaintenanceTicke
   recordMutation({
     entityType: "ticket", entityId: ticket.id, entityName: ticket.ref, action: "created",
     summary: `Created ticket ${ticket.ref} — ${ticket.title}`, after: { title: ticket.title, priority: ticket.priority },
-    notify: { type: "maintenance", title: "New ticket", body: `${ticket.ref} — ${ticket.title} (${ticket.priority}).` },
+    notify: { type: "maintenance", title: ticket.priority === "urgent" || ticket.priority === "high" ? "Urgent ticket" : "New ticket", body: `${ticket.ref} — ${ticket.title} (${ticket.priority}).` },
   });
+  // D3 — tenant confirmation + owner maintenance-request notifications.
+  pushNotify("maintenance", "Maintenance request submitted", `Your request "${ticket.title}" was logged as ${ticket.ref}. We'll keep you updated.`, "ticket", ticket.id, "created");
+  pushNotify("maintenance", "Maintenance request", `A maintenance request (${ticket.ref} — ${ticket.title}) was raised at ${propName(ticket.propertyId)}.`, "ticket", ticket.id, "created");
   return ticket;
 }
 
@@ -418,6 +426,9 @@ export async function closeTicket(id: string, resolution: string): Promise<Maint
     summary: `Closed ticket ${t.ref}: ${resolution}`, before, after: { status: "closed", resolution },
     notify: { type: "maintenance", title: "Ticket closed", body: `${t.ref} was closed.` },
   });
+  // D3 — tenant + owner maintenance-resolved notifications.
+  pushNotify("maintenance", "Maintenance resolved", `Your request ${t.ref} — ${t.title} has been resolved: ${resolution}`, "ticket", t.id, "updated");
+  pushNotify("maintenance", "Maintenance resolved", `${t.ref} — ${t.title} at ${propName(t.propertyId)} has been resolved.`, "ticket", t.id, "updated");
   return t;
 }
 
@@ -635,8 +646,12 @@ export async function updateStaff(
   recordMutation({
     entityType: "staff", entityId: id, entityName: member.name, action: "updated",
     summary: `Updated ${member.name} (${member.role}, ${member.status})`, before, after: { role: member.role, status: member.status },
-    notify: { type: "system", title: "Staff updated", body: `${member.name} account was updated.` },
+    notify: { type: "system", title: member.status === "suspended" && before.status !== "suspended" ? "Staff deactivated" : "Staff updated", body: `${member.name} account was ${member.status === "suspended" ? "deactivated" : "updated"}.` },
   });
+  // D3 — notify the staff member when their account is deactivated.
+  if (member.status === "suspended" && before.status !== "suspended") {
+    pushNotify("system", "Account deactivated", "Your Nexora account has been deactivated. Contact an administrator for access.", "staff", id, "updated");
+  }
   return member;
 }
 
@@ -654,6 +669,8 @@ export async function cycleStaffAvailability(id: string): Promise<Staff> {
     summary: `${member.name} is now ${member.availability}`, after: { availability: member.availability },
     notify: false,
   });
+  // D3 — staff availability-changed notification.
+  pushNotify("system", "Availability changed", `Your availability was set to ${member.availability}.`, "staff", id, "updated");
   return member;
 }
 
