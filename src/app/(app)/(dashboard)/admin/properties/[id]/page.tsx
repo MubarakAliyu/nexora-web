@@ -16,6 +16,8 @@ import {
 } from "flowbite-react-icons/outline";
 import { PageHeader } from "@/components/app/page-header";
 import { StatusBadge } from "@/components/app/status";
+import { UploadButton } from "@/components/app/upload-button";
+import { PropertyWizard } from "@/components/admin/property-wizard";
 import { Card } from "@/components/ui/card";
 import { StatCard } from "@/components/ui/stat-card";
 import { Button } from "@/components/ui/button";
@@ -40,6 +42,7 @@ export default function PropertyDetailPage() {
   const router = useRouter();
   const id = params.id;
   const scope: Scope = React.useMemo(() => ({ forceError: debugErrorFlag() }), []);
+  const [editOpen, setEditOpen] = React.useState(false);
 
   const property = useAsync(() => getProperty(id, scope), [id, scope]);
   const units = useAsync(() => getPropertyUnits(id, scope), [id, scope]);
@@ -84,10 +87,10 @@ export default function PropertyDetailPage() {
         subtitle={p.location}
         actions={
           <div className="flex gap-2">
-            <Button variant="outline" className="gap-2" onClick={() => toast.info("Add unit", { description: "Unit creation is mocked in this build." })}>
-              <Plus size={18} /> Add unit
+            <Button variant="outline" className="gap-2" asChild>
+              <Link href="/admin/units"><Plus size={18} /> Add unit</Link>
             </Button>
-            <Button className="gap-2" onClick={() => toast.info("Edit property", { description: "Editing is mocked in this build." })}>
+            <Button className="gap-2" onClick={() => setEditOpen(true)}>
               <PenNib size={18} /> Edit
             </Button>
           </div>
@@ -216,11 +219,7 @@ export default function PropertyDetailPage() {
             icon={<FileLines size={22} />}
             title="No documents yet"
             description="Title deeds, management agreements and inspection reports will live here."
-            action={
-              <Button variant="outline" onClick={() => toast.info("Upload document", { description: "Document upload is mocked in this build." })}>
-                Upload document
-              </Button>
-            }
+            action={<UploadButton label="Upload document" accept=".pdf,.doc,.docx,image/*" entityName="Document" />}
           />
         </TabsContent>
       </Tabs>
@@ -230,6 +229,8 @@ export default function PropertyDetailPage() {
           ← Back to properties
         </Link>
       </div>
+
+      <PropertyWizard open={editOpen} onOpenChange={setEditOpen} editing={p} onDone={() => { property.reload(); units.reload(); }} />
     </div>
   );
 }

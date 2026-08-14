@@ -7,6 +7,7 @@ import { useParams, useRouter } from "next/navigation";
 import { Phone, Envelope, Cash, ChartLineUp, Receipt, Building, FileLines, UserCircle, PenNib, Home, Clock } from "flowbite-react-icons/outline";
 import { PageHeader } from "@/components/app/page-header";
 import { StatusBadge } from "@/components/app/status";
+import { UploadButton } from "@/components/app/upload-button";
 import { OwnerFormDialog } from "@/components/admin/owner-form-dialog";
 import { Card } from "@/components/ui/card";
 import { StatCard } from "@/components/ui/stat-card";
@@ -17,7 +18,6 @@ import { DataTable, type Column } from "@/components/ui/data-table";
 import { Timeline, TimelineItem } from "@/components/ui/timeline";
 import { EmptyState } from "@/components/ui/empty-state";
 import { Skeleton, SkeletonText } from "@/components/ui/skeleton";
-import { toast } from "@/components/ui/sonner";
 import { useAsync, debugErrorFlag } from "@/lib/use-async";
 import { downloadPdf } from "@/lib/pdf/download";
 import { statementPdf } from "@/lib/pdf/builders";
@@ -81,7 +81,7 @@ export default function OwnerDetailPage() {
           <div className="flex gap-2">
             <Button variant="outline" className="gap-2" onClick={() => { const { payload, filename } = statementPdf(owner.id); downloadPdf(payload, filename); }}><FileLines size={18} /> Statement</Button>
             <Button variant="outline" className="gap-2" onClick={() => setEditOpen(true)}><PenNib size={18} /> Edit</Button>
-            <Button className="gap-2" onClick={() => toast.info("Message owner", { description: "Messaging is mocked in this build." })}><Envelope size={18} /> Message</Button>
+            <Button className="gap-2" asChild><a href={`mailto:${owner.email}`}><Envelope size={18} /> Message</a></Button>
           </div>
         } />
 
@@ -163,7 +163,7 @@ export default function OwnerDetailPage() {
         <TabsContent value="documents">
           <EmptyState icon={<FileLines size={22} />} title="No documents yet"
             description="Ownership agreements, statements and tax documents will live here."
-            action={<Button variant="outline" onClick={() => toast.info("Upload document", { description: "Document upload is mocked in this build." })}>Upload document</Button>} />
+            action={<UploadButton label="Upload document" accept=".pdf,.doc,.docx,image/*" entityName="Document" />} />
         </TabsContent>
       </Tabs>
 

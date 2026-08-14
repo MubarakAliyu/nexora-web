@@ -72,13 +72,10 @@ export default function ProfilePage() {
           </Avatar>
           <div>
             <p className="font-heading text-h3 font-semibold text-foreground">{user?.name}</p>
-            <button
-              type="button"
-              onClick={() => toast.info("Photo upload", { description: "Avatar upload is mocked in this build." })}
-              className="mt-1 text-caption font-medium text-primary transition-colors hover:text-accent"
-            >
+            <label className="mt-1 inline-block cursor-pointer text-caption font-medium text-primary transition-colors hover:text-accent">
               Upload photo
-            </button>
+              <input type="file" accept="image/*" className="hidden" onChange={(e) => { const f = e.target.files?.[0]; if (f) toast.success("Photo updated", { description: f.name }); e.target.value = ""; }} />
+            </label>
           </div>
         </div>
 

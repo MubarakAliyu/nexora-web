@@ -35,6 +35,7 @@ import { leasePdf, invoicePdf, receiptPdf } from "@/lib/pdf/builders";
 import { formatUGX, formatDate, fromNow } from "@/lib/format";
 import {
   getTenant,
+  renewLease,
   propertyName,
   NOW_ISO,
   type Invoice,
@@ -120,9 +121,7 @@ export default function TenantDetailPage() {
         actions={
           <div className="flex gap-2">
             <Button variant="outline" className="gap-2" onClick={() => setEditOpen(true)}><PenNib size={18} /> Edit</Button>
-            <Button className="gap-2" onClick={() => toast.info("Message tenant", { description: "Messaging is mocked in this build." })}>
-              <Envelope size={18} /> Message
-            </Button>
+            <Button className="gap-2" asChild><a href={`mailto:${tenant.email}`}><Envelope size={18} /> Message</a></Button>
           </div>
         }
       />
@@ -187,7 +186,11 @@ export default function TenantDetailPage() {
               ) : (
                 <p className="text-body text-muted">No active lease.</p>
               )}
-              <Button variant="outline" size="sm" className="mt-5 w-full" onClick={() => toast.info("Renew lease", { description: "Lease actions are mocked in this build." })}>
+              <Button variant="outline" size="sm" className="mt-5 w-full" disabled={!lease} onClick={async () => {
+                if (!lease) return;
+                try { await renewLease(lease.id); toast.success("Lease renewed", { description: `${tenant.name} — extended 12 months.` }); reload(); }
+                catch { toast.error("Couldn’t renew lease"); }
+              }}>
                 Renew lease
               </Button>
             </Card>

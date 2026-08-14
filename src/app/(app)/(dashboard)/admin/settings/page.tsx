@@ -6,6 +6,7 @@ import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
 import { Cog, Users, Bell, AdjustmentsHorizontal, ClipboardList, LockOpen, Grid, Upload } from "flowbite-react-icons/outline";
 import { PageHeader } from "@/components/app/page-header";
+import { UploadButton } from "@/components/app/upload-button";
 import { ThemeToggle } from "@/components/app/theme-toggle";
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -48,7 +49,7 @@ function CompanyTab() {
       <form onSubmit={handleSubmit(onSubmit)} noValidate className="space-y-4">
         <div className="flex items-center gap-4">
           <div className="flex h-16 w-16 items-center justify-center rounded-lg bg-surface-active text-muted"><Upload size={22} /></div>
-          <Button type="button" variant="outline" size="sm" onClick={() => toast.info("Upload logo", { description: "Logo upload is mocked in this build." })}>Upload logo</Button>
+          <UploadButton label="Upload logo" size="sm" accept="image/*" entityType="settings" entityName="Company logo" />
         </div>
         <Field label="Company name" htmlFor="co-name" error={errors.name?.message}><Input id="co-name" {...register("name")} aria-invalid={!!errors.name} /></Field>
         <div className="grid gap-4 sm:grid-cols-2">
