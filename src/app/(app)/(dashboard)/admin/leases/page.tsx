@@ -10,6 +10,7 @@ import { PageHeader } from "@/components/app/page-header";
 import { LeaseStatusBadge } from "@/components/app/status";
 import { RowActions } from "@/components/app/row-actions";
 import { DeleteConfirmation } from "@/components/app/delete-confirmation";
+import { ExportCsvButton } from "@/components/app/export-csv-button";
 import { DataTable, type Column } from "@/components/ui/data-table";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
@@ -358,7 +359,21 @@ export default function LeasesPage() {
   return (
     <div>
       <PageHeader title="Leases" subtitle="Tenancy agreements across the portfolio"
-        actions={<Button onClick={() => { setEditing(null); setFormOpen(true); }} className="gap-2"><Plus size={18} /> Create lease</Button>} />
+        actions={
+          <div className="flex flex-wrap gap-2">
+            <ExportCsvButton data={rows} filename="leases" columns={[
+              { header: "Tenant", accessor: (l) => tenantName(l.tenantId) },
+              { header: "Property", accessor: (l) => propertyName(l.propertyId) },
+              { header: "Unit", accessor: (l) => unitLabel(l.unitId) },
+              { header: "Rent/mo", accessor: (l) => l.rent },
+              { header: "Deposit", accessor: (l) => l.deposit },
+              { header: "Start", accessor: (l) => l.start.slice(0, 10) },
+              { header: "End", accessor: (l) => l.end.slice(0, 10) },
+              { header: "Status", accessor: (l) => leaseView(l, NOW_ISO).status },
+            ]} />
+            <Button onClick={() => { setEditing(null); setFormOpen(true); }} className="gap-2"><Plus size={18} /> Create lease</Button>
+          </div>
+        } />
 
       {expiringCount > 0 && (
         <Card className="mb-4 border-l-4 border-primary bg-primary/5 p-4">

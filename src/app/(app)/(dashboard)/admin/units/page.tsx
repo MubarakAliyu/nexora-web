@@ -1,11 +1,13 @@
 "use client";
 
 import * as React from "react";
+import Link from "next/link";
 import { Plus, Search, Home, MapPin, UserCircle, PenNib, TrashBin, Cash, FileLines, AdjustmentsHorizontal } from "flowbite-react-icons/outline";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
 import { PageHeader } from "@/components/app/page-header";
+import { ExportCsvButton } from "@/components/app/export-csv-button";
 import { StatusBadge, PriorityBadge } from "@/components/app/status";
 import { RowActions } from "@/components/app/row-actions";
 import { DeleteConfirmation } from "@/components/app/delete-confirmation";
@@ -211,8 +213,8 @@ function UnitDrawer({ unitId, onClose, onEdit, onDelete, onChanged }: {
                 <option value="maintenance">Maintenance</option>
               </select>
             </Field>
-            <Button className="w-full gap-2" onClick={() => toast.info("Assign tenant", { description: "Create a lease from the Leases page to assign a tenant." })}>
-              <AdjustmentsHorizontal size={16} /> Assign tenant
+            <Button className="w-full gap-2" asChild>
+              <Link href="/admin/leases"><AdjustmentsHorizontal size={16} /> Assign tenant</Link>
             </Button>
           </div>
           <button type="button" onClick={onClose} className="sr-only">Close</button>
@@ -271,7 +273,20 @@ export default function UnitsPage() {
 
   return (
     <div>
-      <PageHeader title="Units" subtitle="Every lettable unit across the portfolio" actions={<Button onClick={openCreate} className="gap-2"><Plus size={18} /> Add unit</Button>} />
+      <PageHeader title="Units" subtitle="Every lettable unit across the portfolio" actions={
+        <div className="flex flex-wrap gap-2">
+          <ExportCsvButton data={data ?? []} filename="units" columns={[
+            { header: "Label", accessor: (u) => u.label },
+            { header: "Property", accessor: (u) => propertyName(u.propertyId) },
+            { header: "Type", accessor: (u) => u.type },
+            { header: "Bedrooms", accessor: (u) => u.bedrooms },
+            { header: "Size (sqm)", accessor: (u) => u.sizeSqm },
+            { header: "Rent", accessor: (u) => u.rent },
+            { header: "Status", accessor: (u) => u.status },
+          ]} />
+          <Button onClick={openCreate} className="gap-2"><Plus size={18} /> Add unit</Button>
+        </div>
+      } />
 
       <div className="mb-4 flex flex-col gap-3 lg:flex-row lg:items-center">
         <div className="relative lg:max-w-xs lg:flex-1">

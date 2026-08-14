@@ -7,6 +7,7 @@ import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
 import { Plus, Search, ArrowRight } from "flowbite-react-icons/outline";
 import { PageHeader } from "@/components/app/page-header";
+import { ExportCsvButton } from "@/components/app/export-csv-button";
 import { StatusBadge } from "@/components/app/status";
 import { Badge } from "@/components/ui/badge";
 import { DataTable, type Column } from "@/components/ui/data-table";
@@ -255,7 +256,21 @@ export default function BookingsPage() {
       <PageHeader
         title="Bookings"
         subtitle="Short-term stay bookings and long-term rental inquiries, in one place"
-        actions={<Button onClick={() => setAddOpen(true)} className="gap-2"><Plus size={18} /> Add booking</Button>}
+        actions={
+          <div className="flex flex-wrap gap-2">
+            <ExportCsvButton data={data ?? []} filename="bookings" columns={[
+              { header: "Reference", accessor: (b) => b.reference },
+              { header: "Kind", accessor: (b) => b.kind },
+              { header: "Guest", accessor: (b) => b.guestName },
+              { header: "Property", accessor: (b) => b.propertyName },
+              { header: "Unit", accessor: (b) => b.unitLabel ?? "" },
+              { header: "Date", accessor: (b) => b.date.slice(0, 10) },
+              { header: "Status", accessor: (b) => b.status },
+              { header: "Amount", accessor: (b) => b.amount ?? "" },
+            ]} />
+            <Button onClick={() => setAddOpen(true)} className="gap-2"><Plus size={18} /> Add booking</Button>
+          </div>
+        }
       />
 
       <div className="mb-4 grid gap-3 sm:grid-cols-2 lg:grid-cols-6">

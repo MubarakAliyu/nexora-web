@@ -23,6 +23,7 @@ import {
 } from "@/components/ui/dialog";
 import { toast } from "@/components/ui/sonner";
 import { useAsync, debugErrorFlag } from "@/lib/use-async";
+import { ExportCsvButton } from "@/components/app/export-csv-button";
 import { downloadPdf } from "@/lib/pdf/download";
 import { invoicePdf, receiptPdf, statementPdf } from "@/lib/pdf/builders";
 import { ownerOptions } from "@/lib/api/admin";
@@ -159,7 +160,20 @@ function InvoicesTab() {
           <option value="all">All statuses</option><option value="paid">Paid</option>
           <option value="pending">Pending</option><option value="overdue">Overdue</option><option value="partial">Partial</option>
         </select>
-        <GenerateInvoiceDialog onDone={reload} />
+        <div className="flex flex-wrap gap-2">
+          <ExportCsvButton data={data ?? []} filename="invoices" columns={[
+            { header: "Number", accessor: (i) => i.number },
+            { header: "Tenant", accessor: (i) => tenantName(i.tenantId) },
+            { header: "Property", accessor: (i) => propertyName(i.propertyId) },
+            { header: "Kind", accessor: (i) => i.kind },
+            { header: "Issued", accessor: (i) => i.issued.slice(0, 10) },
+            { header: "Due", accessor: (i) => i.due.slice(0, 10) },
+            { header: "Amount", accessor: (i) => i.amount },
+            { header: "Paid", accessor: (i) => i.paid },
+            { header: "Status", accessor: (i) => i.status },
+          ]} />
+          <GenerateInvoiceDialog onDone={reload} />
+        </div>
       </div>
       <DataTable columns={columns} data={data ?? []} getRowId={(i) => i.id} loading={loading} error={error} onRetry={reload}
         emptyTitle="No invoices" emptyDescription="Generated invoices will appear here." pageSize={10} />
@@ -196,9 +210,15 @@ function PaymentsTab() {
           <p className="text-caption uppercase tracking-wide text-muted">Total received (reconciled)</p>
           <p className="mt-1 font-heading text-h2 font-semibold text-foreground">{formatUGXFull(total)}</p>
         </div>
-        <Button variant="outline" className="gap-2" onClick={() => toast.info("Reconcile", { description: "Bank reconciliation is mocked in this build." })}>
-          <Cash size={18} /> Reconcile
-        </Button>
+        <ExportCsvButton data={data ?? []} filename="payments" columns={[
+          { header: "Date", accessor: (p) => p.date.slice(0, 10) },
+          { header: "Tenant", accessor: (p) => tenantName(p.tenantId) },
+          { header: "Property", accessor: (p) => propertyName(p.propertyId) },
+          { header: "Amount", accessor: (p) => p.amount },
+          { header: "Method", accessor: (p) => p.method },
+          { header: "Reference", accessor: (p) => p.reference },
+          { header: "Status", accessor: (p) => p.status },
+        ]} />
       </Card>
       <DataTable columns={columns} data={data ?? []} getRowId={(p) => p.id} loading={loading} error={error} onRetry={reload}
         emptyTitle="No payments" emptyDescription="Received payments will appear here." pageSize={10} />
@@ -299,7 +319,18 @@ function ExpensesTab() {
   ];
   return (
     <div>
-      <div className="mb-4 flex justify-end"><Button onClick={() => { setEditing(null); setFormOpen(true); }} className="gap-2"><Plus size={18} /> Log expense</Button></div>
+      <div className="mb-4 flex flex-wrap justify-end gap-2">
+        <ExportCsvButton data={data ?? []} filename="expenses" columns={[
+          { header: "Date", accessor: (e) => e.date.slice(0, 10) },
+          { header: "Property", accessor: (e) => propertyName(e.propertyId) },
+          { header: "Category", accessor: (e) => e.category },
+          { header: "Vendor", accessor: (e) => e.vendor },
+          { header: "Description", accessor: (e) => e.description },
+          { header: "Amount", accessor: (e) => e.amount },
+          { header: "Status", accessor: (e) => e.status },
+        ]} />
+        <Button onClick={() => { setEditing(null); setFormOpen(true); }} className="gap-2"><Plus size={18} /> Log expense</Button>
+      </div>
       <DataTable columns={columns} data={data ?? []} getRowId={(e) => e.id} loading={loading} error={error} onRetry={reload}
         emptyTitle="No expenses" emptyDescription="Logged expenses will appear here." pageSize={10} />
       <ExpenseFormDialog open={formOpen} onOpenChange={setFormOpen} editing={editing} onDone={reload} />

@@ -7,6 +7,7 @@ import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
 import { PageHeader } from "@/components/app/page-header";
+import { ExportCsvButton } from "@/components/app/export-csv-button";
 import { StatusBadge } from "@/components/app/status";
 import { RowActions } from "@/components/app/row-actions";
 import { DeleteConfirmation } from "@/components/app/delete-confirmation";
@@ -134,7 +135,20 @@ export default function LeadsPage() {
   return (
     <div>
       <PageHeader title="CRM / Leads" subtitle="Prospects and enquiries — including live submissions from the marketing site"
-        actions={<Button onClick={() => { setEditing(null); setFormOpen(true); }} className="gap-2"><Plus size={18} /> Add lead</Button>} />
+        actions={
+          <div className="flex flex-wrap gap-2">
+            <ExportCsvButton data={data ?? []} filename="leads" columns={[
+              { header: "Name", accessor: (l) => l.name },
+              { header: "Email", accessor: (l) => l.email },
+              { header: "Phone", accessor: (l) => l.phone },
+              { header: "Source", accessor: (l) => l.source },
+              { header: "Service", accessor: (l) => l.service },
+              { header: "Status", accessor: (l) => l.status },
+              { header: "Value", accessor: (l) => l.value },
+            ]} />
+            <Button onClick={() => { setEditing(null); setFormOpen(true); }} className="gap-2"><Plus size={18} /> Add lead</Button>
+          </div>
+        } />
 
       <div className="mb-4 flex flex-col gap-3 sm:flex-row sm:items-center">
         <div className="inline-flex rounded-md border border-border p-0.5">

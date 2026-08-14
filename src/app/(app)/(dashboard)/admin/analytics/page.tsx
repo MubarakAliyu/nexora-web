@@ -10,9 +10,9 @@ import { selectClass } from "@/components/forms/field";
 import { BarChart, LineChart, DonutChart, CHART_PALETTE } from "@/components/ui/chart";
 import { Skeleton, SkeletonChart } from "@/components/ui/skeleton";
 import { EmptyState } from "@/components/ui/empty-state";
-import { toast } from "@/components/ui/sonner";
 import { useAsync, debugErrorFlag } from "@/lib/use-async";
 import { formatUGX } from "@/lib/format";
+import { generateCSV } from "@/lib/csv";
 import { getAnalytics, type Scope } from "@/lib/api/admin";
 
 export default function AnalyticsPage() {
@@ -33,8 +33,19 @@ export default function AnalyticsPage() {
               <option value="ytd">Year to date</option>
               <option value="12m">Last 12 months</option>
             </select>
-            <Button variant="outline" className="gap-2" onClick={() => toast.info("Export", { description: "CSV / PDF export is mocked in this build." })}>
-              <Download size={18} /> Export
+            <Button variant="outline" className="gap-2" disabled={!data} onClick={() => data && generateCSV(
+              [
+                { metric: "Occupancy rate", value: `${data.occupancyRate}%` },
+                { metric: "Collection rate", value: `${data.collectionRate}%` },
+                { metric: "Arrears", value: data.arrears },
+                { metric: "Avg. resolution (days)", value: data.avgResolutionDays },
+                { metric: "Tenant retention", value: `${data.retentionRate}%` },
+                ...data.revenueByProperty.map((r) => ({ metric: `Revenue — ${r.name}`, value: r.value })),
+              ],
+              [{ header: "Metric", accessor: (r) => r.metric }, { header: "Value", accessor: (r) => r.value }],
+              "analytics",
+            )}>
+              <Download size={18} /> Export CSV
             </Button>
           </div>
         }

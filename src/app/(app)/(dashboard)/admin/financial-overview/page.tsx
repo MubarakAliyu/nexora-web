@@ -4,6 +4,7 @@ import * as React from "react";
 import Link from "next/link";
 import { Cash, ChartLineUp, Receipt, ChartPie, Search } from "flowbite-react-icons/outline";
 import { PageHeader } from "@/components/app/page-header";
+import { ExportCsvButton } from "@/components/app/export-csv-button";
 import { StatusBadge } from "@/components/app/status";
 import { Card } from "@/components/ui/card";
 import { StatCard } from "@/components/ui/stat-card";
@@ -345,6 +346,17 @@ export default function FinancialOverviewPage() {
             </select>
             <Input type="date" value={from} onChange={(e) => setFrom(e.target.value)} aria-label="From" className="h-10" />
             <Input type="date" value={to} onChange={(e) => setTo(e.target.value)} aria-label="To" className="h-10" />
+          </div>
+          <div className="mb-3 flex justify-end">
+            <ExportCsvButton data={tx.data ?? []} filename="transactions" columns={[
+              { header: "Date", accessor: (r) => r.date.slice(0, 10) },
+              { header: "Type", accessor: (r) => r.kind },
+              { header: "Description", accessor: (r) => r.description },
+              { header: "Direction", accessor: (r) => r.direction },
+              { header: "Amount", accessor: (r) => r.amount },
+              { header: "Status", accessor: (r) => r.status },
+              { header: "Reference", accessor: (r) => r.reference },
+            ]} />
           </div>
           <DataTable columns={txColumns} data={tx.data ?? []} getRowId={(r) => r.id} loading={tx.loading} error={tx.error} onRetry={tx.reload} onRowClick={(r) => setDetail(r)} emptyTitle="No transactions" emptyDescription="Financial records will appear here." pageSize={12} />
         </TabsContent>

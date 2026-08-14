@@ -3,6 +3,7 @@
 import * as React from "react";
 import { Search } from "flowbite-react-icons/outline";
 import { PageHeader } from "@/components/app/page-header";
+import { ExportCsvButton } from "@/components/app/export-csv-button";
 import { StatusBadge } from "@/components/app/status";
 import { Badge } from "@/components/ui/badge";
 import { DataTable, type Column } from "@/components/ui/data-table";
@@ -135,7 +136,18 @@ export default function ServiceBookingsPage() {
 
   return (
     <div>
-      <PageHeader title="Service Bookings" subtitle="Cleaning and Home & Lifestyle service requests from the marketing site" />
+      <PageHeader title="Service Bookings" subtitle="Cleaning and Home & Lifestyle service requests from the marketing site"
+        actions={<ExportCsvButton data={rows} filename="service-bookings" columns={[
+          { header: "Reference", accessor: (s) => s.reference },
+          { header: "Client", accessor: (s) => s.name },
+          { header: "Phone", accessor: (s) => s.phone },
+          { header: "Service", accessor: (s) => s.kind },
+          { header: "Category", accessor: (s) => s.category },
+          { header: "Date", accessor: (s) => s.date.slice(0, 10) },
+          { header: "Assignee", accessor: (s) => s.assignee ?? "" },
+          { header: "Status", accessor: (s) => s.status },
+          { header: "Location", accessor: (s) => s.location },
+        ]} />} />
 
       <div className="mb-4 grid gap-3 sm:grid-cols-2 lg:grid-cols-5">
         <div className="relative">

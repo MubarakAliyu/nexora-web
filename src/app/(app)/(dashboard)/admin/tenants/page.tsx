@@ -4,6 +4,7 @@ import * as React from "react";
 import { useRouter } from "next/navigation";
 import { Search, Plus, PenNib } from "flowbite-react-icons/outline";
 import { PageHeader } from "@/components/app/page-header";
+import { ExportCsvButton } from "@/components/app/export-csv-button";
 import { StatusBadge } from "@/components/app/status";
 import { RowActions } from "@/components/app/row-actions";
 import { TenantFormDialog } from "@/components/admin/tenant-form-dialog";
@@ -79,7 +80,18 @@ export default function TenantsPage() {
       <PageHeader
         title="Tenants"
         subtitle="Everyone renting across the portfolio"
-        actions={<Button onClick={() => { setEditing(null); setFormOpen(true); }} className="gap-2"><Plus size={18} /> Add tenant</Button>}
+        actions={
+          <div className="flex flex-wrap gap-2">
+            <ExportCsvButton data={data ?? []} filename="tenants" columns={[
+              { header: "Name", accessor: (t) => t.name },
+              { header: "Email", accessor: (t) => t.email },
+              { header: "Phone", accessor: (t) => t.phone },
+              { header: "Status", accessor: (t) => t.status },
+              { header: "Since", accessor: (t) => t.since.slice(0, 10) },
+            ]} />
+            <Button onClick={() => { setEditing(null); setFormOpen(true); }} className="gap-2"><Plus size={18} /> Add tenant</Button>
+          </div>
+        }
       />
 
       <div className="mb-4 flex flex-col gap-3 sm:flex-row sm:items-center">

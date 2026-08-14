@@ -4,6 +4,7 @@ import * as React from "react";
 import { useRouter } from "next/navigation";
 import { Search, Plus, PenNib } from "flowbite-react-icons/outline";
 import { PageHeader } from "@/components/app/page-header";
+import { ExportCsvButton } from "@/components/app/export-csv-button";
 import { RowActions } from "@/components/app/row-actions";
 import { OwnerFormDialog } from "@/components/admin/owner-form-dialog";
 import { DataTable, type Column } from "@/components/ui/data-table";
@@ -65,7 +66,18 @@ export default function OwnersPage() {
       <PageHeader
         title="Owners"
         subtitle="Property owners in the Nexora portfolio"
-        actions={<Button onClick={() => { setEditing(null); setFormOpen(true); }} className="gap-2"><Plus size={18} /> Add owner</Button>}
+        actions={
+          <div className="flex flex-wrap gap-2">
+            <ExportCsvButton data={data ?? []} filename="owners" columns={[
+              { header: "Name", accessor: (o) => o.name },
+              { header: "Email", accessor: (o) => o.email },
+              { header: "Phone", accessor: (o) => o.phone },
+              { header: "Properties", accessor: (o) => o.propertyIds.length },
+              { header: "Since", accessor: (o) => o.since.slice(0, 10) },
+            ]} />
+            <Button onClick={() => { setEditing(null); setFormOpen(true); }} className="gap-2"><Plus size={18} /> Add owner</Button>
+          </div>
+        }
       />
       <div className="mb-4 sm:max-w-xs">
         <div className="relative">

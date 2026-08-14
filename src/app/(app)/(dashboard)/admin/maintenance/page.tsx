@@ -6,6 +6,7 @@ import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
 import { PageHeader } from "@/components/app/page-header";
+import { ExportCsvButton } from "@/components/app/export-csv-button";
 import { StatusBadge, PriorityBadge } from "@/components/app/status";
 import { RowActions } from "@/components/app/row-actions";
 import { DeleteConfirmation } from "@/components/app/delete-confirmation";
@@ -169,7 +170,21 @@ export default function MaintenancePage() {
   return (
     <div>
       <PageHeader title="Maintenance" subtitle="Track and resolve maintenance tickets"
-        actions={<Button onClick={() => setCreateOpen(true)} className="gap-2"><Plus size={18} /> Create ticket</Button>} />
+        actions={
+          <div className="flex flex-wrap gap-2">
+            <ExportCsvButton data={data ?? []} filename="maintenance-tickets" columns={[
+              { header: "Ref", accessor: (t) => t.ref },
+              { header: "Title", accessor: (t) => t.title },
+              { header: "Property", accessor: (t) => propertyName(t.propertyId) },
+              { header: "Category", accessor: (t) => t.category },
+              { header: "Priority", accessor: (t) => t.priority },
+              { header: "Status", accessor: (t) => t.status },
+              { header: "Assignee", accessor: (t) => t.assignee ?? "" },
+              { header: "Cost", accessor: (t) => t.cost ?? "" },
+            ]} />
+            <Button onClick={() => setCreateOpen(true)} className="gap-2"><Plus size={18} /> Create ticket</Button>
+          </div>
+        } />
       {filters}
 
       {loading ? (

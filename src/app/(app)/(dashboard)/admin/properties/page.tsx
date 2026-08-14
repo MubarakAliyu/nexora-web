@@ -5,6 +5,7 @@ import Image from "next/image";
 import { useRouter } from "next/navigation";
 import { Plus, Search, PenNib, TrashBin } from "flowbite-react-icons/outline";
 import { PageHeader } from "@/components/app/page-header";
+import { ExportCsvButton } from "@/components/app/export-csv-button";
 import { StatusBadge } from "@/components/app/status";
 import { RowActions } from "@/components/app/row-actions";
 import { DeleteConfirmation } from "@/components/app/delete-confirmation";
@@ -83,7 +84,20 @@ export default function PropertiesPage() {
       <PageHeader
         title="Properties"
         subtitle="Every property under Nexora management"
-        actions={<Button onClick={openCreate} className="gap-2"><Plus size={18} /> Add property</Button>}
+        actions={
+          <div className="flex flex-wrap gap-2">
+            <ExportCsvButton data={data ?? []} filename="properties" columns={[
+              { header: "Name", accessor: (p) => p.name },
+              { header: "Location", accessor: (p) => p.location },
+              { header: "Category", accessor: (p) => p.category },
+              { header: "Units", accessor: (p) => p.units },
+              { header: "Occupancy %", accessor: (p) => p.occupancy },
+              { header: "Revenue/mo", accessor: (p) => p.monthlyRevenue },
+              { header: "Status", accessor: (p) => p.status },
+            ]} />
+            <Button onClick={openCreate} className="gap-2"><Plus size={18} /> Add property</Button>
+          </div>
+        }
       />
 
       <div className="mb-4 flex flex-col gap-3 sm:flex-row sm:items-center">
