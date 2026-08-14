@@ -15,19 +15,23 @@ All build batches are complete and the production build passes clean (80 routes)
 | 0–2 | Setup, design system, component library | ✅ |
 | 3–7 | Marketing site (home, about, services, portfolio, projects, investors, blog, careers, contact, forms) | ✅ |
 | 8 | Authentication + role-aware app shell | ✅ |
-| 9 | Admin dashboard (14 modules) | ✅ |
+| 9 | Admin dashboard (16 modules) | ✅ |
 | 10 | Owner portal | ✅ |
 | 11 | Tenant portal (rent, requests, bookings, documents) | ✅ |
 | 12 | Motion polish, responsive QA, performance, accessibility, SEO | ✅ |
 | Revisions 1–3 | Brand refresh, 6 services, rental types, public rental browsing, booking + inquiry flows, admin/owner booking modules | ✅ |
+| Revision A | Management Agreements module, wallet removed, Financial Overview (agreement-driven commission) | ✅ |
+| Revision B | Owner/tenant onboarding + forced password change, 7-step property wizard, owner read-only lockdown, staff module | ✅ |
+| Revision C | Enhanced lease statuses (auto expiring/expired), deposit expansion + termination outcomes, Move-Out & Deposit Settlement wizard, tenant lease enhancements | ✅ |
+| Revision D | Owner settlement workflow, owner financials restructure, notification coverage, CSV exports + integration modals (zero stubs) | ✅ |
 
 ### Public routes (crawlable)
 `/` · `/about` · `/services` + `/services/[slug]` · `/portfolio` + `/portfolio/[slug]` · `/projects` · `/investors` · `/blog` + `/blog/[slug]` · `/careers` · `/contact` · `/request-a-quote` · `/rentals` + `/rentals/[id]` · `/book/cleaning` · `/book/lifestyle`
 
 ### App routes (authenticated, noindexed)
 - **Auth:** `/login` · `/register` · `/forgot-password` · `/reset-password` · `/verify-email` · `/2fa`
-- **Admin:** `/admin` · `/properties` (+`/[id]`) · `/units` · `/owners` (+`/[id]`) · `/tenants` (+`/[id]`) · `/leases` · `/finance` · `/wallet` · `/maintenance` · `/leads` (+`/[id]`) · `/bookings` · `/service-bookings` · `/analytics` · `/announcements` · `/staff` · `/settings`
-- **Owner:** `/owner` · `/properties` (+`/[slug]`) · `/financials` · `/reports` · `/documents` · `/notifications` · `/settings`
+- **Admin:** `/admin` · `/properties` (+`/[id]`) · `/units` · `/owners` (+`/[id]`) · `/tenants` (+`/[id]`) · `/leases` (+`/[id]/move-out`) · `/finance` · `/financial-overview` · `/agreements` (+`/[id]`) · `/maintenance` · `/leads` (+`/[id]`) · `/bookings` · `/service-bookings` · `/analytics` · `/announcements` · `/staff` (+`/[id]`) · `/settings`
+- **Owner:** `/owner` · `/properties` (+`/[slug]`) · `/agreement` · `/financials` · `/reports` · `/documents` · `/notifications` · `/settings`
 - **Tenant:** `/tenant` · `/lease` · `/payments` · `/maintenance` · `/bookings` · `/documents`
 
 ---
@@ -151,8 +155,11 @@ The app currently runs on mocked authentication. Every account uses password **`
 | `admin@nexora.co.ug` | Super Admin | `/admin` |
 | `manager@nexora.co.ug` | Property Manager | `/admin` |
 | `finance@nexora.co.ug` | Finance Officer | `/admin` |
-| `salim@gmail.com` | Owner | `/owner` |
-| `mubarak@gmail.com` | Tenant | `/tenant` |
+| `salim@gmail.com` | Owner | `/owner` (owns 4 properties; reconciles with admin Financial Overview) |
+| `mubarak@gmail.com` | Tenant | `/tenant` (rents Nakasero A-407) |
+| `newowner@test.com` | Owner (onboarding demo) | Forced `/change-password` on first login — temp password **`TempPass-1234`** |
+
+**Branded PDFs:** Invoice · Receipt · Owner Statement · Lease Agreement · Deposit Settlement Statement (Move-Out) · Settlement Statement (owner payout). **CSV exports** on every admin list (properties, units, tenants, owners, leases, invoices, payments, expenses, tickets, leads, bookings, transactions, analytics).
 
 ---
 

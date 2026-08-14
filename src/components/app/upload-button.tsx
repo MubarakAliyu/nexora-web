@@ -8,7 +8,7 @@ import { recordMutation } from "@/lib/api/actions";
 /**
  * Real file-input trigger. Opens the OS picker; on selection it records the
  * upload (audit + toast). No backend in the mock build, but the interaction is
- * genuine — the chosen file's name is surfaced, not a fake "coming soon" toast.
+ * genuine — the chosen file's name is surfaced and recorded to the audit trail.
  */
 export function UploadButton({
   label = "Upload", accept, entityType = "document", entityName = "Document",

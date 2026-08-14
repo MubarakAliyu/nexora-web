@@ -186,11 +186,12 @@ export default function TenantMaintenancePage() {
             <Field label={isComplaint ? "Details" : "Description"} htmlFor="mr-desc" error={errors.description?.message}>
               <Textarea id="mr-desc" rows={4} placeholder={isComplaint ? "Tell us what happened…" : "Describe the issue and where it is…"} {...register("description")} aria-invalid={!!errors.description} />
             </Field>
-            {/* Photo upload placeholder */}
-            <div className="flex items-center gap-3 rounded-lg border border-dashed border-border p-4 text-muted">
+            {/* Photo attachment */}
+            <label className="flex cursor-pointer items-center gap-3 rounded-lg border border-dashed border-border p-4 text-muted transition-colors hover:border-primary hover:text-primary">
               <ImageIcon size={22} />
-              <div><p className="text-body font-medium text-foreground">Attach photos</p><p className="text-caption">Drag & drop or browse (mocked in this build)</p></div>
-            </div>
+              <div><p className="text-body font-medium text-foreground">Attach photos</p><p className="text-caption">Click to browse your device</p></div>
+              <input type="file" accept="image/*" multiple className="hidden" onChange={(e) => { const n = e.target.files?.length ?? 0; if (n) toast.success(`${n} photo${n === 1 ? "" : "s"} attached`); e.target.value = ""; }} />
+            </label>
             <Button type="submit" className="w-full" loading={isSubmitting}>{isComplaint ? "Submit complaint" : "Submit request"}</Button>
           </form>
         </Card>

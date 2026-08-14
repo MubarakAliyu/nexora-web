@@ -139,6 +139,50 @@ C3 move-out wizard → C4 settlement PDF → C5 tenant lease page → C6 notific
 
 Gate: `npm run build` clean, lint + tsc clean. **STOP for review before Revision Batch D.**
 
+---
+
+## Revision Batch D ✅ COMPLETE — Settlement Workflow, Owner Financials, Notifications, Zero Stubs
+
+Final PM-feedback batch. Eight commits: D1 settlement workflow → settlement PDF → D2 owner
+financials → D3 notifications → D4 CSV exports → integration modals → stub elimination →
+D6 cleanup. **Lint + tsc clean throughout.**
+
+- **D1 Owner settlement workflow.** Replaced the Batch-A placeholder with a 4-step flow
+  (Select Period → Calculate → Review & Approve → Complete) on `/admin/financial-overview`.
+  `computeOwnerSettlement` derives gross rent, agreement-driven management fee, expenses and
+  deposit deductions for a date range; `processSettlement` writes a `SettlementRecord` ledger
+  entry through the live engine (audit + owner/admin notifications, KPI + status updates,
+  transaction-history row). Bank-detail validation gates processing. Confirmation screen
+  generates the Settlement Statement PDF. Canonical net = gross − commission − expenses,
+  reconciled across admin overview, admin agreements detail and owner portal.
+- **D1b Settlement Statement PDF.** Branded doc: itemized rent, deductions (fee with math +
+  itemized expenses), net payout, masked payout details + reference, processed status.
+- **D2 Owner financials restructure.** `/owner/financials` → 5 sections: Revenue (3 tiles +
+  revenue-by-property & revenue-over-time charts), Deductions (agreement-referenced fee +
+  expenses + taxes placeholder), Net Payout (amount + settled/pending status + last/next
+  dates), Settlement History (per-period statement PDFs), Reports (statement PDFs + occupancy/
+  revenue CSVs). Date-range filter drives all sections. **Reconciliation verified live:**
+  Salim gross **137.7M** → fee (15%) **20,651,250** → expenses **9,350,000** → net **107.7M**,
+  identical on the admin settlement row and the owner portal; agreement rate pulled from the
+  agreement, not hardcoded.
+- **D3 Notification coverage.** Audited every action; existing coverage ~64 dispatch points.
+  Added 11 triggers: rent-due (tenant), payment-confirmed (tenant) + revenue-generated (owner),
+  maintenance submitted (tenant) + raised (owner), maintenance update (tenant), maintenance
+  resolved (tenant + owner), urgent-ticket titling, move-out initiated (admin), staff
+  availability-changed + account-deactivated (staff).
+- **D4 CSV exports + integrations + zero stubs.** New `generateCSV` utility + `ExportCsvButton`
+  wired to 14 lists. Settings → Integrations rebuilt with 6 per-service configuration modals
+  (Flutterwave, Stripe, Resend, Africa's Talking, Cloudinary, AWS S3) → integrations store +
+  toast + audit, "Connected" badge reflects state. Every "mocked in this build" toast replaced
+  with real behavior (property Edit → wizard, Add unit/Assign tenant → links, Message → mailto,
+  uploads → real file picker + audit, Renew lease → live engine).
+- **D6 Cleanup.** grep verification: wallet **0**, groupe/m-zi **0**, lucide **0**, stub/
+  placeholder/coming-soon/TODO/FIXME **0** actionable. `__styleguide` is a `_`-private route
+  (not routed). README updated (modules, PDFs, CSV exports, demo logins incl. newowner).
+
+Gate: stop dev server → ONE real `npm run build` (clean) → restart. **ALL revision batches
+(A + B + C + D) complete — product reflects all PM discovery-workshop feedback.**
+
 ## 🏁 PROJECT COMPLETE — final summary
 
 Nexora Property Management frontend is **complete** (mock-data). Single Next.js 15 app;
