@@ -10,19 +10,19 @@ import {
   ownerGrossRevenue, ownerExpenses, CONTRACT_TYPE_LABEL,
 } from "@/lib/api/agreements";
 import { hasSettlementForPeriod, defaultSettlementPeriod } from "@/lib/api/settlement";
+import { serviceRevenueCollected } from "@/lib/api/service-lifecycle";
 import type { ContractType } from "@/lib/mock/types";
 
 const mDelay = (ms = 400) => new Promise((r) => setTimeout(r, ms));
 const NOW = new Date(db.NOW_ISO);
 
-/** Mock service-booking price by category (records-only; no gateway). */
-const SERVICE_PRICE: Record<string, number> = {
-  "Residential Cleaning": 180_000, "Commercial Cleaning": 350_000, "Deep Cleaning": 420_000,
-  "Move-In/Move-Out": 300_000, "Event Cleaning": 500_000, "Facility Cleaning": 650_000, "Scheduled Programme": 900_000,
-  Laundry: 120_000, "Mobile Car Wash": 90_000, "Gardening & Lawn": 250_000, Janitorial: 400_000,
-};
-export function serviceBookingAmount(category: string): number {
-  return SERVICE_PRICE[category] ?? 200_000;
+/**
+ * E3: there is deliberately NO service rate card. A service booking's value comes
+ * only from its on-site assessment → invoice → payment chain, so revenue is read
+ * from what was actually invoiced/collected on the booking itself.
+ */
+export function serviceBookingAmount(sb: { paidAmount?: number; invoiceAmount?: number; assessedAmount?: number }): number {
+  return sb.paidAmount ?? sb.invoiceAmount ?? sb.assessedAmount ?? 0;
 }
 
 const monthOf = (iso: string) => iso.slice(0, 7);
@@ -42,7 +42,7 @@ export async function getFinancialKpis(scope?: { forceError?: boolean }): Promis
   await mDelay();
   if (scope?.forceError) throw new Error("Failed to load financials.");
   const rentRevenue = db.payments.filter((p) => p.status === "completed").reduce((s, p) => s + p.amount, 0);
-  const serviceRevenue = db.serviceBookings.filter((s) => s.status !== "cancelled").reduce((sum, sb) => sum + serviceBookingAmount(sb.category), 0);
+  const serviceRevenue = serviceRevenueCollected();
   let totalSettlements = 0, pendingPayouts = 0, nexoraEarnings = 0;
   for (const owner of db.owners) {
     const a = getAgreementForOwner(owner.id);
@@ -75,7 +75,7 @@ export async function getRevenueBreakdown(scope?: { forceError?: boolean }): Pro
   const svcByMonth = new Map<string, number>();
   db.serviceBookings.filter((s) => s.status !== "cancelled").forEach((s) => {
     const m = monthOf(s.createdAt);
-    svcByMonth.set(m, (svcByMonth.get(m) ?? 0) + serviceBookingAmount(s.category));
+    svcByMonth.set(m, (svcByMonth.get(m) ?? 0) + serviceBookingAmount(s));
   });
   const sortedRent = [...rentByMonth.entries()].sort();
   const sortedSvc = [...svcByMonth.entries()].sort();
@@ -130,13 +130,19 @@ function allTransactions(): FinanceTxRow[] {
     });
   });
 
+  // E3: service revenue is REAL money — only invoiced/paid bookings appear, dated by
+  // the payment (or invoice) rather than the booking, and linked to their source.
   db.serviceBookings.forEach((s) => {
+    const amount = serviceBookingAmount(s);
+    if (!amount) return; // not yet assessed → no revenue to report
+    const settled = (s.paidAmount ?? 0) > 0;
     rows.push({
-      id: `tx_${s.id}`, date: s.createdAt, kind: "Service Payment",
+      id: `tx_${s.id}`, date: s.paidAt ?? s.invoiceGeneratedAt ?? s.createdAt, kind: "Service Payment",
       description: `${s.category} — ${s.name}`,
-      amount: serviceBookingAmount(s.category), direction: "in",
-      status: s.status === "cancelled" ? "failed" : s.status === "completed" ? "completed" : "pending",
-      reference: s.reference,
+      amount, direction: "in",
+      status: s.status === "cancelled" ? "failed" : settled ? "completed" : "pending",
+      reference: s.paymentReference ?? s.invoiceNumber ?? s.reference,
+      entity: { label: s.reference, href: `/admin/service-bookings?booking=${s.id}` },
     });
   });
 

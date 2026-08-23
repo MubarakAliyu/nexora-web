@@ -5,7 +5,7 @@
  */
 import * as db from "@/lib/mock/db";
 import type { Invoice, Payment, Lease } from "@/lib/mock/types";
-import type { InvoicePdfData, ReceiptPdfData, StatementPdfData, LeasePdfData, DepositSettlementPdfData, SettlementStatementPdfData, PdfPayload } from "./documents";
+import type { InvoicePdfData, ReceiptPdfData, StatementPdfData, LeasePdfData, DepositSettlementPdfData, SettlementStatementPdfData, ServiceInvoicePdfData, PdfPayload } from "./documents";
 import { computeOwnerSettlement } from "@/lib/api/settlement";
 import type { SettlementRecord } from "@/lib/mock/types";
 import { slugFile } from "./download";
@@ -59,6 +59,34 @@ export function leasePdf(lease: Lease): { payload: PdfPayload; filename: string 
 export function leasePdfForProperty(propertyId: string): { payload: PdfPayload; filename: string } | null {
   const lease = db.leases.find((l) => l.propertyId === propertyId && l.status !== "terminated") ?? db.leases.find((l) => l.propertyId === propertyId);
   return lease ? leasePdf(lease) : null;
+}
+
+/** Service invoice / receipt — priced from the on-site assessment, never a rate card. */
+export function serviceInvoicePdf(bookingId: string, mode: "invoice" | "receipt" = "invoice"): { payload: PdfPayload; filename: string } {
+  const sb = db.serviceBookings.find((b) => b.id === bookingId);
+  if (!sb) throw new Error("Service booking not found");
+  const number = sb.invoiceNumber ?? sb.reference.replace("NX-SV-", "INV-SV-");
+  const data: ServiceInvoicePdfData = {
+    mode,
+    number: mode === "receipt" ? number.replace("INV-", "RCP-") : number,
+    bookingRef: sb.reference,
+    issued: formatDate(sb.invoiceGeneratedAt ?? sb.createdAt),
+    due: sb.invoiceDueDate ? formatDate(sb.invoiceDueDate) : undefined,
+    clientName: sb.name, email: sb.email, phone: sb.phone, address: sb.location,
+    serviceType: sb.kind === "cleaning" ? "Cleaning" : "Home & Lifestyle",
+    category: sb.category,
+    scope: sb.assessmentScope ?? "Scope pending assessment",
+    assessedBy: sb.assessedBy,
+    assessedAt: sb.assessedAt ? formatDate(sb.assessedAt) : undefined,
+    amount: sb.invoiceAmount ?? sb.assessedAmount ?? 0,
+    paidAmount: sb.paidAmount, paymentMethod: sb.paymentMethod,
+    paymentReference: sb.paymentReference,
+    paidAt: sb.paidAt ? formatDate(sb.paidAt) : undefined,
+  };
+  return {
+    payload: { kind: "service-invoice", data },
+    filename: `Nexora-${mode === "receipt" ? "Service-Receipt" : "Service-Invoice"}-${data.number}`,
+  };
 }
 
 export interface DepositSettlementInput {

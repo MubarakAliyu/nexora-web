@@ -404,6 +404,78 @@ export function DepositSettlementDoc({ d }: { d: DepositSettlementPdfData }) {
   );
 }
 
+/* ------------------------------------------------- service invoice/receipt */
+
+export interface ServiceInvoicePdfData {
+  mode: "invoice" | "receipt";
+  number: string; bookingRef: string; issued: string; due?: string;
+  clientName: string; email: string; phone: string; address: string;
+  serviceType: string; category: string;
+  scope: string; assessedBy?: string; assessedAt?: string;
+  amount: number;
+  paidAmount?: number; paymentMethod?: string; paymentReference?: string; paidAt?: string;
+}
+
+export function ServiceInvoiceDoc({ d }: { d: ServiceInvoicePdfData }) {
+  const isReceipt = d.mode === "receipt";
+  return (
+    <Document title={`${isReceipt ? "Service Receipt" : "Service Invoice"} ${d.number}`} author="Nexora Property Management">
+      <Page size="A4" style={s.page}>
+        <Header title={isReceipt ? "SERVICE RECEIPT" : "SERVICE INVOICE"} />
+        {isReceipt && (
+          <View style={s.stamp}><Text style={s.stampText}>PAID</Text></View>
+        )}
+        <View style={s.row}>
+          <View style={s.block}>
+            <Text style={s.label}>Billed to</Text>
+            <Text style={[s.strong, s.metaLine]}>{d.clientName}</Text>
+            <Text style={s.metaLine}>{d.email}</Text>
+            <Text style={s.metaLine}>{d.phone}</Text>
+            <Text style={s.metaLine}>{d.address}</Text>
+          </View>
+          <View style={s.block}>
+            <Text style={s.label}>{isReceipt ? "Receipt no." : "Invoice no."}</Text>
+            <Text style={[s.strong, s.metaLine]}>{d.number}</Text>
+            <Text style={s.label}>Booking reference</Text>
+            <Text style={s.metaLine}>{d.bookingRef}</Text>
+            <Text style={s.label}>{isReceipt ? "Paid on" : "Issued"}</Text>
+            <Text style={s.metaLine}>{isReceipt ? (d.paidAt ?? d.issued) : d.issued}</Text>
+            {!isReceipt && d.due && (<><Text style={s.label}>Due</Text><Text style={s.metaLine}>{d.due}</Text></>)}
+          </View>
+        </View>
+
+        <Text style={s.clauseH}>Service &amp; assessed scope</Text>
+        <View style={s.table}>
+          <View style={s.tr}><Text style={s.cell}>Service</Text><Text style={s.cellRight}>{d.serviceType} — {d.category}</Text></View>
+          <View style={[s.tr, s.trAlt]}><Text style={s.cell}>Assessed scope</Text><Text style={s.cellRight}>{d.scope}</Text></View>
+          {d.assessedBy && <View style={s.tr}><Text style={s.cell}>Assessed by</Text><Text style={s.cellRight}>{d.assessedBy}{d.assessedAt ? ` · ${d.assessedAt}` : ""}</Text></View>}
+        </View>
+
+        <View style={s.grandRow}>
+          <Text style={s.grandLabel}>{isReceipt ? "Amount paid" : "Amount due"}</Text>
+          <Text style={s.grandValue}>{money(isReceipt ? (d.paidAmount ?? d.amount) : d.amount)}</Text>
+        </View>
+
+        <View style={s.note}>
+          {isReceipt ? (
+            <>
+              <Text style={s.noteTitle}>Payment received — thank you</Text>
+              <Text>Method: {d.paymentMethod ?? "—"} · Reference: {d.paymentReference ?? "—"}</Text>
+            </>
+          ) : (
+            <>
+              <Text style={s.noteTitle}>Payment instructions</Text>
+              <Text>Pay by mobile money, bank transfer or card, quoting {d.number}. Work will commence upon confirmation of payment.</Text>
+            </>
+          )}
+        </View>
+
+        <Footer note={`Priced from an on-site assessment · ${d.bookingRef}`} />
+      </Page>
+    </Document>
+  );
+}
+
 /* -------------------------------------------------- settlement statement */
 
 export interface SettlementStatementPdfData {
@@ -486,7 +558,9 @@ export type PdfPayload =
   | { kind: "statement"; data: StatementPdfData }
   | { kind: "lease"; data: LeasePdfData }
   | { kind: "deposit"; data: DepositSettlementPdfData }
-  | { kind: "settlement"; data: SettlementStatementPdfData };
+  | { kind: "settlement"; data: SettlementStatementPdfData }
+  | { kind: "service-invoice"; data: ServiceInvoicePdfData };
+
 
 export function renderDocument(p: PdfPayload): React.ReactElement<DocumentProps> {
   const el =
@@ -495,6 +569,7 @@ export function renderDocument(p: PdfPayload): React.ReactElement<DocumentProps>
     : p.kind === "statement" ? <StatementDoc d={p.data} />
     : p.kind === "deposit" ? <DepositSettlementDoc d={p.data} />
     : p.kind === "settlement" ? <SettlementStatementDoc d={p.data} />
+    : p.kind === "service-invoice" ? <ServiceInvoiceDoc d={p.data} />
     : <LeaseDoc d={p.data} />;
   return el as unknown as React.ReactElement<DocumentProps>;
 }
