@@ -12,7 +12,7 @@ import * as db from "@/lib/mock/db";
 import { recordMutation } from "@/lib/api/actions";
 import { incrementStaffJobs, pushNotify } from "@/lib/api/admin-mutations";
 import { leaseView } from "@/lib/lease";
-import type { Role } from "@/lib/roles";
+import { roleLabels, type Role } from "@/lib/roles";
 import { monthlyCommission, effectiveRate, agreementRateLabel, CONTRACT_TYPE_LABEL } from "@/lib/api/agreements";
 import type {
   Activity,
@@ -33,6 +33,8 @@ import type {
   RentalType,
   RentalPaymentMode,
   Staff,
+  StaffAvailability,
+  StaffType,
   Tenant,
   TicketStatus,
   Unit,
@@ -41,7 +43,7 @@ import type {
 } from "@/lib/mock/types";
 
 export type { Activity, Announcement, AudienceKind, BroadcastChannel, CommLog, Expense, ExpenseCategory, Invoice, Lead, LeadActivity, Lease, MaintenanceTicket, Owner, Payment, Property, Staff, Tenant, Unit };
-export type { Building, LeaseStatus, InvoiceStatus, TicketStatus, TicketPriority, UnitStatus, UnitType, PropertyStatus, TicketCategory, PaymentMethod, LeadStatus } from "@/lib/mock/types";
+export type { Building, LeaseStatus, InvoiceStatus, TicketStatus, TicketPriority, UnitStatus, UnitType, PropertyStatus, TicketCategory, PaymentMethod, LeadStatus, StaffDepartment, StaffAvailability, StaffType } from "@/lib/mock/types";
 export type { RoleDef, PermissionSet } from "@/lib/mock/types";
 export type { RentalType, RentalPaymentMode, RentalListing, ShortTermPricing } from "@/lib/mock/types";
 export type { Booking, BookingStatus, ServiceBooking, ServiceBookingStatus, ServiceBookingKind } from "@/lib/mock/types";
@@ -690,11 +692,68 @@ export async function listStaff(scope?: Scope): Promise<Staff[]> {
   return respond([...db.staff], { error: scope?.forceError });
 }
 
-/** Active staff for cross-module assignment dropdowns (maintenance, services). */
-export function staffOptions(): { id: string; name: string; role: Role; availability: string }[] {
-  return db.staff
-    .filter((s) => s.status === "active")
-    .map((s) => ({ id: s.id, name: s.name, role: s.role, availability: s.availability ?? "available" }));
+export interface StaffOption {
+  id: string;
+  name: string;
+  role?: Role;
+  availability: StaffAvailability;
+  jobTitle?: string;
+  department?: string;
+  staffType: StaffType;
+  /** "Fred Wanyama — Plumbing Technician · Busy" — ready for a dropdown. */
+  label: string;
+}
+
+const AVAIL_LABEL: Record<StaffAvailability, string> = {
+  available: "Available", busy: "Busy", off: "On leave", on_leave: "On leave",
+};
+
+/**
+ * THE central staff directory for every assignment dropdown (maintenance tickets,
+ * service bookings, move-out inspections). No module may hardcode staff names.
+ *
+ * `departments` narrows to operational staff in those departments; `roles` additionally
+ * admits system users holding one of those platform roles (e.g. a Maintenance Officer
+ * can still be assigned a ticket). Called with no filter it returns all active staff,
+ * preserving the Revision B behaviour.
+ */
+export function staffOptions(filter?: { departments?: string[]; roles?: Role[] }): StaffOption[] {
+  const rows = db.staff.filter((s) => s.status === "active").filter((s) => {
+    if (!filter) return true;
+    const isOps = (s.staffType ?? "system_user") === "operational_staff";
+    if (isOps) return filter.departments ? filter.departments.includes(s.department ?? "") : false;
+    return filter.roles ? !!s.role && filter.roles.includes(s.role) : false;
+  });
+  return rows.map((s) => {
+    const availability = (s.availability ?? "available") as StaffAvailability;
+    const detail = s.jobTitle ?? (s.role ? roleLabels[s.role] : s.department ?? "Staff");
+    return {
+      id: s.id, name: s.name, role: s.role, availability,
+      jobTitle: s.jobTitle, department: s.department,
+      staffType: (s.staffType ?? "system_user") as StaffType,
+      label: `${s.name} — ${detail} · ${AVAIL_LABEL[availability]}`,
+    };
+  });
+}
+
+/** Operational staff eligible for a service booking, filtered by service type. */
+export function serviceStaffFor(kind: string, category?: string): StaffOption[] {
+  const c = (category ?? "").toLowerCase();
+  const dept =
+    c.includes("laundry") ? "laundry"
+    : c.includes("car wash") || c.includes("carwash") ? "car_wash"
+    : kind === "cleaning" || c.includes("clean") ? "cleaning"
+    : null;
+  // Unmatched services (gardening, janitorial…) can go to any active field worker.
+  const opts = dept ? staffOptions({ departments: [dept] }) : [];
+  return opts.length
+    ? opts
+    : staffOptions().filter((s) => s.staffType === "operational_staff");
+}
+
+/** Staff assignable to a maintenance ticket: maintenance crew + Maintenance Officers. */
+export function maintenanceStaff(): StaffOption[] {
+  return staffOptions({ departments: ["maintenance"], roles: ["maintenance_officer"] });
 }
 
 export interface StaffAssignment {

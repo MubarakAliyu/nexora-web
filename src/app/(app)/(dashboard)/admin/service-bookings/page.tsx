@@ -19,9 +19,9 @@ import { formatDate, formatUGX } from "@/lib/format";
 import {
   listServiceBookings, getServiceBooking, updateServiceBookingStatus, assignServiceBooking,
 } from "@/lib/api/rentals";
+import { serviceStaffFor } from "@/lib/api/admin";
 import type { ServiceBooking, ServiceBookingStatus } from "@/lib/mock/types";
 
-const TECHS = ["James Odoi", "Fred Wanyama", "Peter Ssemakula", "SparkleClean Team", "GreenScape Crew"];
 const STATUS_ACTIONS: { status: ServiceBookingStatus; label: string }[] = [
   { status: "assigned", label: "Assign" },
   { status: "in_progress", label: "Start" },
@@ -90,7 +90,7 @@ function DetailDialog({ id, onOpenChange, onDone }: { id: string | null; onOpenC
                 <div className="flex gap-2">
                   <select className={selectClass} value={assignee} onChange={(e) => setAssignee(e.target.value)} aria-label="Assignee">
                     <option value="">Select…</option>
-                    {TECHS.map((t) => <option key={t} value={t}>{t}</option>)}
+                    {serviceStaffFor(data.kind, data.category).map((s) => <option key={s.id} value={s.name}>{s.label}</option>)}
                   </select>
                   <Button size="sm" variant="secondary" disabled={busy || !assignee} onClick={assign}>Assign</Button>
                 </div>

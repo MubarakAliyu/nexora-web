@@ -7,7 +7,7 @@
 
 import * as db from "@/lib/mock/db";
 import { recordMutation } from "@/lib/api/actions";
-import { incrementStaffJobs } from "@/lib/api/admin-mutations";
+import { incrementStaffJobs, decrementStaffJobs } from "@/lib/api/admin-mutations";
 import { useNotifications } from "@/lib/stores/notifications";
 import type {
   Booking,
@@ -508,6 +508,8 @@ export async function updateServiceBookingStatus(id: string, status: import("@/l
   if (!sb) throw new Error("Service booking not found");
   const before = sb.status;
   sb.status = status;
+  // E2: completed or cancelled work releases the job from the assignee.
+  if ((status === "completed" || status === "cancelled") && before !== status) decrementStaffJobs(sb.assignee);
   const admin = status === "completed"
     ? { title: "Service completed", body: `${sb.category} for ${sb.name}` }
     : { title: "Service booking updated", body: `${sb.reference} is now ${status.replace("_", " ")}.` };

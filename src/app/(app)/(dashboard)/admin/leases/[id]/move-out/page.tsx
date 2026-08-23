@@ -20,7 +20,7 @@ import { useAsync, debugErrorFlag } from "@/lib/use-async";
 import { downloadPdf } from "@/lib/pdf/download";
 import { depositSettlementPdf } from "@/lib/pdf/builders";
 import {
-  getLeaseDetail, initiateMoveOut, settleMoveOut, staffOptions, tenantName, unitLabel, propertyName,
+  getLeaseDetail, initiateMoveOut, settleMoveOut, maintenanceStaff, tenantName, unitLabel, propertyName,
   type DepositOutcome, type Scope,
 } from "@/lib/api/admin";
 
@@ -50,7 +50,7 @@ export default function MoveOutPage() {
   const id = params.id;
   const scope: Scope = React.useMemo(() => ({ forceError: debugErrorFlag() }), []);
   const { data, loading, error, reload } = useAsync(() => getLeaseDetail(id, scope), [id, scope]);
-  const inspectors = React.useMemo(() => staffOptions(), []);
+  const inspectors = React.useMemo(() => maintenanceStaff(), []);
 
   const [step, setStep] = React.useState(0);
   const [moveOutDate, setMoveOutDate] = React.useState("");
@@ -158,7 +158,7 @@ export default function MoveOutPage() {
           <Field label="Assign inspector" htmlFor="mo-inspector">
             <select id="mo-inspector" className={selectClass} value={inspector} onChange={(e) => setInspector(e.target.value)}>
               <option value="">Select a staff member…</option>
-              {inspectors.map((s) => <option key={s.id} value={s.name}>{s.name}{s.availability !== "available" ? ` (${s.availability})` : ""}</option>)}
+              {inspectors.map((s) => <option key={s.id} value={s.name}>{s.label}</option>)}
             </select>
           </Field>
           <Field label="Notes" htmlFor="mo-notes"><Textarea id="mo-notes" rows={2} value={notes} onChange={(e) => setNotes(e.target.value)} placeholder="e.g. Tenant has requested early termination" /></Field>

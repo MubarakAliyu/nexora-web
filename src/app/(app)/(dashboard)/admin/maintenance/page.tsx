@@ -23,7 +23,7 @@ import { toast } from "@/components/ui/sonner";
 import { useAsync, debugErrorFlag } from "@/lib/use-async";
 import { formatUGX, formatDate } from "@/lib/format";
 import {
-  listTickets, createTicket, updateTicket, closeTicket, deleteTicket, propertyName, unitLabel, tenantName, propertyOptions, unitOptions, staffOptions,
+  listTickets, createTicket, updateTicket, closeTicket, deleteTicket, propertyName, unitLabel, tenantName, propertyOptions, unitOptions, maintenanceStaff,
   type MaintenanceTicket, type TicketStatus, type TicketCategory, type TicketPriority, type Scope,
 } from "@/lib/api/admin";
 import { cn } from "@/lib/utils";
@@ -293,7 +293,7 @@ function TicketDialog({ ticket, onClose, onSaved, onDelete }: { ticket: Maintena
               <Field label="Technician" htmlFor="tk-tech">
                 <select id="tk-tech" className={selectClass} value={assignee} onChange={(e) => setAssignee(e.target.value)}>
                   <option value="">Unassigned</option>
-                  {staffOptions().map((s) => <option key={s.id} value={s.name}>{s.name}{s.availability !== "available" ? ` (${s.availability})` : ""}</option>)}
+                  {maintenanceStaff().map((s) => <option key={s.id} value={s.name}>{s.label}</option>)}
                 </select>
               </Field>
               <Field label="Cost (UGX)" htmlFor="tk-cost">
