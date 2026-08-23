@@ -49,6 +49,7 @@ import type {
   RoleDef,
   Staff,
   StaffAvailability,
+  StaffDepartment,
   Tenant,
   TicketCategory,
   TicketPriority,
@@ -419,6 +420,8 @@ export async function closeTicket(id: string, resolution: string): Promise<Maint
   if (!t) throw new NotFoundError(id);
   const before = { status: t.status };
   t.status = "closed";
+  // E2: work finished — release the job from the assignee's counter.
+  decrementStaffJobs(t.assignee);
   t.resolution = resolution;
   t.updatedAt = db.NOW_ISO;
   recordMutation({
@@ -653,6 +656,118 @@ export async function updateStaff(
     pushNotify("system", "Account deactivated", "Your Nexora account has been deactivated. Contact an administrator for access.", "staff", id, "updated");
   }
   return member;
+}
+
+/* ------------------------------------------------- operational staff (E2) */
+
+export interface OperationalStaffInput {
+  name: string;
+  phone: string;
+  email?: string;
+  department: StaffDepartment;
+  jobTitle: string;
+  availability?: StaffAvailability;
+  address?: string;
+  startDate?: string;
+}
+
+export const DEPARTMENT_LABEL: Record<StaffDepartment, string> = {
+  maintenance: "Maintenance",
+  cleaning: "Cleaning",
+  laundry: "Laundry",
+  car_wash: "Mobile Car Wash",
+  security: "Security",
+  transport: "Transport & Drivers",
+  other_operations: "Other Operations",
+};
+
+/** Add a field worker — no platform role, no credentials, no dashboard access. */
+export async function addOperationalStaff(input: OperationalStaffInput): Promise<Staff> {
+  await mDelay();
+  const member: Staff = {
+    id: `stf_op_${Date.now()}`,
+    name: input.name,
+    phone: input.phone,
+    email: input.email || undefined,
+    status: "active",
+    since: input.startDate ? new Date(input.startDate).toISOString() : db.NOW_ISO,
+    department: input.department,
+    jobTitle: input.jobTitle,
+    availability: input.availability ?? "available",
+    assignedJobs: 0,
+    staffType: "operational_staff",
+    address: input.address || undefined,
+  };
+  db.staff.push(member);
+  const dept = DEPARTMENT_LABEL[input.department];
+  recordMutation({
+    entityType: "staff", entityId: member.id, entityName: member.name, action: "created",
+    summary: `Added operational staff ${member.name} — ${input.jobTitle}, ${dept}`,
+    after: { name: member.name, jobTitle: input.jobTitle, department: dept, staffType: "operational_staff" },
+    notify: { type: "system", title: "New operational staff", body: `${member.name} (${input.jobTitle}, ${dept})` },
+  });
+  return member;
+}
+
+export async function updateOperationalStaff(id: string, patch: Partial<OperationalStaffInput> & { status?: Staff["status"] }): Promise<Staff> {
+  await mDelay();
+  const member = db.staff.find((s) => s.id === id);
+  if (!member) throw new NotFoundError(id);
+  const before = { jobTitle: member.jobTitle, department: member.department, phone: member.phone, availability: member.availability };
+  if (patch.name) member.name = patch.name;
+  if (patch.phone) member.phone = patch.phone;
+  if (patch.email !== undefined) member.email = patch.email || undefined;
+  if (patch.department) member.department = patch.department;
+  if (patch.jobTitle) member.jobTitle = patch.jobTitle;
+  if (patch.availability) member.availability = patch.availability;
+  if (patch.address !== undefined) member.address = patch.address || undefined;
+  if (patch.status) member.status = patch.status;
+  recordMutation({
+    entityType: "staff", entityId: id, entityName: member.name, action: "updated",
+    summary: `Updated operational staff ${member.name} (${member.jobTitle}, ${DEPARTMENT_LABEL[(member.department ?? "other_operations") as StaffDepartment]})`,
+    before, after: { jobTitle: member.jobTitle, department: member.department, phone: member.phone, availability: member.availability },
+    notify: { type: "system", title: "Operational staff updated", body: `${member.name}'s details were updated.` },
+  });
+  return member;
+}
+
+/** Remove a field worker; any open assignments are released to Unassigned. */
+export async function removeOperationalStaff(id: string): Promise<{ ok: true; unassigned: number }> {
+  await mDelay();
+  const idx = db.staff.findIndex((s) => s.id === id);
+  if (idx === -1) throw new NotFoundError(id);
+  const [removed] = db.staff.splice(idx, 1);
+  // Release their open work so nothing is left pointing at a deleted record.
+  let unassigned = 0;
+  db.tickets.forEach((t) => {
+    if (t.assignee === removed.name && t.status !== "completed" && t.status !== "closed") { t.assignee = undefined; unassigned++; }
+  });
+  db.serviceBookings.forEach((b) => {
+    if (b.assignee === removed.name && b.status !== "completed" && b.status !== "cancelled") { b.assignee = undefined; unassigned++; }
+  });
+  recordMutation({
+    entityType: "staff", entityId: id, entityName: removed.name, action: "deleted",
+    summary: `Removed operational staff ${removed.name}${unassigned ? ` — ${unassigned} assignment(s) released` : ""}`,
+    notify: {
+      type: "system", title: "Operational staff removed",
+      body: unassigned ? `${removed.name} removed — ${unassigned} assignment(s) need reassignment.` : `${removed.name} was removed from operational staff.`,
+    },
+  });
+  return { ok: true, unassigned };
+}
+
+/** Count a staff member's currently-open assignments (used by the remove warning). */
+export function openAssignmentsFor(name: string): number {
+  const t = db.tickets.filter((x) => x.assignee === name && x.status !== "completed" && x.status !== "closed").length;
+  const s = db.serviceBookings.filter((x) => x.assignee === name && x.status !== "completed" && x.status !== "cancelled").length;
+  return t + s;
+}
+
+/** Release one job from a staff member's counter when work finishes. */
+export function decrementStaffJobs(name?: string): void {
+  if (!name) return;
+  const member = db.staff.find((s) => s.name === name);
+  if (member) member.assignedJobs = Math.max(0, (member.assignedJobs ?? 0) - 1);
 }
 
 /** Cycle a staff member's availability (available → busy → off → available).
