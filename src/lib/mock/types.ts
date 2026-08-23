@@ -297,6 +297,11 @@ export interface Invoice {
   amount: number;
   paid: number;
   status: InvoiceStatus;
+  /** E3: set when this invoice was raised from a service booking. */
+  serviceBookingId?: string;
+  /** Display name when there is no tenant record (walk-in service client). */
+  clientName?: string;
+  dueDate?: string;
 }
 
 export type PaymentMethod = "bank" | "mobile_money" | "cash" | "card";
@@ -481,11 +486,30 @@ export type BookingStatus =
   | "completed";
 
 /** Service-booking lifecycle (distinct from stay bookings). */
+/**
+ * Service-booking lifecycle (E3). Pricing is ASSESSMENT-BASED: a staff member
+ * visits, scopes the job and quotes it — there is deliberately no rate card,
+ * because a truck wash and a sedan wash are not the same job.
+ *
+ *   new → assigned → assessment_completed → invoice_generated →
+ *   awaiting_payment → paid → in_progress → completed → confirmed
+ *                                        ↘ cancelled (from most states)
+ *
+ * `new` is the legacy spelling of `pending`; `assessment_required` marks a booking
+ * explicitly sent back for assessment. Both older statuses are preserved.
+ */
 export type ServiceBookingStatus =
   | "new"
+  | "pending"
   | "assigned"
+  | "assessment_required"
+  | "assessment_completed"
+  | "invoice_generated"
+  | "awaiting_payment"
+  | "paid"
   | "in_progress"
   | "completed"
+  | "confirmed"
   | "cancelled";
 
 /** Short-term rental booking (instant, online-paid). */
@@ -548,11 +572,47 @@ export interface ServiceBooking {
      amount stays undefined until an assessment has been recorded. ---- */
   customerId?: string;
   amount?: number;
-  paymentStatus?: PaymentBookingStatus;
   paymentMethod?: string;
   paymentReference?: string;
   paidAt?: string; // ISO
+
+  /* ---- E3: assessment → invoice → payment → work → confirmation ---- */
+  /** Cleaning / laundry / car wash always need an on-site scope before pricing. */
+  assessmentRequired?: boolean;
+  assessedBy?: string; // staff name (resolves to a Staff record)
+  assessedAt?: string;
+  assessmentScope?: string;
+  assessmentNotes?: string;
+  assessedAmount?: number;
+  assessmentPhotos?: string[];
+
+  invoiceId?: string;
+  invoiceNumber?: string; // derived from the booking ref: NX-SV-186900 → INV-SV-186900
+  invoiceAmount?: number; // may differ from assessedAmount if adjusted
+  invoiceAdjustmentReason?: string;
+  invoiceDueDate?: string;
+  invoiceGeneratedAt?: string;
+
+  paymentStatus?: ServicePaymentStatus;
+  paidAmount?: number;
+
+  workStartedAt?: string;
+  completedBy?: string;
+  completionNotes?: string;
+  completionPhotos?: string[];
+  confirmedBy?: string;
+  confirmedAt?: string;
+  rejectionReason?: string;
 }
+
+/** Payment state on a service booking, across its assessment-first lifecycle. */
+export type ServicePaymentStatus =
+  | "not_invoiced"
+  | "awaiting_payment"
+  | "partially_paid"
+  | "paid"
+  | "refunded"
+  | "pending";
 
 /* -------------------------------------------------- activity feed */
 

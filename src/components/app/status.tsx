@@ -35,6 +35,13 @@ const STATUS: Record<string, { label: string; tone: Tone }> = {
   pending: { label: "Pending", tone: "warn" },
   renewal_requested: { label: "Renewal Requested", tone: "neutral" },
   pending_renewal: { label: "Pending Renewal", tone: "neutral" },
+  // service bookings (E3 lifecycle)
+  assessment_required: { label: "Assessment Required", tone: "warn" },
+  assessment_completed: { label: "Assessed", tone: "neutral" },
+  invoice_generated: { label: "Invoice Generated", tone: "neutral" },
+  awaiting_payment: { label: "Awaiting Payment", tone: "bad" },
+  not_invoiced: { label: "Not Invoiced", tone: "warn" },
+  partially_paid: { label: "Partially Paid", tone: "warn" },
   // deposits
   held: { label: "Held", tone: "neutral" },
   refunded: { label: "Refunded", tone: "good" },

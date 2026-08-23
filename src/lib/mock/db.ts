@@ -810,11 +810,26 @@ export const serviceBookings: ServiceBooking[] = Array.from({ length: 10 }, (_, 
   const category = kind === "cleaning" ? rpick(cleaningCats) : rpick(lifestyleCats);
   const name = rFullName();
   const createdMs = NOW.getTime() - rint(1, 40) * DAY;
-  const status = rpick(["new", "assigned", "in_progress", "completed", "new"] as ServiceBookingStatus[]);
-  const assigned = status === "assigned" || status === "in_progress" || status === "completed";
+  // E3: spread across the assessment → invoice → payment → work → confirm lifecycle
+  // so every state is demonstrable without manipulating data.
+  const LIFECYCLE: ServiceBookingStatus[] = [
+    "new", "assigned", "assessment_completed", "awaiting_payment",
+    "paid", "in_progress", "completed", "confirmed", "new", "assigned",
+  ];
+  const status = LIFECYCLE[i];
+  const reference = `NX-SV-${rint(100000, 999999)}`;
+  const rank = LIFECYCLE.indexOf(status);
+  const past = (s: ServiceBookingStatus) => LIFECYCLE.indexOf(s) <= rank && rank > 1;
+  const assigned = status !== "new";
+  // Everything from "assessment_completed" onward carries a quoted price.
+  const assessed = past("assessment_completed");
+  const assessedAmount = assessed ? rint(3, 24) * 50_000 : undefined;
+  const invoiced = past("awaiting_payment");
+  const isPaid = past("paid");
+  const assignedBy = assigned ? rpick(serviceTechs) : undefined;
   return {
     id: `svb_${i + 1}`,
-    reference: `NX-SV-${rint(100000, 999999)}`,
+    reference,
     kind,
     category,
     name,
@@ -825,9 +840,37 @@ export const serviceBookings: ServiceBooking[] = Array.from({ length: 10 }, (_, 
     date: iso(NOW.getTime() + rint(1, 20) * DAY),
     time: rpick(timeSlots),
     status,
-    assignee: assigned ? rpick(serviceTechs) : undefined,
+    assignee: assignedBy,
     createdAt: iso(createdMs),
-    paymentStatus: (status === "completed" ? "paid" : "pending") as "paid" | "pending",
+    // Assessment-based pricing — no rate card anywhere.
+    assessmentRequired: true,
+    assessedBy: assessed ? assignedBy : undefined,
+    assessedAt: assessed ? iso(createdMs + 2 * DAY) : undefined,
+    assessmentScope: assessed
+      ? rpick([
+          "3-bedroom apartment, standard clean, 2 bathrooms",
+          "5-bedroom bungalow, deep clean incl. kitchen and 3 bathrooms, 2 floors",
+          "Ground-floor office suite, ~180 sqm, post-renovation clean",
+          "SUV — exterior wash, interior vacuum and dashboard detail",
+          "Mixed load, approx. 14 kg, incl. 4 duvets",
+        ])
+      : undefined,
+    assessedAmount,
+    invoiceNumber: invoiced ? reference.replace("NX-SV-", "INV-SV-") : undefined,
+    invoiceAmount: invoiced ? assessedAmount : undefined,
+    invoiceDueDate: invoiced ? iso(createdMs + 9 * DAY) : undefined,
+    invoiceGeneratedAt: invoiced ? iso(createdMs + 3 * DAY) : undefined,
+    paymentStatus: (isPaid ? "paid" : invoiced ? "awaiting_payment" : "not_invoiced") as ServiceBooking["paymentStatus"],
+    paidAmount: isPaid ? assessedAmount : undefined,
+    paymentMethod: isPaid ? rpick(["mobile_money", "bank", "card"]) : undefined,
+    paymentReference: isPaid ? `NX-TXN-${rint(100000, 999999)}` : undefined,
+    paidAt: isPaid ? iso(createdMs + 4 * DAY) : undefined,
+    amount: assessedAmount,
+    workStartedAt: past("in_progress") ? iso(createdMs + 5 * DAY) : undefined,
+    completedBy: past("completed") ? assignedBy : undefined,
+    completionNotes: past("completed") ? "Work completed as scoped; client walked through and was satisfied." : undefined,
+    confirmedBy: status === "confirmed" ? "David Okello" : undefined,
+    confirmedAt: status === "confirmed" ? iso(createdMs + 7 * DAY) : undefined,
   };
 }).sort((a, b) => (a.createdAt < b.createdAt ? 1 : -1));
 
