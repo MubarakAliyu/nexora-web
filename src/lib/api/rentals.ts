@@ -231,14 +231,17 @@ export async function createRentalInquiry(input: RentalInquiryInput) {
     service: "Rental Management",
   });
   const reference = `NX-INQ-${Math.floor(100000 + Math.random() * 900000)}`;
+  // E1: the inquiry reference must live ON the lead, not just be returned to the
+  // page — otherwise the admin CRM shows a generic NX-LD- ref the customer never saw.
+  lead.reference = reference;
   recordMutation({
     entityType: "lead",
     entityId: lead.id,
     entityName: input.name,
     action: "created",
-    summary: `Rental inquiry — ${input.name} for ${propName}`,
-    after: { property: propName, moveIn: input.moveInDate },
-    notify: { type: "system", title: "New rental inquiry", body: `${input.name} enquired about ${propName}.` },
+    summary: `Rental inquiry — ${input.name} for ${propName} · ${reference}`,
+    after: { reference, property: propName, moveIn: input.moveInDate },
+    notify: { type: "system", title: "New rental inquiry", body: `${input.name} enquired about ${propName} — ${reference}` },
   });
   return { lead, reference };
 }
