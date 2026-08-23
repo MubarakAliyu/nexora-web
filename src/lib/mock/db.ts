@@ -523,6 +523,7 @@ export const leads: Lead[] = Array.from({ length: 18 }, (_, i) => {
   }));
   return {
     id: `lead_${i + 1}`,
+    reference: `NX-LD-${rint(100000, 999999)}`,
     name,
     email: emailOf(name),
     phone: phone(),
@@ -913,6 +914,7 @@ export function addMarketingLead(input: {
 }): Lead {
   const lead: Lead = {
     id: `lead_web_${Date.now()}`,
+    reference: `NX-LD-${rint(100000, 999999)}`,
     name: input.name,
     email: input.email,
     phone: input.phone || "—",

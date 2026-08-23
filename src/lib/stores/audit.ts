@@ -27,6 +27,8 @@ interface AuditState {
   entries: AuditEntry[];
   add: (entry: Omit<AuditEntry, "id" | "at">) => void;
   clear: () => void;
+  /** MOCK-LAYER: restore the trail after a hard reload. */
+  hydrate: (entries: AuditEntry[]) => void;
 }
 
 let seq = 0;
@@ -43,4 +45,5 @@ export const useAudit = create<AuditState>((set) => ({
       entries: [{ ...entry, id: `audit_${++seq}_${Date.now()}`, at: new Date().toISOString() }, ...s.entries],
     })),
   clear: () => set({ entries: [] }),
+  hydrate: (entries) => set((s) => (entries.length ? { entries } : s)),
 }));

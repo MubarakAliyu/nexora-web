@@ -71,3 +71,55 @@ export const notificationsByAudience: Record<NotificationAudience, AppNotificati
 
 /** Back-compat default (admin set). */
 export const mockNotifications = adminNotifications;
+
+/**
+ * Where a notification should navigate, derived from its entity reference.
+ * Returns null when the notification carries no entity (seeded/informational),
+ * so the caller can render it as plain text instead of a link.
+ */
+export function notificationHref(
+  n: Pick<AppNotification, "entityType" | "entityId">,
+  role: "admin" | "owner" | "tenant" = "admin",
+): string | null {
+  const { entityType: t, entityId: id } = n;
+  if (!t) return null;
+
+  if (role === "tenant") {
+    switch (t) {
+      case "invoice": case "payment": return "/tenant/payments";
+      case "ticket": return "/tenant/maintenance";
+      case "lease": return "/tenant/lease";
+      case "booking": return "/tenant/bookings";
+      case "announcement": return "/tenant/notifications";
+      default: return null;
+    }
+  }
+  if (role === "owner") {
+    switch (t) {
+      case "property": return id ? `/owner/properties/${id}` : "/owner/properties";
+      case "settlement": case "payment": case "expense": return "/owner/financials";
+      case "agreement": return "/owner/agreement";
+      case "lease": case "ticket": return "/owner";
+      default: return null;
+    }
+  }
+  // admin / staff
+  switch (t) {
+    case "lead": return id ? `/admin/leads/${id}` : "/admin/leads";
+    case "booking": return "/admin/bookings";
+    case "service-booking": return "/admin/service-bookings";
+    case "ticket": return "/admin/maintenance";
+    case "invoice": case "payment": case "expense": return "/admin/finance";
+    case "lease": return "/admin/leases";
+    case "owner": return id ? `/admin/owners/${id}` : "/admin/owners";
+    case "tenant": return id ? `/admin/tenants/${id}` : "/admin/tenants";
+    case "property": return id ? `/admin/properties/${id}` : "/admin/properties";
+    case "unit": return "/admin/units";
+    case "staff": return id ? `/admin/staff/${id}` : "/admin/staff";
+    case "agreement": return id ? `/admin/agreements/${id}` : "/admin/agreements";
+    case "settlement": return "/admin/financial-overview";
+    case "announcement": return "/admin/announcements";
+    case "role": case "settings": case "integration": return "/admin/settings";
+    default: return null;
+  }
+}

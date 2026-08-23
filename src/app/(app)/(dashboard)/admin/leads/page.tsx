@@ -112,7 +112,7 @@ export default function LeadsPage() {
   const leads = data ?? [];
 
   const columns: Column<Lead>[] = [
-    { key: "name", header: "Lead", sortable: true, render: (l) => <div><p className="font-medium text-foreground">{l.name}</p><p className="text-caption text-muted">{l.email}</p></div> },
+    { key: "name", header: "Lead", sortable: true, render: (l) => <div><p className="font-medium text-foreground">{l.name}</p><p className="text-caption text-muted">{l.reference ? `${l.reference} · ` : ""}{l.email}</p></div> },
     { key: "source", header: "Source", sortable: true, render: (l) => <span className={cn(l.source.startsWith("Website") || l.source.startsWith("Investor") ? "text-primary" : "text-muted")}>{l.source}</span> },
     { key: "service", header: "Interested in", render: (l) => l.service },
     { key: "value", header: "Est. value", sortable: true, align: "right", render: (l) => formatUGX(l.value) },

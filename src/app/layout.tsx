@@ -6,6 +6,7 @@
 import type { Metadata } from "next";
 import "@/styles/globals.css";
 import { MotionProvider } from "@/components/motion/motion-provider";
+import { MockDataHydrator } from "@/components/app/mock-data-hydrator";
 import { SITE_URL, SITE_NAME, DEFAULT_OG } from "@/lib/seo";
 
 export const metadata: Metadata = {
@@ -73,6 +74,7 @@ export default function RootLayout({
         />
       </head>
       <body className="antialiased">
+        <MockDataHydrator />
         <MotionProvider>{children}</MotionProvider>
       </body>
     </html>

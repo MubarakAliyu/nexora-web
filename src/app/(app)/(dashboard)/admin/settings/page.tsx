@@ -7,6 +7,7 @@ import { z } from "zod";
 import { Cog, Users, Bell, AdjustmentsHorizontal, ClipboardList, LockOpen, Grid, Upload } from "flowbite-react-icons/outline";
 import { PageHeader } from "@/components/app/page-header";
 import { UploadButton } from "@/components/app/upload-button";
+import { ResetDemoData } from "@/components/admin/settings/reset-demo-data";
 import { ThemeToggle } from "@/components/app/theme-toggle";
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -33,6 +34,15 @@ const companySchema = z.object({
   description: z.string().optional(),
 });
 type CompanyValues = z.infer<typeof companySchema>;
+
+function CompanyTabWithReset() {
+  return (
+    <>
+      <CompanyTab />
+      <ResetDemoData />
+    </>
+  );
+}
 
 function CompanyTab() {
   const { register, handleSubmit, formState: { errors, isSubmitting } } = useForm<CompanyValues>({
@@ -162,7 +172,7 @@ export default function AdminSettingsPage() {
             <TabsTrigger value="integrations"><Grid size={16} className="mr-1.5" /> Integrations</TabsTrigger>
           </TabsList>
         </div>
-        <TabsContent value="company"><CompanyTab /></TabsContent>
+        <TabsContent value="company"><CompanyTabWithReset /></TabsContent>
         <TabsContent value="global"><GlobalTab /></TabsContent>
         <TabsContent value="roles"><RolesTab /></TabsContent>
         <TabsContent value="notifications"><NotificationsTab /></TabsContent>

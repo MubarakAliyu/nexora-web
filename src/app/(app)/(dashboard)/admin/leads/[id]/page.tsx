@@ -53,7 +53,7 @@ export default function LeadDetailPage() {
 
   return (
     <div>
-      <PageHeader title={data.name} subtitle={`Lead · ${data.service}`}
+      <PageHeader title={data.name} subtitle={`${data.reference ? `${data.reference} · ` : ""}Lead · ${data.service}`}
         actions={
           data.convertedTo ? (
             <Button asChild variant="outline" className="gap-2">

@@ -2,6 +2,7 @@
 
 import * as React from "react";
 import Link from "next/link";
+import { useRouter } from "next/navigation";
 import { Bell } from "flowbite-react-icons/outline";
 import {
   DropdownMenu,
@@ -11,14 +12,18 @@ import {
 import { Button } from "@/components/ui/button";
 import { useNotifications } from "@/lib/stores/notifications";
 import { useSession } from "@/lib/stores/session";
+import { notificationHref } from "@/lib/api/notifications";
 import { cn } from "@/lib/utils";
 
 export function NotificationCenter() {
+  const router = useRouter();
   const items = useNotifications((s) => s.items);
   const markRead = useNotifications((s) => s.markRead);
   const markAllRead = useNotifications((s) => s.markAllRead);
   const role = useSession((s) => s.user?.role);
   const allHref = role === "owner" ? "/owner/notifications" : "/notifications";
+  // Notifications carry entityType/entityId, so clicking one opens the real record.
+  const audience = role === "owner" ? "owner" : role === "tenant" ? "tenant" : "admin";
   const [mounted, setMounted] = React.useState(false);
   React.useEffect(() => setMounted(true), []);
 
@@ -58,11 +63,13 @@ export function NotificationCenter() {
           </button>
         </div>
         <div className="max-h-80 overflow-y-auto">
-          {items.slice(0, 6).map((n) => (
+          {items.slice(0, 6).map((n) => {
+            const href = notificationHref(n, audience);
+            return (
             <button
               type="button"
               key={n.id}
-              onClick={() => markRead(n.id)}
+              onClick={() => { markRead(n.id); if (href) router.push(href); }}
               className={cn(
                 "flex w-full gap-3 border-b border-border p-3 text-left transition-colors last:border-0 hover:bg-surface-hover",
                 n.status !== "read" && "bg-surface-hover/70",
@@ -79,7 +86,8 @@ export function NotificationCenter() {
                 <span className="block truncate text-caption text-muted">{n.body}</span>
               </span>
             </button>
-          ))}
+            );
+          })}
         </div>
         <div className="p-2">
           <Link

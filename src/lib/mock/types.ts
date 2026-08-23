@@ -378,6 +378,8 @@ export interface LeadActivity {
 
 export interface Lead {
   id: string;
+  /** Human-facing reference, e.g. NX-LD-4F21C8 (matches the booking convention). */
+  reference?: string;
   name: string;
   email: string;
   phone: string;

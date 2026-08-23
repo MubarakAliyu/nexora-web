@@ -62,15 +62,27 @@ export async function submitLead(payload: LeadPayload): Promise<LeadResponse> {
     service,
   });
 
-  // Feed the CRM live: bump revision + notify staff + audit.
+  // Feed the CRM live: bump revision + notify staff + audit. The notification carries
+  // entityType/entityId (via recordMutation) so clicking it opens this lead's detail.
+  const notifyTitle: Record<LeadType, string> = {
+    quote: "New quote request",
+    assessment: "New assessment request",
+    investor: "New investor enquiry",
+    job: "New job application",
+    contact: "New contact enquiry",
+  };
   recordMutation({
     entityType: "lead",
     entityId: lead.id,
     entityName: lead.name,
     action: "created",
-    summary: `New ${sourceByType[payload.type]} lead — ${lead.name} (${service})`,
-    after: { name: lead.name, source: lead.source, service },
-    notify: { type: "system", title: "New lead", body: `${lead.name} enquired via ${sourceByType[payload.type]}.` },
+    summary: `New ${sourceByType[payload.type]} lead — ${lead.name} (${service}) · ${lead.reference}`,
+    after: { reference: lead.reference, name: lead.name, source: lead.source, service },
+    notify: {
+      type: "system",
+      title: notifyTitle[payload.type],
+      body: `${lead.name} requested ${service} — ${lead.reference}`,
+    },
   });
 
   return { ok: true, id: lead.id };
