@@ -285,6 +285,59 @@ still uses hardcoded names rather than the central staff directory.
 **Gate:** lint + `tsc --noEmit` clean throughout · `npm run build` clean (exit 0, **85
 static pages**, 72 app routes).
 
+---
+
+## Execution Batch E2 — Operational Staff (PM Feedback R2)
+
+Additive throughout: the Revision B staff module (invite modal, detail tabs, availability
+cycling, deactivation warnings) is preserved and extended, never replaced.
+
+### The distinction now modelled
+
+`staffType: 'system_user' | 'operational_staff'`. System users keep a platform role and
+login; operational staff (cleaners, technicians, laundry, car wash, security, drivers) have
+**no role and no dashboard access** — they exist to receive job assignments. `role` and
+`email` became optional; `jobTitle`, `address` and a `StaffDepartment` union were added.
+Availability gained `on_leave` (`off` kept as its legacy spelling; both render "On leave").
+
+### Seed — data consistency fixed
+
+14 operational staff seeded: maintenance 3, cleaning 3, laundry 2, car wash 2, security 2,
+transport 1, grounds 1. Deliberately includes **every name previously used as an assignee**
+— Fred Wanyama, Peter Ssemakula, Alex Mugume, SparkleClean Team, GreenScape Crew — so the
+PM's complaint ("Fred appears in Service Bookings but not in Staff") is resolved. All six
+existing role-based records preserved, tagged `system_user`.
+
+### Central staff directory (E2.5)
+
+`staffOptions({ departments, roles })` is now THE directory, returning a ready label
+("Fred Wanyama — Plumbing Technician · Busy"). Two helpers sit on it:
+`maintenanceStaff()` = maintenance field workers **plus** Maintenance-Officer system users;
+`serviceStaffFor(kind, category)` maps a booking to cleaning / laundry / car_wash, falling
+back to all active operational staff.
+
+**Hardcoded staff-name arrays found and removed (1):**
+`admin/service-bookings/page.tsx` — `const TECHS = [...]`. Maintenance and move-out already
+used `staffOptions()` (Revision B) and now use `maintenanceStaff()`.
+
+### Verified in-browser
+
+| Check | Result |
+|---|---|
+| Summary cards | 20 total = 6 system + 14 operational; live-updated to 21/15 after an add |
+| Type tabs + Type badge | All / System Users / Operational Staff all filter correctly |
+| Add Operational Staff | **No role field, no password field**; note present. Created Daniel Okwir → toast "Operational staff added — Daniel Okwir, Laundry" + notification "New operational staff — Daniel Okwir (Laundry Attendant, Laundry)" |
+| Service assignment filtering | Cleaning → Sarah Nabirye / Betty Nakimuli / SparkleClean Team · Car wash → Ronald Kayemba / Ivan Ssekandi (**different lists**) |
+| Maintenance assignment | James Odoi (Maintenance Officer, system user) **+** Fred Wanyama / Peter Ssemakula / Alex Mugume |
+| Job count increment → decrement | Ronald Kayemba 3 → **4** on assign → **3** on complete |
+| Staff notification | "New job assigned — Mobile Car Wash at Kololo, Kampala" |
+| Operational detail page | Job title + department subtitle, "Not provided" for email/address, no-permissions note |
+| System-user detail (regression) | James Odoi unchanged — role subtitle, no ops note, 8 assignments |
+| Persistence (E1 layer) | Daniel Okwir survived a hard reload |
+
+**Gate:** lint + `tsc --noEmit` clean throughout · `npm run build` clean (exit 0, **85
+static pages**).
+
 ## 🏁 PROJECT COMPLETE — final summary
 
 Nexora Property Management frontend is **complete** (mock-data). Single Next.js 15 app;
