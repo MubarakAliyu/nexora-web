@@ -692,6 +692,9 @@ export const bookings: Booking[] = Array.from({ length: 14 }, (_, i) => {
     paymentMethod: rpick(bookingPayMethods),
     status,
     createdAt: iso(checkInMs - rint(3, 30) * DAY),
+    paymentStatus: (status === "cancelled" ? "refunded" : "paid") as "paid" | "refunded",
+    paymentReference: `NX-TXN-${rint(100000, 999999)}`,
+    paidAt: iso(checkInMs - rint(3, 30) * DAY),
   };
 }).sort((a, b) => (a.createdAt < b.createdAt ? 1 : -1));
 
@@ -758,6 +761,7 @@ export const serviceBookings: ServiceBooking[] = Array.from({ length: 10 }, (_, 
     status,
     assignee: assigned ? rpick(serviceTechs) : undefined,
     createdAt: iso(createdMs),
+    paymentStatus: (status === "completed" ? "paid" : "pending") as "paid" | "pending",
   };
 }).sort((a, b) => (a.createdAt < b.createdAt ? 1 : -1));
 

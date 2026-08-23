@@ -487,7 +487,17 @@ export interface Booking {
   paymentMethod: string; // flutterwave | mobile_money | card
   status: BookingStatus;
   createdAt: string; // ISO
+  /* ---- transaction detail (E1 · R3) ---- */
+  /** Links the guest to a tenant/customer record where one exists. */
+  customerId?: string;
+  paymentStatus?: PaymentBookingStatus;
+  /** Gateway/transaction reference for the payment. */
+  paymentReference?: string;
+  paidAt?: string; // ISO
 }
+
+/** Payment state on a booking (distinct from the booking's own lifecycle status). */
+export type PaymentBookingStatus = "paid" | "pending" | "refunded" | "failed";
 
 export type ServiceBookingKind = "cleaning" | "lifestyle";
 
@@ -509,6 +519,14 @@ export interface ServiceBooking {
   status: ServiceBookingStatus;
   assignee?: string; // assigned staff/technician
   createdAt: string; // ISO
+  /* ---- transaction detail (E1 · R3). Pricing is assessment-based (see E3), so
+     amount stays undefined until an assessment has been recorded. ---- */
+  customerId?: string;
+  amount?: number;
+  paymentStatus?: PaymentBookingStatus;
+  paymentMethod?: string;
+  paymentReference?: string;
+  paidAt?: string; // ISO
 }
 
 /* -------------------------------------------------- activity feed */

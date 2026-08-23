@@ -77,11 +77,15 @@ function BookingDetailDialog({ id, onOpenChange, onDone }: { id: string | null; 
                 <span className="text-caption text-muted">Status</span><StatusBadge status={data.booking.status} />
               </div>
               <dl className="space-y-2 text-body">
+                <div className="flex justify-between"><dt className="text-muted">Booking type</dt><dd className="text-foreground">Short-term stay</dd></div>
                 <div className="flex justify-between"><dt className="text-muted">Guest</dt><dd className="text-foreground">{data.booking.guestName}</dd></div>
+                {data.booking.customerId && <div className="flex justify-between"><dt className="text-muted">Customer ID</dt><dd className="font-mono text-caption text-foreground">{data.booking.customerId}</dd></div>}
                 <div className="flex justify-between"><dt className="text-muted">Contact</dt><dd className="text-foreground">{data.booking.guestEmail} · {data.booking.guestPhone}</dd></div>
+                <div className="flex justify-between"><dt className="text-muted">Property · unit</dt><dd className="text-right text-foreground">{data.propertyName}{data.booking.unitLabel ? ` · ${data.booking.unitLabel}` : ""}</dd></div>
                 <div className="flex justify-between"><dt className="text-muted">Guests</dt><dd className="text-foreground">{data.booking.adults} adults · {data.booking.children} children</dd></div>
                 <div className="flex justify-between"><dt className="text-muted">Check-in → out</dt><dd className="text-foreground">{formatDate(data.booking.checkIn)} → {formatDate(data.booking.checkOut)}</dd></div>
-                <div className="flex justify-between"><dt className="text-muted">Nights</dt><dd className="text-foreground">{data.booking.nights}</dd></div>
+                <div className="flex justify-between"><dt className="text-muted">Duration</dt><dd className="text-foreground">{data.booking.nights} night{data.booking.nights === 1 ? "" : "s"}</dd></div>
+                <div className="flex justify-between"><dt className="text-muted">Date created</dt><dd className="text-foreground">{formatDate(data.booking.createdAt)}</dd></div>
                 {data.booking.specialRequests && <div className="flex justify-between gap-6"><dt className="text-muted">Requests</dt><dd className="text-right text-foreground">{data.booking.specialRequests}</dd></div>}
               </dl>
               <div className="rounded-lg border border-border p-4">
@@ -91,6 +95,15 @@ function BookingDetailDialog({ id, onOpenChange, onDone }: { id: string | null; 
                   <div className="flex justify-between"><dt className="text-muted">Cleaning</dt><dd className="text-foreground">{formatUGX(data.booking.cleaningFee)}</dd></div>
                   <div className="flex justify-between"><dt className="text-muted">Taxes</dt><dd className="text-foreground">{formatUGX(data.booking.taxes)}</dd></div>
                   <div className="flex justify-between border-t border-border pt-1.5 font-semibold"><dt className="text-foreground">Total</dt><dd className="text-primary">{formatUGX(data.booking.total)}</dd></div>
+                </dl>
+              </div>
+              <div className="rounded-lg border border-border p-4">
+                <p className="mb-2 text-caption font-medium uppercase tracking-wide text-muted">Payment</p>
+                <dl className="space-y-1.5 text-body">
+                  <div className="flex items-center justify-between"><dt className="text-muted">Payment status</dt><dd><StatusBadge status={data.booking.paymentStatus ?? "pending"} /></dd></div>
+                  <div className="flex justify-between"><dt className="text-muted">Method</dt><dd className="capitalize text-foreground">{(data.booking.paymentMethod ?? "—").replace(/_/g, " ")}</dd></div>
+                  {data.booking.paymentReference && <div className="flex justify-between"><dt className="text-muted">Transaction ref</dt><dd className="font-mono text-caption text-foreground">{data.booking.paymentReference}</dd></div>}
+                  {data.booking.paidAt && <div className="flex justify-between"><dt className="text-muted">Paid on</dt><dd className="text-foreground">{formatDate(data.booking.paidAt)}</dd></div>}
                 </dl>
               </div>
               <div>

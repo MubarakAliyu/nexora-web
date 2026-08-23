@@ -15,7 +15,7 @@ import {
 } from "@/components/ui/dialog";
 import { toast } from "@/components/ui/sonner";
 import { useAsync, debugErrorFlag } from "@/lib/use-async";
-import { formatDate } from "@/lib/format";
+import { formatDate, formatUGX } from "@/lib/format";
 import {
   listServiceBookings, getServiceBooking, updateServiceBookingStatus, assignServiceBooking,
 } from "@/lib/api/rentals";
@@ -72,7 +72,19 @@ function DetailDialog({ id, onOpenChange, onDone }: { id: string | null; onOpenC
                 <div className="flex justify-between"><dt className="text-muted">When</dt><dd className="text-foreground">{formatDate(data.date)} · {data.time}</dd></div>
                 {data.details && <div className="flex justify-between gap-6"><dt className="text-muted">Details</dt><dd className="text-right text-foreground">{data.details}</dd></div>}
                 <div className="flex justify-between"><dt className="text-muted">Assignee</dt><dd className="text-foreground">{data.assignee ?? "Unassigned"}</dd></div>
+                <div className="flex justify-between"><dt className="text-muted">Booking type</dt><dd className="text-foreground">{data.kind === "cleaning" ? "Cleaning service" : "Home & lifestyle service"}</dd></div>
+                {data.customerId && <div className="flex justify-between"><dt className="text-muted">Customer ID</dt><dd className="font-mono text-caption text-foreground">{data.customerId}</dd></div>}
+                <div className="flex justify-between"><dt className="text-muted">Date created</dt><dd className="text-foreground">{formatDate(data.createdAt)}</dd></div>
               </dl>
+              <div className="rounded-lg border border-border p-4">
+                <p className="mb-2 text-caption font-medium uppercase tracking-wide text-muted">Payment</p>
+                <dl className="space-y-1.5 text-body">
+                  <div className="flex items-center justify-between"><dt className="text-muted">Payment status</dt><dd><StatusBadge status={data.paymentStatus ?? "pending"} /></dd></div>
+                  <div className="flex justify-between"><dt className="text-muted">Amount</dt><dd className="text-foreground">{data.amount != null ? formatUGX(data.amount) : "Pending assessment"}</dd></div>
+                  {data.paymentMethod && <div className="flex justify-between"><dt className="text-muted">Method</dt><dd className="capitalize text-foreground">{data.paymentMethod.replace(/_/g, " ")}</dd></div>}
+                  {data.paymentReference && <div className="flex justify-between"><dt className="text-muted">Transaction ref</dt><dd className="font-mono text-caption text-foreground">{data.paymentReference}</dd></div>}
+                </dl>
+              </div>
               <div>
                 <p className="mb-2 text-caption font-medium uppercase tracking-wide text-muted">Assign staff</p>
                 <div className="flex gap-2">
