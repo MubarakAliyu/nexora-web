@@ -7,7 +7,9 @@ import type { StaffAvailability } from "@/lib/mock/types";
 const STYLES: Record<StaffAvailability, { label: string; dot: string; text: string }> = {
   available: { label: "Available", dot: "bg-primary", text: "text-primary" },
   busy: { label: "Busy", dot: "bg-accent", text: "text-accent" },
-  off: { label: "Off", dot: "bg-muted", text: "text-muted" },
+  // `off` is the legacy spelling of `on_leave` — both read as "On leave".
+  off: { label: "On leave", dot: "bg-muted", text: "text-muted" },
+  on_leave: { label: "On leave", dot: "bg-muted", text: "text-muted" },
 };
 
 /**

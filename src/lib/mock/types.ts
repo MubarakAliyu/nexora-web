@@ -396,13 +396,33 @@ export interface Lead {
 
 /* ------------------------------------------------------------- staff */
 
-export type StaffAvailability = "available" | "busy" | "off";
+/** `off` is the legacy spelling of `on_leave`; both render as "On leave". */
+export type StaffAvailability = "available" | "busy" | "off" | "on_leave";
+
+/**
+ * Two kinds of staff share this record (E2):
+ *  - `system_user` — platform operators with a role and login credentials.
+ *  - `operational_staff` — field workers (cleaners, technicians, drivers…) who
+ *    receive job assignments but have NO role and NO dashboard access.
+ */
+export type StaffType = "system_user" | "operational_staff";
+
+export type StaffDepartment =
+  | "maintenance"
+  | "cleaning"
+  | "laundry"
+  | "car_wash"
+  | "security"
+  | "transport"
+  | "other_operations";
 
 export interface Staff {
   id: string;
   name: string;
-  email: string;
-  role: Role;
+  /** Optional for operational staff — many field workers have no email. */
+  email?: string;
+  /** Present only for system users; operational staff have no platform role. */
+  role?: Role;
   status: "active" | "invited" | "suspended";
   since: string; // join date (ISO)
   department?: string;
@@ -410,6 +430,11 @@ export interface Staff {
   availability?: StaffAvailability;
   /** Running count of jobs assigned across maintenance + services. */
   assignedJobs?: number;
+  /* ---- E2: operational staff ---- */
+  /** Defaults to "system_user" when absent (every pre-E2 record). */
+  staffType?: StaffType;
+  jobTitle?: string;
+  address?: string;
 }
 
 /* ------------------------------------------------------ announcements */

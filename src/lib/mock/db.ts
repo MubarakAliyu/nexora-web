@@ -40,6 +40,8 @@ import type {
   Property,
   PropertyStatus,
   Staff,
+  StaffAvailability,
+  StaffDepartment,
   TicketCategory,
   TicketPriority,
   TicketStatus,
@@ -557,14 +559,60 @@ export const leads: Lead[] = Array.from({ length: 18 }, (_, i) => {
 
 /* ------------------------------------------------------------------ staff */
 
-export const staff: Staff[] = [
+export const staff: Staff[] = ([
   { id: "stf_admin", name: "Aisha Nakato", email: "admin@nexora.co.ug", role: "super_admin", status: "active", since: daysAgo(900), department: "Executive", phone: "+256 772 100 001", availability: "available", assignedJobs: 0 },
   { id: "stf_manager", name: "David Okello", email: "manager@nexora.co.ug", role: "property_manager", status: "active", since: daysAgo(600), department: "Property Management", phone: "+256 772 100 002", availability: "busy", assignedJobs: 6 },
   { id: "stf_finance", name: "Grace Namuli", email: "finance@nexora.co.ug", role: "finance_officer", status: "active", since: daysAgo(540), department: "Finance", phone: "+256 772 100 003", availability: "available", assignedJobs: 2 },
   { id: "stf_ops", name: "Moses Nsubuga", email: emailOf("Moses Nsubuga", "nexora.co.ug"), role: "ops_manager", status: "active", since: daysAgo(480), department: "Operations", phone: "+256 772 100 004", availability: "available", assignedJobs: 4 },
   { id: "stf_maint", name: "James Odoi", email: emailOf("James Odoi", "nexora.co.ug"), role: "maintenance_officer", status: "active", since: daysAgo(360), department: "Maintenance", phone: "+256 772 100 005", availability: "busy", assignedJobs: 9 },
   { id: "stf_pm2", name: "Sharon Kirabo", email: emailOf("Sharon Kirabo", "nexora.co.ug"), role: "property_manager", status: "invited", since: daysAgo(20), department: "Property Management", phone: "+256 772 100 006", availability: "off", assignedJobs: 0 },
+] as Staff[]).map((s): Staff => ({ ...s, staffType: "system_user" as const }));
+
+/* ---------------------------------------------- operational staff (E2) --
+   Field workers who RECEIVE job assignments but have no platform role and no
+   dashboard login. Every name already used as an assignee elsewhere in the mock
+   data appears here, so cross-module references resolve to a real Staff record
+   (the PM flagged "Fred Wanyama" showing in Service Bookings but not in Staff). */
+const OPS_STAFF: { name: string; dept: StaffDepartment; jobTitle: string; avail: StaffAvailability; jobs: number; email?: boolean }[] = [
+  // Maintenance — these three are referenced as ticket assignees in the seed.
+  { name: "Fred Wanyama", dept: "maintenance", jobTitle: "Plumbing Technician", avail: "busy", jobs: 5, email: true },
+  { name: "Peter Ssemakula", dept: "maintenance", jobTitle: "Electrical Technician", avail: "available", jobs: 3, email: true },
+  { name: "Alex Mugume", dept: "maintenance", jobTitle: "General Maintenance Technician", avail: "available", jobs: 2 },
+  // Cleaning — "SparkleClean Team" is referenced as a service-booking assignee.
+  { name: "Sarah Nabirye", dept: "cleaning", jobTitle: "Senior Cleaner", avail: "available", jobs: 4, email: true },
+  { name: "Betty Nakimuli", dept: "cleaning", jobTitle: "Cleaning Supervisor", avail: "busy", jobs: 6, email: true },
+  { name: "SparkleClean Team", dept: "cleaning", jobTitle: "Cleaning Crew", avail: "available", jobs: 7 },
+  // Laundry
+  { name: "Joseph Kigongo", dept: "laundry", jobTitle: "Laundry Attendant", avail: "available", jobs: 2 },
+  { name: "Miriam Achan", dept: "laundry", jobTitle: "Laundry Supervisor", avail: "available", jobs: 3, email: true },
+  // Mobile car wash
+  { name: "Ronald Kayemba", dept: "car_wash", jobTitle: "Car Wash Attendant", avail: "available", jobs: 3 },
+  { name: "Ivan Ssekandi", dept: "car_wash", jobTitle: "Senior Car Wash Technician", avail: "busy", jobs: 5 },
+  // Security
+  { name: "Moses Kirunda", dept: "security", jobTitle: "Security Officer", avail: "available", jobs: 1 },
+  { name: "Patrick Odongo", dept: "security", jobTitle: "Night Security Officer", avail: "on_leave", jobs: 0 },
+  // Transport
+  { name: "Julius Bwire", dept: "transport", jobTitle: "Driver", avail: "available", jobs: 2 },
+  // Grounds — "GreenScape Crew" is referenced as a service-booking assignee.
+  { name: "GreenScape Crew", dept: "other_operations", jobTitle: "Grounds & Landscaping Crew", avail: "available", jobs: 4 },
 ];
+
+staff.push(
+  ...OPS_STAFF.map((o, i) => ({
+    id: `stf_ops_${i + 1}`,
+    name: o.name,
+    email: o.email ? emailOf(o.name, "nexora.co.ug") : undefined,
+    status: "active" as const,
+    since: daysAgo(int(40, 720)),
+    department: o.dept,
+    jobTitle: o.jobTitle,
+    phone: `+256 77${int(2, 8)} ${int(100, 999)} ${int(100, 999)}`,
+    availability: o.avail,
+    assignedJobs: o.jobs,
+    staffType: "operational_staff" as const,
+    address: pick(["Kololo, Kampala", "Ntinda, Kampala", "Kireka, Wakiso", "Najjera, Wakiso", "Bweyogerere, Wakiso"]),
+  })),
+);
 
 /* -------------------------------------------------------------- users */
 
