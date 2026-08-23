@@ -183,6 +183,78 @@ D6 cleanup. **Lint + tsc clean throughout.**
 Gate: stop dev server → ONE real `npm run build` (clean) → restart. **ALL revision batches
 (A + B + C + D) complete — product reflects all PM discovery-workshop feedback.**
 
+---
+
+## Execution Batch E1 — Audit & Regression Repair (PM Feedback R2)
+
+Audit-first batch. No new features; every change surgical.
+
+### Phase 1 — Architecture audit
+
+**Stores (Zustand):** `live` (revision counter — the re-fetch signal), `notifications`
+(audience-scoped feed + bell), `audit` (trail), `session` (auth), `ui`, `theme`,
+`integrations`. **Live engine:** `recordMutation()` (lib/api/actions.ts) → `useLive.bump()`
++ `useAudit.add()` + `useNotifications.pushSystem()`. `useAsync` subscribes to
+`live.revision` and re-fetches on every bump. **Mock DB:** `lib/mock/db.ts` — exported
+module-level arrays (owners, properties, units, tenants, leases, invoices, payments,
+expenses, tickets, leads, staff, users, bookings, serviceBookings, agreements,
+settlements, …) seeded deterministically (mulberry32, fixed `NOW`).
+
+**All 7 submission flows traced — origin → storage → consumption → destination:**
+
+| # | Flow | Handler | Writes to | recordMutation | Notification | Admin view |
+|---|---|---|---|---|---|---|
+| 1 | Contact Us | `contact-form.tsx` → `submitLead()` | `db.leads` (unshift) | ✅ | ✅ entity=lead | `/admin/leads` |
+| 2 | Request a Quote | `quote-form.tsx` + `quote-scheduler.tsx` → `submitLead()` | `db.leads` | ✅ | ✅ | `/admin/leads` |
+| 3 | Property Assessment | `assessment-form.tsx` → `submitLead()` | `db.leads` | ✅ | ✅ | `/admin/leads` |
+| 4 | Investor Consultation | `investor-form.tsx` → `submitLead()` | `db.leads` | ✅ | ✅ | `/admin/leads` |
+| 5 | Short-term booking | `rental-booking-flow.tsx` → `createBooking()` | `db.bookings` | ✅ | ✅ | `/admin/bookings` |
+| 6 | Long-term inquiry | `rental-booking-flow.tsx` → `createBooking()`/inquiry | `db.bookings` + `db.leads` | ✅ | ✅ | `/admin/bookings` + CRM |
+| 7 | Service bookings | `service-booking-wizard.tsx` → `createServiceBooking()` | `db.serviceBookings` | ✅ | ✅ | `/admin/service-bookings` |
+
+**Finding: every flow was already correctly wired.** The handler fires, the mutation
+writes, `recordMutation` runs, the notification dispatches with an entity reference, and
+the admin view reads the same array. Nothing in the chain was disconnected.
+
+### Phase 2 — Root cause
+
+**ROOT CAUSE (R1 + R2, single shared cause): mock-DB volatility across hard navigation.**
+The mock DB is module-level in-memory state with **no persistence layer**. Marketing lives
+in the `(marketing)` route group and the dashboard in `(app)`; crossing that boundary — and
+every login redirect — triggers a **full document load**, which re-instantiates
+`db.ts` and re-runs the seed. The lead/booking genuinely *was* created; it was destroyed
+before the admin could read it. Identical cause for the missing notifications and audit
+entries (both stores were session-only, never persisted).
+
+This is why it "worked before": within a single SPA session the write is visible. The PM
+tests it the real way — submit on the marketing site, then open the dashboard — which is
+exactly the path that wipes it.
+
+**R3 (booking data completeness):** not a regression — the booking record lacked the
+financial fields the PM wants (price breakdown, payment method/status/reference).
+
+**R4 (lease "expires in 21 days"):** self-inflicted in Revision C — the seed deliberately
+forced Mubarak's lease (the tenant demo account) to 21 days to demo "Expiring Soon". The
+computation in `leaseView()` is correct; the seed was wrong.
+
+**R5 (found during audit):** notifications carried `entityType`/`entityId` but the
+notification centre only marked them read — clicking never navigated anywhere.
+
+### Phase 3/4 — Repairs
+
+- **Persistence layer** (`lib/mock/persistence.ts` + `<MockDataHydrator />`): localStorage
+  hydrate/persist for the mock DB, runtime notifications and the audit trail. Versioned
+  payload (`SCHEMA_VERSION`) so changed seeds re-seed instead of serving stale snapshots;
+  debounced writes; client-only hydration in an effect (no SSR mismatch); arrays mutated
+  **in place** so every existing reference stays valid. Zero API-surface/store-shape/
+  component changes — a pure mock-layer shim, deleted when the real backend lands.
+- **Reset Demo Data** control (Settings → Super Admin only) to clear and re-seed.
+- **Lead reference IDs** (`NX-LD-XXXXXX`) + type-aware notification titles
+  ("New quote request — {name} requested {service}").
+- **Notification click-to-navigate**: `notificationHref()` derives a route from
+  `entityType`/`entityId` per audience; clicking marks read **and** opens the record.
+- **Booking data completeness** and **lease seed correction** — see commits.
+
 ## 🏁 PROJECT COMPLETE — final summary
 
 Nexora Property Management frontend is **complete** (mock-data). Single Next.js 15 app;
