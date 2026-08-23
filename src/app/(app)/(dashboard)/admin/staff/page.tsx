@@ -11,8 +11,11 @@ import { StatusBadge } from "@/components/app/status";
 import { RowActions } from "@/components/app/row-actions";
 import { DeleteConfirmation } from "@/components/app/delete-confirmation";
 import { AvailabilityBadge } from "@/components/admin/availability-badge";
+import { OperationalStaffDialog } from "@/components/admin/operational-staff-dialog";
 import { DataTable, type Column } from "@/components/ui/data-table";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
+import { Badge } from "@/components/ui/badge";
+import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Field, selectClass } from "@/components/forms/field";
@@ -22,7 +25,12 @@ import {
 import { toast } from "@/components/ui/sonner";
 import { useAsync, debugErrorFlag } from "@/lib/use-async";
 import { formatDate } from "@/lib/format";
-import { listStaff, inviteStaff, updateStaff, removeStaff, cycleStaffAvailability, type Staff, type Scope } from "@/lib/api/admin";
+import { cn } from "@/lib/utils";
+import {
+  listStaff, inviteStaff, updateStaff, removeStaff, cycleStaffAvailability,
+  removeOperationalStaff, openAssignmentsFor, DEPARTMENT_LABEL,
+  type Staff, type StaffDepartment, type Scope,
+} from "@/lib/api/admin";
 import { adminRoles, roleLabels, type Role } from "@/lib/roles";
 
 function initials(name: string) {
@@ -80,7 +88,7 @@ function EditStaffDialog({ member, onOpenChange, onDone }: { member: Staff | nul
   const [phone, setPhone] = React.useState("");
   const [busy, setBusy] = React.useState(false);
   React.useEffect(() => {
-    if (member) { setRole(member.role); setStatus(member.status); setDepartment(member.department ?? ""); setPhone(member.phone ?? ""); }
+    if (member) { setRole(member.role ?? "property_manager"); setStatus(member.status); setDepartment(member.department ?? ""); setPhone(member.phone ?? ""); }
   }, [member]);
   const save = async () => {
     if (!member) return;
@@ -120,28 +128,46 @@ function EditStaffDialog({ member, onOpenChange, onDone }: { member: Staff | nul
   );
 }
 
-const DEPARTMENTS = ["Executive", "Property Management", "Finance", "Operations", "Maintenance"];
+// System-user departments (free text) plus the operational department keys.
+const SYSTEM_DEPARTMENTS = ["Executive", "Property Management", "Finance", "Operations", "Maintenance"];
+const OPS_DEPARTMENTS = Object.keys(DEPARTMENT_LABEL) as StaffDepartment[];
+
+const isOps = (s: Staff) => (s.staffType ?? "system_user") === "operational_staff";
+const deptLabel = (d?: string) =>
+  d ? (DEPARTMENT_LABEL[d as StaffDepartment] ?? d) : undefined;
 
 export default function StaffPage() {
   const router = useRouter();
   const [inviteOpen, setInviteOpen] = React.useState(false);
+  const [opsOpen, setOpsOpen] = React.useState(false);
+  const [editingOps, setEditingOps] = React.useState<Staff | null>(null);
   const [editing, setEditing] = React.useState<Staff | null>(null);
   const [removing, setRemoving] = React.useState<Staff | null>(null);
   const [deactivating, setDeactivating] = React.useState<Staff | null>(null);
   const [q, setQ] = React.useState("");
+  const [type, setType] = React.useState<"all" | "system_user" | "operational_staff">("all");
   const [dept, setDept] = React.useState("all");
   const [availability, setAvailability] = React.useState("all");
   const [status, setStatus] = React.useState("all");
   const scope: Scope = React.useMemo(() => ({ forceError: debugErrorFlag() }), []);
   const { data, loading, error, reload } = useAsync(() => listStaff(scope), [scope]);
 
-  const rows = (data ?? []).filter((s) => {
-    if (q && !`${s.name} ${s.email}`.toLowerCase().includes(q.toLowerCase())) return false;
+  const all = data ?? [];
+  const rows = all.filter((s) => {
+    if (q && !`${s.name} ${s.email ?? ""} ${s.jobTitle ?? ""}`.toLowerCase().includes(q.toLowerCase())) return false;
+    if (type !== "all" && (s.staffType ?? "system_user") !== type) return false;
     if (dept !== "all" && s.department !== dept) return false;
     if (availability !== "all" && (s.availability ?? "available") !== availability) return false;
     if (status !== "all" && s.status !== status) return false;
     return true;
   });
+
+  const summary = {
+    total: all.length,
+    system: all.filter((s) => !isOps(s)).length,
+    ops: all.filter(isOps).length,
+    available: all.filter((s) => s.status === "active" && (s.availability ?? "available") === "available").length,
+  };
 
   const cycle = async (s: Staff) => {
     try { const m = await cycleStaffAvailability(s.id); toast.success(`${s.name} is now ${m.availability}`); reload(); }
@@ -168,8 +194,20 @@ export default function StaffPage() {
         </div>
       ),
     },
-    { key: "role", header: "Role", sortable: true, render: (s) => roleLabels[s.role] },
-    { key: "department", header: "Department", render: (s) => s.department ?? <span className="text-muted">—</span> },
+    {
+      key: "staffType", header: "Type",
+      render: (s) => isOps(s)
+        ? <Badge variant="muted">Operational</Badge>
+        : <Badge variant="secondary">System user</Badge>,
+    },
+    {
+      key: "role", header: "Role", sortable: true,
+      // Operational staff have no platform role — show what they actually do.
+      render: (s) => isOps(s)
+        ? <div><p className="text-foreground">{s.jobTitle ?? "—"}</p><p className="text-caption text-muted">{deptLabel(s.department)}</p></div>
+        : (s.role ? roleLabels[s.role] : "—"),
+    },
+    { key: "department", header: "Department", render: (s) => deptLabel(s.department) ?? <span className="text-muted">—</span> },
     {
       key: "availability", header: "Availability",
       render: (s) => (
@@ -184,7 +222,7 @@ export default function StaffPage() {
       render: (s) => (
         <RowActions actions={[
           { label: "View profile", icon: <Users size={16} />, onClick: () => router.push(`/admin/staff/${s.id}`) },
-          { label: "Edit", icon: <PenNib size={16} />, onClick: () => setEditing(s) },
+          { label: "Edit", icon: <PenNib size={16} />, onClick: () => isOps(s) ? setEditingOps(s) : setEditing(s) },
           s.status === "suspended"
             ? { label: "Reactivate", onClick: () => doReactivate(s) }
             : { label: "Deactivate", onClick: () => setDeactivating(s) },
@@ -198,24 +236,64 @@ export default function StaffPage() {
     <div>
       <PageHeader
         title="Staff"
-        subtitle="Internal team members, roles, availability and assignments"
-        actions={<Button onClick={() => setInviteOpen(true)} className="gap-2"><Plus size={18} /> Invite</Button>}
+        subtitle="System users and operational staff — roles, availability and assignments"
+        actions={
+          <div className="flex flex-wrap gap-2">
+            <Button variant="outline" onClick={() => setInviteOpen(true)} className="gap-2"><Plus size={18} /> Invite System User</Button>
+            <Button onClick={() => { setEditingOps(null); setOpsOpen(true); }} className="gap-2"><Plus size={18} /> Add Operational Staff</Button>
+          </div>
+        }
       />
+
+      {/* Summary */}
+      <div className="mb-4 grid grid-cols-2 gap-3 xl:grid-cols-4">
+        {[
+          { label: "Total staff", value: summary.total },
+          { label: "System users", value: summary.system },
+          { label: "Operational staff", value: summary.ops },
+          { label: "Available now", value: summary.available },
+        ].map((c) => (
+          <Card key={c.label} className="p-4">
+            <p className="font-heading text-h2 font-semibold text-foreground">{c.value}</p>
+            <p className="text-caption text-muted">{c.label}</p>
+          </Card>
+        ))}
+      </div>
+
+      {/* Staff type tabs */}
+      <div className="mb-4 inline-flex rounded-md border border-border p-0.5">
+        {([
+          { v: "all", l: "All" },
+          { v: "system_user", l: "System Users" },
+          { v: "operational_staff", l: "Operational Staff" },
+        ] as const).map((t) => (
+          <button key={t.v} type="button" onClick={() => setType(t.v)}
+            className={cn("rounded px-3 py-1.5 text-body font-medium transition-colors",
+              type === t.v ? "bg-surface-active text-foreground" : "text-muted hover:text-foreground")}>
+            {t.l}
+          </button>
+        ))}
+      </div>
 
       <div className="mb-4 flex flex-col gap-3 sm:flex-row sm:items-center">
         <div className="relative sm:max-w-xs sm:flex-1">
           <Search size={18} className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-muted" />
-          <Input value={q} onChange={(e) => setQ(e.target.value)} placeholder="Search name or email…" aria-label="Search staff" className="h-10 pl-10" />
+          <Input value={q} onChange={(e) => setQ(e.target.value)} placeholder="Search name, email or job title…" aria-label="Search staff" className="h-10 pl-10" />
         </div>
         <select className={`${selectClass} sm:w-48`} value={dept} onChange={(e) => setDept(e.target.value)} aria-label="Filter by department">
           <option value="all">All departments</option>
-          {DEPARTMENTS.map((d) => <option key={d} value={d}>{d}</option>)}
+          <optgroup label="Operations">
+            {OPS_DEPARTMENTS.map((d) => <option key={d} value={d}>{DEPARTMENT_LABEL[d]}</option>)}
+          </optgroup>
+          <optgroup label="Platform">
+            {SYSTEM_DEPARTMENTS.map((d) => <option key={d} value={d}>{d}</option>)}
+          </optgroup>
         </select>
         <select className={`${selectClass} sm:w-40`} value={availability} onChange={(e) => setAvailability(e.target.value)} aria-label="Filter by availability">
           <option value="all">All availability</option>
           <option value="available">Available</option>
           <option value="busy">Busy</option>
-          <option value="off">Off</option>
+          <option value="on_leave">On leave</option>
         </select>
         <select className={`${selectClass} sm:w-36`} value={status} onChange={(e) => setStatus(e.target.value)} aria-label="Filter by status">
           <option value="all">All statuses</option>
@@ -236,6 +314,12 @@ export default function StaffPage() {
 
       <InviteDialog open={inviteOpen} onOpenChange={setInviteOpen} onDone={reload} />
       <EditStaffDialog member={editing} onOpenChange={(o) => { if (!o) setEditing(null); }} onDone={reload} />
+      <OperationalStaffDialog
+        open={opsOpen || !!editingOps}
+        onOpenChange={(o) => { if (!o) { setOpsOpen(false); setEditingOps(null); } }}
+        editing={editingOps}
+        onDone={reload}
+      />
 
       {/* Deactivation warning — active assignments must be reassigned */}
       <Dialog open={!!deactivating} onOpenChange={(o) => !o && setDeactivating(null)}>
@@ -256,8 +340,31 @@ export default function StaffPage() {
         </DialogContent>
       </Dialog>
 
-      <DeleteConfirmation open={!!removing} onOpenChange={(o) => !o && setRemoving(null)} entityLabel="staff member" entityName={removing?.name ?? ""}
-        onConfirm={async () => { if (!removing) return; try { await removeStaff(removing.id); toast.success("Staff removed"); reload(); } catch { toast.error("Couldn’t remove staff"); } }} />
+      <DeleteConfirmation
+        open={!!removing}
+        onOpenChange={(o) => !o && setRemoving(null)}
+        entityLabel={removing && isOps(removing) ? "operational staff" : "staff member"}
+        entityName={removing?.name ?? ""}
+        description={
+          removing && openAssignmentsFor(removing.name) > 0
+            ? `${removing.name} has ${openAssignmentsFor(removing.name)} open assignment(s). Removing them will leave these assignments unassigned. This action cannot be undone.`
+            : undefined
+        }
+        onConfirm={async () => {
+          if (!removing) return;
+          try {
+            if (isOps(removing)) {
+              const res = await removeOperationalStaff(removing.id);
+              toast.success("Operational staff removed", {
+                description: res.unassigned ? `${res.unassigned} assignment(s) need reassignment.` : removing.name,
+              });
+            } else {
+              await removeStaff(removing.id);
+              toast.success("Staff removed");
+            }
+            reload();
+          } catch { toast.error("Couldn’t remove staff"); }
+        }} />
     </div>
   );
 }
