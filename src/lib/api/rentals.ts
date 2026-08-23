@@ -171,6 +171,11 @@ export async function createBooking(input: BookingInput): Promise<Booking> {
     paymentMethod: input.paymentMethod,
     status: "confirmed",
     createdAt: new Date().toISOString(),
+    // Transaction detail (E1 · R3) — the admin must see who paid, how, and the ref.
+    customerId: db.tenants.find((t) => t.email === input.guestEmail)?.id,
+    paymentStatus: "paid",
+    paymentReference: ref("NX-TXN"),
+    paidAt: new Date().toISOString(),
   };
   db.bookings.unshift(booking);
   const dates = `${dateShort(booking.checkIn)}–${dateShort(booking.checkOut)}`;
@@ -272,6 +277,10 @@ export async function createServiceBooking(input: ServiceBookingInput): Promise<
     time: input.time,
     status: "new",
     createdAt: new Date().toISOString(),
+    // Pricing is assessment-based (E3), so no amount yet — but the payment state is
+    // tracked from the outset so the admin can see where the money stands.
+    customerId: db.tenants.find((t) => t.email === input.email)?.id,
+    paymentStatus: "pending",
   };
   db.serviceBookings.unshift(booking);
   recordMutation({
