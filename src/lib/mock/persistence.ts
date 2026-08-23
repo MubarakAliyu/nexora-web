@@ -24,7 +24,7 @@
 import * as db from "@/lib/mock/db";
 
 /** Bump when seeded data changes shape/content so stale snapshots are discarded. */
-export const SCHEMA_VERSION = "e1-2026-08-15";
+export const SCHEMA_VERSION = "e1-2026-08-15b";
 const DB_KEY = "nexora-mock-db";
 const NOTIF_KEY = "nexora-notifications";
 const AUDIT_KEY = "nexora-audit";

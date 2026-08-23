@@ -288,8 +288,13 @@ function createTenancy(unit: Unit, opts?: { id?: string; name?: string; email?: 
   // Occupied units mostly hold current tenancies (a minority have lapsed leases),
   // so occupancy, the tenants list and retention read realistically.
   const current = opts?.active ?? chance(0.86);
-  const startMs = current ? NOW.getTime() - int(20, 320) * DAY : NOW.getTime() - int(430, 820) * DAY;
   const term = pick([365, 365, 730]);
+  // E1/R4: cap how far a CURRENT tenancy has run so it keeps at least ~4 months
+  // left. Previously elapsed could reach 320 days against a 365-day term, which
+  // made most of the portfolio read as near-expiry. Deliberate near-expiry demos
+  // are set explicitly further below instead.
+  const elapsed = current ? int(20, Math.max(40, term - 120)) : int(430, 820);
+  const startMs = NOW.getTime() - elapsed * DAY;
   const endMs = startMs + term * DAY;
   const tenantId = opts?.id ?? `ten_${tenants.length + 1}`;
   const leaseId = `lse_${leases.length + 1}`;
@@ -347,20 +352,33 @@ for (const u of units) {
 
 export const MUBARAK_LEASE_ID = tenants.find((t) => t.id === "ten_mubarak")!.leaseId;
 
-// --- Revision C: guarantee at least two leases inside the 30-day expiry window
-// so "Expiring Soon" (and the tenant countdown) are visible without manipulation.
+// --- E1/R4: keep exactly two leases inside the 30-day expiry window so the
+// "Expiring Soon" badge and the urgency pulse still demo — but put them on
+// ORDINARY tenants. Revision C forced them onto Mubarak (the tenant demo login),
+// which is why the PM opened the tenant portal to an alarming "expires in 21 days"
+// on what should be a normal 12-month tenancy.
+export const NEAR_EXPIRY_DEMO: { leaseId: string; tenant: string; days: number }[] = [];
 {
-  // Mubarak's lease → expires in 21 days (drives the tenant-portal countdown).
+  // Mubarak (demo tenant) → a realistic ~8 months remaining.
   const mub = leases.find((l) => l.id === MUBARAK_LEASE_ID);
   if (mub) {
-    mub.end = iso(NOW.getTime() + 21 * DAY);
+    mub.end = iso(NOW.getTime() + 243 * DAY);
+    mub.start = iso(NOW.getTime() - 122 * DAY); // 12-month term, 4 months elapsed
     mub.status = "active";
   }
-  // A second active lease → expires in 11 days (urgent, pulsing dot).
-  const other = leases.find((l) => l.status === "active" && l.id !== MUBARAK_LEASE_ID);
-  if (other) {
-    other.end = iso(NOW.getTime() + 11 * DAY);
-  }
+  // Two non-demo tenants carry the near-expiry demos: 11 days (urgent pulse) and
+  // 25 days (Expiring Soon badge).
+  const others = leases.filter((l) => l.status === "active" && l.id !== MUBARAK_LEASE_ID);
+  [11, 25].forEach((days, i) => {
+    const lease = others[i];
+    if (!lease) return;
+    lease.end = iso(NOW.getTime() + days * DAY);
+    NEAR_EXPIRY_DEMO.push({
+      leaseId: lease.id,
+      tenant: tenants.find((t) => t.id === lease.tenantId)?.name ?? lease.tenantId,
+      days,
+    });
+  });
 }
 
 /* ---------------------------------------------------- invoices + payments */
