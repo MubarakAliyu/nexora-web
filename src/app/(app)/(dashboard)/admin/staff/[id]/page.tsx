@@ -2,11 +2,12 @@
 
 import * as React from "react";
 import { useParams, useRouter } from "next/navigation";
-import { AngleLeft, Envelope, Phone, Briefcase, CalendarMonth, Tools, ClipboardList } from "flowbite-react-icons/outline";
+import { AngleLeft, Envelope, Phone, Briefcase, CalendarMonth, Tools, ClipboardList, MapPin } from "flowbite-react-icons/outline";
 import { PageHeader } from "@/components/app/page-header";
 import { StatusBadge } from "@/components/app/status";
 import { AvailabilityBadge } from "@/components/admin/availability-badge";
 import { Card } from "@/components/ui/card";
+import { Badge } from "@/components/ui/badge";
 import { StatCard } from "@/components/ui/stat-card";
 import { Button } from "@/components/ui/button";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
@@ -16,7 +17,7 @@ import { EmptyState } from "@/components/ui/empty-state";
 import { Skeleton } from "@/components/ui/skeleton";
 import { useAsync, debugErrorFlag } from "@/lib/use-async";
 import { formatDate } from "@/lib/format";
-import { getStaffMember, type StaffAssignment, type Scope } from "@/lib/api/admin";
+import { getStaffMember, DEPARTMENT_LABEL, type StaffAssignment, type StaffDepartment, type Scope } from "@/lib/api/admin";
 import { roleLabels } from "@/lib/roles";
 
 function initials(name: string) {
@@ -67,6 +68,8 @@ export default function StaffDetailPage() {
   }
 
   const m = data.member;
+  const isOps = (m.staffType ?? "system_user") === "operational_staff";
+  const dept = m.department ? (DEPARTMENT_LABEL[m.department as StaffDepartment] ?? m.department) : undefined;
 
   return (
     <div>
@@ -74,14 +77,18 @@ export default function StaffDetailPage() {
         <AngleLeft size={15} /> Back to staff
       </button>
 
-      <PageHeader title={m.name} subtitle={roleLabels[m.role]} />
+      <PageHeader
+        title={m.name}
+        subtitle={isOps ? `${m.jobTitle ?? "Operational staff"} · ${dept ?? "Operations"}` : (m.role ? roleLabels[m.role] : "Staff")}
+      />
 
       <div className="mb-6 flex flex-wrap items-center gap-3">
         <Avatar className="h-16 w-16"><AvatarFallback className="text-h3">{initials(m.name)}</AvatarFallback></Avatar>
         <div className="flex flex-wrap items-center gap-2">
+          <Badge variant={isOps ? "muted" : "secondary"}>{isOps ? "Operational staff" : "System user"}</Badge>
           <StatusBadge status={m.status} />
           <AvailabilityBadge value={m.availability ?? "available"} />
-          {m.department && <span className="inline-flex items-center gap-1.5 rounded-full border border-border px-2.5 py-1 text-caption text-muted"><Briefcase size={13} /> {m.department}</span>}
+          {dept && <span className="inline-flex items-center gap-1.5 rounded-full border border-border px-2.5 py-1 text-caption text-muted"><Briefcase size={13} /> {dept}</span>}
         </div>
       </div>
 
@@ -97,7 +104,7 @@ export default function StaffDetailPage() {
             <dl className="grid gap-x-8 gap-y-4 sm:grid-cols-2">
               <div className="flex items-start gap-3">
                 <span className="mt-0.5 text-muted"><Envelope size={18} /></span>
-                <div><dt className="text-caption text-muted">Email</dt><dd className="text-body text-foreground">{m.email}</dd></div>
+                <div><dt className="text-caption text-muted">Email</dt><dd className="text-body text-foreground">{m.email ?? "Not provided"}</dd></div>
               </div>
               <div className="flex items-start gap-3">
                 <span className="mt-0.5 text-muted"><Phone size={18} /></span>
@@ -105,13 +112,30 @@ export default function StaffDetailPage() {
               </div>
               <div className="flex items-start gap-3">
                 <span className="mt-0.5 text-muted"><Briefcase size={18} /></span>
-                <div><dt className="text-caption text-muted">Department</dt><dd className="text-body text-foreground">{m.department ?? "—"}</dd></div>
+                <div><dt className="text-caption text-muted">Department</dt><dd className="text-body text-foreground">{dept ?? "—"}</dd></div>
               </div>
+              {isOps && (
+                <div className="flex items-start gap-3">
+                  <span className="mt-0.5 text-muted"><Briefcase size={18} /></span>
+                  <div><dt className="text-caption text-muted">Job title</dt><dd className="text-body text-foreground">{m.jobTitle ?? "—"}</dd></div>
+                </div>
+              )}
               <div className="flex items-start gap-3">
                 <span className="mt-0.5 text-muted"><CalendarMonth size={18} /></span>
                 <div><dt className="text-caption text-muted">Joined</dt><dd className="text-body text-foreground">{formatDate(m.since)}</dd></div>
               </div>
+              {isOps && (
+                <div className="flex items-start gap-3">
+                  <span className="mt-0.5 text-muted"><MapPin size={18} /></span>
+                  <div><dt className="text-caption text-muted">Address</dt><dd className="text-body text-foreground">{m.address ?? "Not provided"}</dd></div>
+                </div>
+              )}
             </dl>
+            {isOps && (
+              <p className="mt-5 rounded-lg border border-border bg-surface-hover p-3 text-caption text-muted">
+                Operational staff receive job assignments and do not have platform login access, so no role or permissions apply.
+              </p>
+            )}
           </Card>
         </TabsContent>
 
