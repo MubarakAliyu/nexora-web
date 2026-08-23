@@ -20,21 +20,67 @@ import {
   listServiceBookings, getServiceBooking, updateServiceBookingStatus, assignServiceBooking,
 } from "@/lib/api/rentals";
 import { serviceStaffFor } from "@/lib/api/admin";
+import {
+  SERVICE_STATUS_LABEL, canTransition, transitionHint, startServiceWork, getServiceRevenueSummary,
+} from "@/lib/api/service-lifecycle";
+import {
+  AssessmentDialog, InvoiceDialog, PaymentDialog, CompletionDialog,
+  ConfirmCompletionDialog, CancelBookingDialog, AssessmentPanel,
+} from "@/components/admin/service-workflow-dialogs";
+import { downloadPdf } from "@/lib/pdf/download";
+import { serviceInvoicePdf } from "@/lib/pdf/builders";
+import { Download } from "flowbite-react-icons/outline";
+import { Card } from "@/components/ui/card";
+import { CountUp } from "@/components/motion/count-up";
+import { cn } from "@/lib/utils";
+import { useSession } from "@/lib/stores/session";
 import type { ServiceBooking, ServiceBookingStatus } from "@/lib/mock/types";
 
-const STATUS_ACTIONS: { status: ServiceBookingStatus; label: string }[] = [
-  { status: "assigned", label: "Assign" },
-  { status: "in_progress", label: "Start" },
-  { status: "completed", label: "Complete" },
-  { status: "cancelled", label: "Cancel" },
-];
 
-function DetailDialog({ id, onOpenChange, onDone }: { id: string | null; onOpenChange: (o: boolean) => void; onDone: () => void }) {
-  const { data, loading, reload } = useAsync(() => (id ? getServiceBooking(id) : Promise.resolve(null as unknown as ServiceBooking)), [id]);
+const ALL_STATUSES = Object.keys(SERVICE_STATUS_LABEL) as ServiceBookingStatus[];
+
+function DetailDialog({ id, onOpenChange, onDone, onWorkflow, refreshKey }: {
+  id: string | null; onOpenChange: (o: boolean) => void; onDone: () => void;
+  onWorkflow: (kind: "assess" | "invoice" | "payment" | "complete" | "confirm" | "cancel", sb: ServiceBooking) => void;
+  refreshKey: number;
+}) {
+  const { data, loading, reload } = useAsync(() => (id ? getServiceBooking(id) : Promise.resolve(null as unknown as ServiceBooking)), [id, refreshKey]);
   const [busy, setBusy] = React.useState(false);
   const [assignee, setAssignee] = React.useState("");
+  const [pendingStatus, setPendingStatus] = React.useState<ServiceBookingStatus>("new");
 
   React.useEffect(() => { if (data?.assignee) setAssignee(data.assignee); }, [data?.assignee]);
+  React.useEffect(() => { if (data?.status) setPendingStatus(data.status); }, [data?.status]);
+
+  const onCancel = (sb: ServiceBooking) => onWorkflow("cancel", sb);
+
+  /** The single action that moves this booking forward, by current status. */
+  const nextAction = (sb: ServiceBooking): { label: string; run: () => void } | null => {
+    switch (sb.status) {
+      case "new": case "pending":
+        return { label: "Assign Staff", run: () => document.getElementById("sb-assignee")?.focus() };
+      case "assigned": case "assessment_required":
+        return { label: "Record Assessment", run: () => onWorkflow("assess", sb) };
+      case "assessment_completed":
+        return { label: "Generate Invoice", run: () => onWorkflow("invoice", sb) };
+      case "invoice_generated": case "awaiting_payment":
+        return { label: "Record Payment", run: () => onWorkflow("payment", sb) };
+      case "paid":
+        return { label: "Start Work", run: () => startWork(sb.id) };
+      case "in_progress":
+        return { label: "Mark Completed", run: () => onWorkflow("complete", sb) };
+      case "completed":
+        return { label: "Confirm Completion", run: () => onWorkflow("confirm", sb) };
+      default:
+        return null;
+    }
+  };
+
+  const startWork = async (bookingId: string) => {
+    setBusy(true);
+    try { await startServiceWork(bookingId); toast.success("Work started"); reload(); onDone(); }
+    catch { toast.error("Couldn’t start work"); } finally { setBusy(false); }
+  };
 
   const setStatus = async (status: ServiceBookingStatus) => {
     if (!id) return;
@@ -88,21 +134,72 @@ function DetailDialog({ id, onOpenChange, onDone }: { id: string | null; onOpenC
               <div>
                 <p className="mb-2 text-caption font-medium uppercase tracking-wide text-muted">Assign staff</p>
                 <div className="flex gap-2">
-                  <select className={selectClass} value={assignee} onChange={(e) => setAssignee(e.target.value)} aria-label="Assignee">
+                  <select id="sb-assignee" className={selectClass} value={assignee} onChange={(e) => setAssignee(e.target.value)} aria-label="Assignee">
                     <option value="">Select…</option>
                     {serviceStaffFor(data.kind, data.category).map((s) => <option key={s.id} value={s.name}>{s.label}</option>)}
                   </select>
                   <Button size="sm" variant="secondary" disabled={busy || !assignee} onClick={assign}>Assign</Button>
                 </div>
               </div>
+              <AssessmentPanel booking={data} />
+
+              {/* Contextual primary action — drives the money workflow */}
+              {(() => {
+                const a = nextAction(data);
+                if (!a) return null;
+                return (
+                  <div className="rounded-lg border border-primary/30 bg-primary/5 p-4">
+                    <p className="mb-2 text-caption font-medium uppercase tracking-wide text-muted">Next step</p>
+                    <div className="flex flex-wrap gap-2">
+                      <Button size="sm" onClick={a.run}>{a.label}</Button>
+                      {data.status === "completed" && (
+                        <span className="self-center text-caption text-muted">Awaiting manager confirmation</span>
+                      )}
+                    </div>
+                  </div>
+                );
+              })()}
+
+              {/* Status management — same select → Save pattern as maintenance */}
               <div>
                 <p className="mb-2 text-caption font-medium uppercase tracking-wide text-muted">Change status</p>
                 <div className="flex flex-wrap gap-2">
-                  {STATUS_ACTIONS.map((a) => (
-                    <Button key={a.status} size="sm" variant={a.status === "cancelled" ? "outline" : "secondary"} disabled={busy || data.status === a.status} onClick={() => setStatus(a.status)}>{a.label}</Button>
-                  ))}
+                  <select className={selectClass} value={pendingStatus} onChange={(e) => setPendingStatus(e.target.value as ServiceBookingStatus)} aria-label="Status">
+                    <option value={data.status}>{SERVICE_STATUS_LABEL[data.status]} (current)</option>
+                    {ALL_STATUSES.filter((s) => s !== data.status).map((s) => {
+                      const ok = canTransition(data.status, s);
+                      return (
+                        <option key={s} value={s} disabled={!ok} title={ok ? "" : transitionHint(data.status, s)}>
+                          {SERVICE_STATUS_LABEL[s]}{ok ? "" : " — unavailable"}
+                        </option>
+                      );
+                    })}
+                  </select>
+                  <Button size="sm" variant="secondary" disabled={busy || pendingStatus === data.status || !canTransition(data.status, pendingStatus)} onClick={() => setStatus(pendingStatus)}>Save Changes</Button>
+                  {data.status !== "cancelled" && data.status !== "confirmed" && (
+                    <Button size="sm" variant="outline" onClick={() => onCancel(data)}>Cancel booking</Button>
+                  )}
                 </div>
+                {pendingStatus !== data.status && !canTransition(data.status, pendingStatus) && (
+                  <p className="mt-2 text-caption text-primary">{transitionHint(data.status, pendingStatus)}</p>
+                )}
               </div>
+
+              {/* Documents */}
+              {(data.invoiceNumber || data.paidAmount) && (
+                <div className="flex flex-wrap gap-2">
+                  {data.invoiceNumber && (
+                    <Button size="sm" variant="outline" className="gap-2" onClick={() => { const { payload, filename } = serviceInvoicePdf(data.id, "invoice"); downloadPdf(payload, filename); }}>
+                      <Download size={16} /> Download Invoice
+                    </Button>
+                  )}
+                  {(data.paidAmount ?? 0) > 0 && (
+                    <Button size="sm" variant="outline" className="gap-2" onClick={() => { const { payload, filename } = serviceInvoicePdf(data.id, "receipt"); downloadPdf(payload, filename); }}>
+                      <Download size={16} /> Download Receipt
+                    </Button>
+                  )}
+                </div>
+              )}
             </div>
           </>
         )}
@@ -112,7 +209,7 @@ function DetailDialog({ id, onOpenChange, onDone }: { id: string | null; onOpenC
   );
 }
 
-const STATUSES = ["all", "new", "assigned", "in_progress", "completed", "cancelled"];
+const STATUSES = ["all", ...ALL_STATUSES];
 
 export default function ServiceBookingsPage() {
   const [kind, setKind] = React.useState("all");
@@ -121,9 +218,18 @@ export default function ServiceBookingsPage() {
   const [to, setTo] = React.useState("");
   const [q, setQ] = React.useState("");
   const [detailId, setDetailId] = React.useState<string | null>(null);
+  // One dialog per workflow step; `bump` re-reads the detail after each mutation.
+  const [wf, setWf] = React.useState<{ kind: string; sb: ServiceBooking } | null>(null);
+  const [bump, setBump] = React.useState(0);
 
+  const user = useSession((s) => s.user);
   const scope = React.useMemo(() => ({ forceError: debugErrorFlag() }), []);
-  const { data, loading, error, reload } = useAsync(() => listServiceBookings(scope), [scope]);
+  const { data, loading, error, reload } = useAsync(() => listServiceBookings(scope), [scope, bump]);
+  // eslint-disable-next-line react-hooks/exhaustive-deps -- bump/data force a re-read after each mutation
+  const summary = React.useMemo(() => getServiceRevenueSummary(from || undefined, to || undefined), [from, to, bump, data]);
+
+  const afterWorkflow = () => { setBump((n) => n + 1); reload(); };
+  const openWorkflow = (kind: "assess" | "invoice" | "payment" | "complete" | "confirm" | "cancel", sb: ServiceBooking) => setWf({ kind, sb });
 
   const rows = React.useMemo(() => {
     let r = data ?? [];
@@ -143,6 +249,14 @@ export default function ServiceBookingsPage() {
     { key: "date", header: "Date / time", sortable: true, render: (s) => <span className="text-body">{formatDate(s.date)} · {s.time}</span> },
     { key: "assignee", header: "Assignee", render: (s) => s.assignee ?? <span className="text-muted">Unassigned</span> },
     { key: "status", header: "Status", sortable: true, render: (s) => <StatusBadge status={s.status} /> },
+    { key: "paymentStatus", header: "Payment", render: (s) => <StatusBadge status={s.paymentStatus ?? "not_invoiced"} /> },
+    {
+      key: "amount", header: "Amount", align: "right",
+      render: (s) => {
+        const amt = s.invoiceAmount ?? s.assessedAmount;
+        return amt ? <span className="tabular-nums text-foreground">{formatUGX(amt)}</span> : <span className="text-caption text-muted">Pending assessment</span>;
+      },
+    },
     { key: "location", header: "Address", render: (s) => <span className="text-caption text-muted">{s.location}</span> },
   ];
 
@@ -160,6 +274,25 @@ export default function ServiceBookingsPage() {
           { header: "Status", accessor: (s) => s.status },
           { header: "Location", accessor: (s) => s.location },
         ]} />} />
+
+      {/* Service revenue — all derived from real assessments/invoices/payments */}
+      <div className="mb-4 grid grid-cols-2 gap-3 xl:grid-cols-4">
+        {[
+          { label: "Total invoiced", value: summary.totalInvoiced, money: true },
+          { label: "Total collected", value: summary.totalCollected, money: true },
+          { label: "Awaiting payment", value: summary.awaitingPayment, money: true },
+          { label: "Jobs completed", value: summary.jobsCompleted, money: false },
+        ].map((c) => (
+          <Card key={c.label} className="p-4">
+            <p className="font-heading text-h2 font-semibold text-foreground">
+              {c.money
+                ? <>UGX <CountUp to={c.value / 1_000_000} decimals={1} duration={1} immediate />M</>
+                : <CountUp to={c.value} immediate />}
+            </p>
+            <p className="text-caption text-muted">{c.label}</p>
+          </Card>
+        ))}
+      </div>
 
       <div className="mb-4 grid gap-3 sm:grid-cols-2 lg:grid-cols-5">
         <div className="relative">
@@ -182,10 +315,21 @@ export default function ServiceBookingsPage() {
         columns={columns} data={rows} getRowId={(s) => s.id}
         loading={loading} error={error} onRetry={reload}
         onRowClick={(s) => setDetailId(s.id)}
+        rowClassName={(s) => cn(
+          (s.paymentStatus === "awaiting_payment" || s.paymentStatus === "partially_paid") && "border-l-2 border-l-primary bg-primary/[0.03]",
+        )}
         emptyTitle="No service bookings" emptyDescription="Cleaning and lifestyle bookings will appear here." pageSize={12}
       />
 
-      <DetailDialog id={detailId} onOpenChange={(o) => !o && setDetailId(null)} onDone={reload} />
+      <DetailDialog id={detailId} onOpenChange={(o) => !o && setDetailId(null)} onDone={reload} onWorkflow={openWorkflow} refreshKey={bump} />
+
+      {/* Workflow steps — one dialog each, conditional-rendered */}
+      <AssessmentDialog booking={wf?.kind === "assess" ? wf.sb : null} onOpenChange={(o) => !o && setWf(null)} onDone={afterWorkflow} />
+      <InvoiceDialog booking={wf?.kind === "invoice" ? wf.sb : null} onOpenChange={(o) => !o && setWf(null)} onDone={afterWorkflow} />
+      <PaymentDialog booking={wf?.kind === "payment" ? wf.sb : null} onOpenChange={(o) => !o && setWf(null)} onDone={afterWorkflow} />
+      <CompletionDialog booking={wf?.kind === "complete" ? wf.sb : null} onOpenChange={(o) => !o && setWf(null)} onDone={afterWorkflow} />
+      <ConfirmCompletionDialog booking={wf?.kind === "confirm" ? wf.sb : null} onOpenChange={(o) => !o && setWf(null)} onDone={afterWorkflow} confirmedBy={user?.name ?? "Admin"} />
+      <CancelBookingDialog booking={wf?.kind === "cancel" ? wf.sb : null} onOpenChange={(o) => !o && setWf(null)} onDone={afterWorkflow} />
     </div>
   );
 }
