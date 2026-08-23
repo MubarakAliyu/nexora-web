@@ -253,7 +253,37 @@ notification centre only marked them read — clicking never navigated anywhere.
   ("New quote request — {name} requested {service}").
 - **Notification click-to-navigate**: `notificationHref()` derives a route from
   `entityType`/`entityId` per audience; clicking marks read **and** opens the record.
-- **Booking data completeness** and **lease seed correction** — see commits.
+- **Booking data completeness**: Booking/ServiceBooking extended with `customerId`,
+  `paymentStatus`, `paymentReference`, `paidAt` (+ `amount`, `paymentMethod` on services).
+  Admin detail views now answer *who booked what, when, how much, how they paid, status*.
+- **Lease seed correction**: `createTenancy` caps elapsed time at `term − 120` days so
+  ordinary tenancies keep ≥4 months; Mubarak restored to ~8 months (ends 10 Mar 2027);
+  the two near-expiry demos moved to ordinary tenants (Julius Namuli C-202 @11d for the
+  urgency pulse, Peace Namuli A-104 @25d for the Expiring Soon badge).
+- **Rental-inquiry reference**: the `NX-INQ-XXXXXX` shown to the customer is now stored on
+  the lead (previously only returned to the page, so the CRM showed a different ref).
+
+### Verification (in-browser, real UI, hard navigation each time)
+
+| Flow | Reference created | Reached admin | Notification |
+|---|---|---|---|
+| Contact Us | `NX-LD-719305` | ✅ top of /admin/leads | ✅ click → `/admin/leads/lead_web_…`, bell 5→4 |
+| Request a Quote (scheduler) | `NX-LD-279842` | ✅ /admin/leads | ✅ "New quote request — E1 Quote Test requested Property Management" |
+| Cleaning service booking | `NX-SV-586255` | ✅ /admin/service-bookings | ✅ admin + client |
+| Short-term stay booking | `NX-BK-782455` | ✅ /admin/bookings | ✅ admin + owner + guest (3) |
+
+Stay-booking detail verified showing the full record: type, guest, contact, property+unit,
+2 adults · 1 child, 26→29 Aug, 3 nights, created date, special requests, itemised price
+(UGX 100K × 3 = 300K · cleaning 80K · taxes 68K · **total 448K**), and Payment (Paid ·
+mobile money · `NX-TXN-798649` · paid 23 Aug). Convert-to-Owner (Revision B) still opens
+with all 13 fields + temp password. Leases: "2 leases expiring within 30 days", both the
+intended demo tenants.
+
+**Known follow-up (belongs to E2, not E1):** the service-booking "Assign staff" dropdown
+still uses hardcoded names rather than the central staff directory.
+
+**Gate:** lint + `tsc --noEmit` clean throughout · `npm run build` clean (exit 0, **85
+static pages**, 72 app routes).
 
 ## 🏁 PROJECT COMPLETE — final summary
 
