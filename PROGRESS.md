@@ -338,6 +338,58 @@ used `staffOptions()` (Revision B) and now use `maintenanceStaff()`.
 **Gate:** lint + `tsc --noEmit` clean throughout · `npm run build` clean (exit 0, **85
 static pages**).
 
+---
+
+## Execution Batch E3 — Service Booking Financial Lifecycle (PM Feedback R2)
+
+Additive: the existing service-booking module, table, detail dialog, notifications and the
+E2 assignment wiring are all preserved and extended.
+
+### Assessment-first pricing
+
+The PM was explicit that fixed pricing is wrong ("a truck wash is not a sedan wash"). The
+`SERVICE_PRICE` rate card that existed in `finance.ts` has been **removed**; a booking's
+value now comes only from an on-site assessment → invoice → payment chain. Grep for
+`SERVICE_PRICE|rate card|priceList` returns 5 hits, all comments stating no rate card exists.
+
+### Lifecycle
+
+`new → assigned → assessment_completed → invoice_generated → awaiting_payment → paid →
+in_progress → completed → confirmed` (cancelled from most states). `VALID_TRANSITIONS`
+gates the status select so the money steps cannot be skipped; invalid options render
+disabled with a tooltip. Above it, a contextual primary action drives the workflow.
+
+### Verified end-to-end on NX-SV-575081 (Gardening & Lawn, Isaac Nabbanja)
+
+| Step | Toast | Notifications |
+|---|---|---|
+| Record Assessment | "Assessment recorded — UGX 250K quoted for Gardening & Lawn" | admin ("quoted UGX 250,000") + client ("An invoice will follow shortly") |
+| Generate Invoice | "Invoice **INV-SV-575081** generated — UGX 250K" | admin + client ("Payment is required before work begins") |
+| Record Payment | "Payment recorded — UGX 250K for NX-SV-575081" | admin + client + **staff ("Payment confirmed — you may proceed")** |
+| Start Work | "Work started" | client ("Work has started") + staff ("Job started") |
+| Mark Completed | — | admin ("Awaiting your confirmation") |
+| Confirm Completion | "Job confirmed — NX-SV-575081" | client ("Your service has been completed") + staff ("Job confirmed") |
+
+- **Invoice numbering derives from the booking**: `NX-SV-575081` → `INV-SV-575081`.
+- Invoice registered in `/admin/finance` with `kind: "service"`, client Isaac Nabbanja,
+  UGX 250,000; marked `paid` when payment was recorded.
+- **Staff job count decremented on confirmation**: SparkleClean Team 7 → **6** (E2 intact).
+- Transition gating proven: from *Assigned*, only Assessment Required / Assessed / Cancelled
+  were selectable; Paid, In Progress, Completed and Confirmed were disabled.
+- Financial Overview transaction row: `24 Aug 2026 · Service Payment · Gardening & Lawn —
+  Isaac Nabbanja · +UGX 250K · Completed · MM-E3-88421 · NX-SV-575081`.
+- **Total Revenue KPI includes service revenue**: 652,825,000 → **653,075,000** (rent
+  649,925,000 + service 3,150,000). The M-rounded tile reads "UGX 653M" both times — the
+  +250K is real but below display precision. The service summary cards do move visibly:
+  invoiced 3.9M → **4.1M**, collected 2.9M → **3.2M**, jobs completed 2 → **3**.
+
+**Assumption flagged:** service revenue is treated as **100% Nexora revenue** and does not
+flow into owner settlements, even when the job is at a managed property. Revisit if the PM
+wants service income shared under a management agreement.
+
+**Gate:** lint + `tsc --noEmit` clean throughout · `npm run build` clean (exit 0, **85
+static pages**).
+
 ## 🏁 PROJECT COMPLETE — final summary
 
 Nexora Property Management frontend is **complete** (mock-data). Single Next.js 15 app;
