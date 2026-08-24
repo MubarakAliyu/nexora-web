@@ -42,6 +42,7 @@ import type {
   Staff,
   StaffAvailability,
   StaffDepartment,
+  TicketLiability,
   TicketCategory,
   TicketPriority,
   TicketStatus,
@@ -517,6 +518,83 @@ export const tickets: MaintenanceTicket[] = Array.from({ length: 26 }, (_, i) =>
     updatedAt: iso(createdMs + int(0, 10) * DAY),
   };
 });
+
+/* ------------------------------------------------ E4: ticket cost liability
+   Recording a cost is not enough — the system must know who pays it. Give the
+   already-closed tickets a realistic spread across owner / tenant / Nexora so
+   every branch is demonstrable without manual setup. */
+{
+  const closed = tickets.filter((t) => (t.status === "completed" || t.status === "closed") && t.cost);
+  const LIABILITY_REASONS: Record<TicketLiability, string[]> = {
+    owner: [
+      "Normal wear and tear on original fittings.",
+      "Structural issue pre-dating the tenancy.",
+      "Ageing installation reached end of service life.",
+    ],
+    tenant: [
+      "Damage caused by tenant misuse.",
+      "Breakage reported by the tenant during their occupancy.",
+      "Tenant overloaded the circuit, causing the fault.",
+    ],
+    nexora: [
+      "Goodwill fix absorbed by Nexora.",
+      "Covered under the management agreement.",
+    ],
+  };
+  closed.forEach((t, i) => {
+    // Roughly half owner, a third tenant, the rest absorbed by Nexora.
+    const liability: TicketLiability = i % 6 === 2 || i % 6 === 5 ? "tenant" : i % 6 === 4 ? "nexora" : "owner";
+    const total = t.cost ?? 0;
+    const labour = Math.round(total * 0.6);
+    t.liability = liability;
+    t.liabilityReason = pick(LIABILITY_REASONS[liability]);
+    t.labourCost = labour;
+    t.materialsCost = total - labour;
+    t.closedAt = t.updatedAt;
+
+    if (liability === "tenant") {
+      // Every third tenant-liable ticket has already settled.
+      const settled = i % 3 === 0;
+      t.invoiceNumber = `INV-${t.ref}`;
+      t.invoiceAmount = total;
+      t.invoiceGeneratedAt = t.updatedAt;
+      t.invoiceDueDate = iso(new Date(t.updatedAt).getTime() + 14 * DAY);
+      t.paymentStatus = settled ? "paid" : "awaiting_payment";
+      if (settled) {
+        t.paidAmount = total;
+        t.paidAt = iso(new Date(t.updatedAt).getTime() + 3 * DAY);
+        t.paymentMethod = "mobile_money";
+        t.paymentReference = `MNT-${rint(100000, 999999)}`;
+      }
+    } else {
+      t.paymentStatus = "not_applicable";
+    }
+  });
+
+  // The PM tests as Mubarak, so guarantee HIM an unpaid maintenance charge.
+  const mub = tenants.find((x) => x.id === "ten_mubarak");
+  const mubTicket = tickets.find((t) => t.tenantId === "ten_mubarak" && t.cost && (t.status === "completed" || t.status === "closed"))
+    ?? tickets.find((t) => t.status === "completed" || t.status === "closed");
+  if (mub && mubTicket) {
+    mubTicket.tenantId = mub.id;
+    mubTicket.unitId = mub.unitId;
+    mubTicket.propertyId = mub.propertyId;
+    mubTicket.cost = 95_000;
+    mubTicket.labourCost = 60_000;
+    mubTicket.materialsCost = 35_000;
+    mubTicket.title = "Cracked wall in living area";
+    mubTicket.resolution = "Crack filled, re-plastered and repainted to match.";
+    mubTicket.liability = "tenant";
+    mubTicket.liabilityReason = "Damage caused by tenant while mounting a wall unit.";
+    mubTicket.invoiceNumber = `INV-${mubTicket.ref}`;
+    mubTicket.invoiceAmount = 95_000;
+    mubTicket.invoiceGeneratedAt = mubTicket.updatedAt;
+    mubTicket.invoiceDueDate = iso(NOW.getTime() + 10 * DAY);
+    mubTicket.paymentStatus = "awaiting_payment";
+    mubTicket.paidAmount = undefined;
+    mubTicket.paidAt = undefined;
+  }
+}
 
 /* -------------------------------------------------------------- CRM leads */
 

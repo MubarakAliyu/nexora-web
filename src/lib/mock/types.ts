@@ -283,7 +283,7 @@ export interface Lease {
 /* ------------------------------------------------------ finance */
 
 export type InvoiceStatus = "paid" | "pending" | "overdue" | "partial";
-export type InvoiceKind = "rent" | "service" | "deposit" | "utility";
+export type InvoiceKind = "rent" | "service" | "maintenance" | "deposit" | "utility";
 
 export interface Invoice {
   id: string;
@@ -297,6 +297,8 @@ export interface Invoice {
   amount: number;
   paid: number;
   status: InvoiceStatus;
+  /** E4: set when this invoice was raised from a maintenance ticket. */
+  maintenanceTicketId?: string;
   /** E3: set when this invoice was raised from a service booking. */
   serviceBookingId?: string;
   /** Display name when there is no tenant record (walk-in service client). */
@@ -336,6 +338,8 @@ export interface Expense {
   amount: number;
   date: string; // ISO
   status: "approved" | "pending" | "reimbursed";
+  /** E4: set when this expense was raised by closing a maintenance ticket. */
+  maintenanceTicketId?: string;
 }
 
 /* ------------------------------------------------------- maintenance */
@@ -368,7 +372,38 @@ export interface MaintenanceTicket {
   resolution?: string;
   createdAt: string; // ISO
   updatedAt: string; // ISO
+
+  /* ---- E4: cost liability. Recording a cost is not enough — the system must
+     know WHO PAYS it, or the number goes nowhere. ---- */
+  liability?: TicketLiability;
+  liabilityReason?: string;
+  /** Labour / materials split behind `cost` (cost stays the total). */
+  labourCost?: number;
+  materialsCost?: number;
+
+  /* Invoice — only when liability is 'tenant'. */
+  invoiceId?: string;
+  invoiceNumber?: string; // derived from the ticket ref: TKT-0019 → INV-TKT-0019
+  invoiceAmount?: number;
+  invoiceDueDate?: string;
+  invoiceGeneratedAt?: string;
+
+  paymentStatus?: TicketPaymentStatus;
+  paidAmount?: number;
+  paymentMethod?: string;
+  paymentReference?: string;
+  paidAt?: string;
+
+  /** Expense raised when liability is 'owner' (property) or 'nexora' (operational). */
+  expenseId?: string;
+  closedAt?: string;
 }
+
+/** Who bears a maintenance cost. */
+export type TicketLiability = "owner" | "tenant" | "nexora";
+
+/** Only tenant-liable tickets are ever invoiced, so the others are N/A. */
+export type TicketPaymentStatus = "not_applicable" | "awaiting_payment" | "paid";
 
 /* --------------------------------------------------------------- CRM */
 
