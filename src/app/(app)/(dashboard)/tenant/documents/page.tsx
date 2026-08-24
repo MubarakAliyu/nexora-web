@@ -15,16 +15,18 @@ import { useAsync, debugErrorFlag } from "@/lib/use-async";
 import { useSession } from "@/lib/stores/session";
 import { formatDate } from "@/lib/format";
 import { downloadPdf } from "@/lib/pdf/download";
-import { leasePdf, receiptPdf, invoicePdf } from "@/lib/pdf/builders";
+import { leasePdf, receiptPdf, invoicePdf, maintenanceInvoicePdf } from "@/lib/pdf/builders";
+import { tenantMaintenanceInvoices } from "@/lib/api/maintenance-liability";
 import { getTenant, type Scope } from "@/lib/api/admin";
 
-type DocType = "Lease Agreement" | "Receipt" | "Invoice";
+type DocType = "Lease Agreement" | "Receipt" | "Invoice" | "Maintenance Invoice";
 interface TenantDoc { id: string; name: string; type: DocType; date: string; download: () => void; }
 
 const ICONS: Record<DocType, React.ComponentType<{ size?: number; className?: string }>> = {
   "Lease Agreement": FileCheck,
   Receipt: Receipt,
   Invoice: FileLines,
+  "Maintenance Invoice": FileLines,
 };
 
 export default function TenantDocumentsPage() {
@@ -47,8 +49,20 @@ export default function TenantDocumentsPage() {
     data.invoices.forEach((inv) => {
       out.push({ id: `doc_inv_${inv.id}`, name: `Invoice — ${inv.number}`, type: "Invoice", date: inv.issued, download: () => { const { payload, filename } = invoicePdf(inv); downloadPdf(payload, filename); } });
     });
+    // E4 — a maintenance charge is a document the tenant may need later: the
+    // invoice while it is owed, the same PDF stamped PAID once it is settled.
+    tenantMaintenanceInvoices(tenantId).forEach((t) => {
+      const paid = t.paymentStatus === "paid";
+      out.push({
+        id: `doc_mt_${t.id}`,
+        name: `Maintenance ${paid ? "Receipt" : "Invoice"} — ${t.invoiceNumber}`,
+        type: "Maintenance Invoice",
+        date: (paid ? t.paidAt : t.invoiceGeneratedAt) ?? t.updatedAt,
+        download: () => { const { payload, filename } = maintenanceInvoicePdf(t.id); downloadPdf(payload, filename); },
+      });
+    });
     return out.sort((a, b) => (a.date < b.date ? 1 : -1));
-  }, [data]);
+  }, [data, tenantId]);
 
   const filtered = React.useMemo(() => {
     let rows = docs;
@@ -103,6 +117,7 @@ export default function TenantDocumentsPage() {
               <option value="Lease Agreement">Lease Agreement</option>
               <option value="Receipt">Receipt</option>
               <option value="Invoice">Invoice</option>
+              <option value="Maintenance Invoice">Maintenance invoice</option>
             </select>
           </div>
 

@@ -4,7 +4,7 @@ import * as React from "react";
 import Link from "next/link";
 import {
   Cash, CreditCardPlus, AdjustmentsHorizontal, FileLines, Home, CalendarMonth,
-  Bullhorn, ArrowRight, ClipboardList,
+  Bullhorn, ArrowRight, ClipboardList, Tools,
 } from "flowbite-react-icons/outline";
 import { PageHeader } from "@/components/app/page-header";
 import { StatusBadge } from "@/components/app/status";
@@ -21,6 +21,7 @@ import { formatUGX, formatDate, fromNow } from "@/lib/format";
 import { downloadPdf } from "@/lib/pdf/download";
 import { receiptPdf } from "@/lib/pdf/builders";
 import { getTenant, listAnnouncements, propertyName, NOW_ISO, type Payment, type Scope } from "@/lib/api/admin";
+import { tenantMaintenanceCharges } from "@/lib/api/maintenance-liability";
 
 const QUICK_ACTIONS = [
   { label: "Pay rent", href: "/tenant/payments", icon: CreditCardPlus },
@@ -65,6 +66,8 @@ export default function TenantDashboardPage() {
   const outstanding = unpaid.reduce((s, i) => s + (i.amount - i.paid), 0);
   const nextDue = [...unpaid].sort((a, b) => (a.due < b.due ? -1 : 1))[0];
   const openTickets = tickets.filter((t) => t.status !== "closed" && t.status !== "completed");
+  const maintCharges = tenantMaintenanceCharges(tenant.id);
+  const maintTotal = maintCharges.reduce((s, t) => s + (t.invoiceAmount ?? t.cost ?? 0), 0);
   const notices = (announcements.data ?? []).filter((a) => a.audience === "all_tenants" || a.audienceLabel === property?.name).slice(0, 3);
 
   const paymentColumns: Column<Payment>[] = [
@@ -100,6 +103,28 @@ export default function TenantDashboardPage() {
             <p className="mt-1 text-body text-muted">{nextDue.number} · due {formatDate(nextDue.due)} ({fromNow(nextDue.due, NOW_ISO)})</p>
           </div>
           <Button asChild className="gap-2"><Link href="/tenant/payments">Pay now <ArrowRight size={16} /></Link></Button>
+        </Card>
+      )}
+
+      {/* Maintenance charges — deliberately distinct from the rent banner above:
+          its own icon and "Maintenance" label, so a tenant never mistakes a
+          repair bill for their rent. */}
+      {maintCharges.length > 0 && (
+        <Card className="mt-6 flex flex-col items-start justify-between gap-4 border-l-4 border-accent p-6 sm:flex-row sm:items-center">
+          <div className="flex items-start gap-3">
+            <span className="flex h-11 w-11 shrink-0 items-center justify-center rounded-md bg-surface-active text-primary"><Tools size={22} /></span>
+            <div>
+              <p className="text-caption font-medium uppercase tracking-wide text-muted">Maintenance charge</p>
+              <p className="mt-1 font-heading text-h2 font-semibold text-foreground">{formatUGX(maintTotal)}</p>
+              <p className="mt-1 text-body text-muted">
+                {maintCharges.length === 1
+                  ? `${maintCharges[0].title} · ${maintCharges[0].invoiceNumber}`
+                  : `${maintCharges.length} unpaid maintenance invoices`}
+                {maintCharges[0].invoiceDueDate ? ` · due ${formatDate(maintCharges[0].invoiceDueDate)}` : ""}
+              </p>
+            </div>
+          </div>
+          <Button asChild variant="outline" className="gap-2"><Link href="/tenant/maintenance">View charge <ArrowRight size={16} /></Link></Button>
         </Card>
       )}
 

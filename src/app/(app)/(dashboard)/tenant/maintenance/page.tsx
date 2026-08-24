@@ -5,7 +5,7 @@ import Link from "next/link";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
-import { AdjustmentsHorizontal, Plus, CheckCircle, Clock, Image as ImageIcon, MessageDots } from "flowbite-react-icons/outline";
+import { AdjustmentsHorizontal, Plus, CheckCircle, Clock, Image as ImageIcon, MessageDots, Download } from "flowbite-react-icons/outline";
 import { PageHeader } from "@/components/app/page-header";
 import { StatusBadge, PriorityBadge } from "@/components/app/status";
 import { Card } from "@/components/ui/card";
@@ -24,7 +24,10 @@ import { toast } from "@/components/ui/sonner";
 import { cn } from "@/lib/utils";
 import { useAsync, debugErrorFlag } from "@/lib/use-async";
 import { useSession } from "@/lib/stores/session";
-import { formatDate, fromNow } from "@/lib/format";
+import { formatDate, fromNow, formatUGX } from "@/lib/format";
+import { downloadPdf } from "@/lib/pdf/download";
+import { maintenanceInvoicePdf } from "@/lib/pdf/builders";
+import { PayChargeDialog } from "@/components/tenant/pay-charge-dialog";
 import { getTenant, createTicket, NOW_ISO, type MaintenanceTicket, type TicketCategory, type TicketPriority, type Scope } from "@/lib/api/admin";
 
 type Tab = "maintenance" | "complaints";
@@ -45,7 +48,9 @@ const STEPS: { key: string; label: string }[] = [
 ];
 const ORDER: Record<string, number> = { open: 0, assigned: 1, in_progress: 2, completed: 3, closed: 3 };
 
-function TicketDetailDialog({ ticket, onOpenChange }: { ticket: MaintenanceTicket | null; onOpenChange: (o: boolean) => void }) {
+function TicketDetailDialog({ ticket, onOpenChange, onPay }: {
+  ticket: MaintenanceTicket | null; onOpenChange: (o: boolean) => void; onPay: (t: MaintenanceTicket) => void;
+}) {
   const current = ticket ? ORDER[ticket.status] ?? 0 : 0;
   return (
     <Dialog open={!!ticket} onOpenChange={onOpenChange}>
@@ -74,6 +79,30 @@ function TicketDetailDialog({ ticket, onOpenChange }: { ticket: MaintenanceTicke
                 ))}
               </Timeline>
             </div>
+            {/* E4 — the charge, if this repair was found to be the tenant's. */}
+            {ticket.liability === "tenant" && ticket.invoiceNumber && (
+              <div className="rounded-xl border border-primary/30 bg-primary/5 p-4">
+                <div className="flex items-center justify-between gap-3">
+                  <p className="text-caption font-medium uppercase tracking-wide text-muted">Maintenance charge</p>
+                  <StatusBadge status={ticket.paymentStatus === "paid" ? "paid" : "awaiting_payment"} />
+                </div>
+                <p className="mt-1 font-heading text-h2 font-semibold text-foreground">{formatUGX(ticket.invoiceAmount ?? ticket.cost ?? 0)}</p>
+                <dl className="mt-2 space-y-1 text-caption">
+                  <div className="flex justify-between"><dt className="text-muted">Invoice</dt><dd className="font-medium text-foreground">{ticket.invoiceNumber}</dd></div>
+                  {ticket.invoiceDueDate && <div className="flex justify-between"><dt className="text-muted">Due</dt><dd className="text-foreground">{formatDate(ticket.invoiceDueDate)}</dd></div>}
+                  <div className="flex justify-between gap-4"><dt className="shrink-0 text-muted">Reason</dt><dd className="text-right text-foreground">{ticket.liabilityReason}</dd></div>
+                  {ticket.paymentReference && <div className="flex justify-between"><dt className="text-muted">Payment ref</dt><dd className="font-mono text-foreground">{ticket.paymentReference}</dd></div>}
+                </dl>
+                <div className="mt-3 flex flex-wrap gap-2">
+                  {ticket.paymentStatus === "awaiting_payment" && <Button size="sm" onClick={() => onPay(ticket)}>Pay charge</Button>}
+                  <Button size="sm" variant="outline" className="gap-1.5"
+                    onClick={() => { const { payload, filename } = maintenanceInvoicePdf(ticket.id); downloadPdf(payload, filename); }}>
+                    <Download size={15} /> {ticket.paymentStatus === "paid" ? "Receipt" : "Invoice"}
+                  </Button>
+                </div>
+              </div>
+            )}
+
             <DialogFooter><DialogClose asChild><Button variant="outline">Close</Button></DialogClose></DialogFooter>
           </>
         )}
@@ -97,6 +126,7 @@ export default function TenantMaintenancePage() {
   const { data, loading, error, reload } = useAsync(() => getTenant(tenantId, scope), [tenantId, scope]);
   const [tab, setTab] = React.useState<Tab>("maintenance");
   const [detail, setDetail] = React.useState<MaintenanceTicket | null>(null);
+  const [payingCharge, setPayingCharge] = React.useState<MaintenanceTicket | null>(null);
 
   const { register, handleSubmit, reset, formState: { errors, isSubmitting } } = useForm<Values>({
     resolver: zodResolver(schema),
@@ -142,11 +172,43 @@ export default function TenantMaintenancePage() {
     { key: "priority", header: "Priority", render: (t) => <PriorityBadge priority={t.priority} /> },
     { key: "status", header: "Status", sortable: true, render: (t) => <StatusBadge status={t.status} /> },
     { key: "createdAt", header: "Submitted", sortable: true, align: "right", render: (t) => formatDate(t.createdAt) },
+    {
+      key: "charge", header: "Charge", align: "right",
+      render: (t) => t.liability === "tenant" && t.invoiceNumber
+        ? (t.paymentStatus === "awaiting_payment"
+          ? <Button size="sm" onClick={(e) => { e.stopPropagation(); setPayingCharge(t); }}>Pay {formatUGX(t.invoiceAmount ?? 0)}</Button>
+          : <span className="text-caption text-muted">Paid</span>)
+        : <span className="text-caption text-muted">—</span>,
+    },
   ];
+
+  const openCharges = allTickets.filter((t) => t.liability === "tenant" && t.paymentStatus === "awaiting_payment");
 
   return (
     <div>
       <PageHeader title="Maintenance & Requests" subtitle="Report issues and track them to resolution" />
+
+      {/* Outstanding maintenance charges — surfaced above the fold so a bill is
+          never buried inside a ticket row. */}
+      {openCharges.length > 0 && (
+        <div className="mb-6 space-y-3">
+          {openCharges.map((t) => (
+            <Card key={t.id} className="flex flex-col items-start justify-between gap-4 border-l-4 border-accent p-5 sm:flex-row sm:items-center">
+              <div>
+                <p className="text-caption font-medium uppercase tracking-wide text-muted">Maintenance charge · {t.invoiceNumber}</p>
+                <p className="mt-1 font-heading text-h3 font-semibold text-foreground">{formatUGX(t.invoiceAmount ?? t.cost ?? 0)}</p>
+                <p className="mt-0.5 text-caption text-muted">{t.title}{t.invoiceDueDate ? ` · due ${formatDate(t.invoiceDueDate)}` : ""}</p>
+              </div>
+              <div className="flex gap-2">
+                <Button variant="outline" className="gap-1.5" onClick={() => { const { payload, filename } = maintenanceInvoicePdf(t.id); downloadPdf(payload, filename); }}>
+                  <Download size={15} /> Invoice
+                </Button>
+                <Button onClick={() => setPayingCharge(t)}>Pay charge</Button>
+              </div>
+            </Card>
+          ))}
+        </div>
+      )}
 
       {/* Tabs */}
       <div className="mb-6 inline-flex rounded-md border border-border p-0.5">
@@ -204,7 +266,9 @@ export default function TenantMaintenancePage() {
         </div>
       </div>
 
-      <TicketDetailDialog ticket={detail} onOpenChange={(o) => !o && setDetail(null)} />
+      <TicketDetailDialog ticket={detail} onOpenChange={(o) => !o && setDetail(null)}
+        onPay={(t) => { setDetail(null); setPayingCharge(t); }} />
+      <PayChargeDialog ticket={payingCharge} onOpenChange={(o) => !o && setPayingCharge(null)} onDone={reload} />
 
       <div className="mt-8">
         <Link href="/tenant" className="text-body font-medium text-primary transition-colors hover:text-accent">← Back to dashboard</Link>

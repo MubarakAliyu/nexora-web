@@ -3,7 +3,7 @@
 import * as React from "react";
 import Link from "next/link";
 import {
-  Cash, Receipt, CreditCardPlus, CheckCircle, MobilePhone, Landmark, ArrowRight, Download,
+  Cash, Receipt, CreditCardPlus, CheckCircle, ArrowRight, Download,
 } from "flowbite-react-icons/outline";
 import { PageHeader } from "@/components/app/page-header";
 import { StatusBadge } from "@/components/app/status";
@@ -13,116 +13,15 @@ import { Button } from "@/components/ui/button";
 import { DataTable, type Column } from "@/components/ui/data-table";
 import { Skeleton } from "@/components/ui/skeleton";
 import { EmptyState } from "@/components/ui/empty-state";
-import {
-  Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription,
-} from "@/components/ui/dialog";
-import { toast } from "@/components/ui/sonner";
-import { cn } from "@/lib/utils";
 import { useAsync, debugErrorFlag } from "@/lib/use-async";
 import { useSession } from "@/lib/stores/session";
 import { formatUGX, formatDate } from "@/lib/format";
 import { downloadPdf } from "@/lib/pdf/download";
-import { receiptPdf } from "@/lib/pdf/builders";
-import { getTenant, payInvoice, type Invoice, type Payment, type PaymentMethod, type Scope } from "@/lib/api/admin";
-
-const METHODS: { id: PaymentMethod; label: string; hint: string; Icon: React.ComponentType<{ size?: number; className?: string }> }[] = [
-  { id: "mobile_money", label: "Mobile Money", hint: "MTN / Airtel", Icon: MobilePhone },
-  { id: "card", label: "Debit / Credit Card", hint: "Visa / Mastercard", Icon: CreditCardPlus },
-  { id: "bank", label: "Bank Transfer", hint: "Direct deposit", Icon: Landmark },
-];
-
-type Step = "method" | "processing" | "confirmed";
-
-function PayRentDialog({ invoice, onOpenChange, onDone }: { invoice: Invoice | null; onOpenChange: (o: boolean) => void; onDone: () => void }) {
-  const [step, setStep] = React.useState<Step>("method");
-  const [method, setMethod] = React.useState<PaymentMethod>("mobile_money");
-  const [payment, setPayment] = React.useState<Payment | null>(null);
-
-  React.useEffect(() => { if (invoice) { setStep("method"); setMethod("mobile_money"); setPayment(null); } }, [invoice]);
-
-  const due = invoice ? invoice.amount - invoice.paid : 0;
-
-  const pay = async () => {
-    if (!invoice) return;
-    setStep("processing");
-    try {
-      const p = await payInvoice({ invoiceId: invoice.id, method });
-      setPayment(p);
-      setStep("confirmed");
-      toast.success("Payment successful", { description: `Reference ${p.reference}` });
-      onDone();
-    } catch {
-      toast.error("Payment failed", { description: "Please try again." });
-      setStep("method");
-    }
-  };
-
-  return (
-    <Dialog open={!!invoice} onOpenChange={onOpenChange}>
-      <DialogContent>
-        {invoice && step === "method" && (
-          <>
-            <DialogHeader>
-              <DialogTitle>Pay rent</DialogTitle>
-              <DialogDescription>{invoice.number} · due {formatDate(invoice.due)}</DialogDescription>
-            </DialogHeader>
-            <div className="rounded-xl bg-surface-hover p-4 text-center">
-              <p className="text-caption uppercase tracking-wide text-muted">Amount due</p>
-              <p className="mt-1 font-heading text-h1 font-semibold text-primary">{formatUGX(due)}</p>
-            </div>
-            <div className="mt-4 space-y-2">
-              <p className="text-caption font-medium uppercase tracking-wide text-muted">Payment method</p>
-              {METHODS.map(({ id, label, hint, Icon }) => (
-                <button
-                  key={id}
-                  type="button"
-                  onClick={() => setMethod(id)}
-                  aria-pressed={method === id}
-                  className={cn(
-                    "flex w-full items-center gap-3 rounded-xl border p-3.5 text-left transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary",
-                    method === id ? "border-primary bg-primary/5" : "border-border hover:border-primary/50",
-                  )}
-                >
-                  <Icon size={22} className={method === id ? "text-primary" : "text-muted"} />
-                  <span className="flex-1"><span className="block font-medium text-foreground">{label}</span><span className="text-caption text-muted">{hint}</span></span>
-                  {method === id && <CheckCircle size={18} className="text-primary" />}
-                </button>
-              ))}
-            </div>
-            <Button className="mt-5 w-full" onClick={pay}>Pay {formatUGX(due)}</Button>
-            <p className="mt-2 text-center text-caption text-muted">Simulated payment — no real charge is made.</p>
-          </>
-        )}
-
-        {step === "processing" && (
-          <div className="flex flex-col items-center py-12 text-center">
-            <span className="h-12 w-12 animate-spin rounded-full border-4 border-surface-active border-t-primary" />
-            <p className="mt-5 font-heading text-h3 font-semibold text-foreground">Redirecting to gateway…</p>
-            <p className="mt-1 text-body text-muted">Securely processing your payment.</p>
-          </div>
-        )}
-
-        {step === "confirmed" && payment && (
-          <div className="flex flex-col items-center py-6 text-center">
-            <span className="flex h-16 w-16 items-center justify-center rounded-full bg-primary/10"><CheckCircle size={36} className="text-primary" /></span>
-            <h3 className="mt-5 font-heading text-h2 font-semibold text-foreground">Payment successful</h3>
-            <p className="mt-2 text-body text-muted">Your rent payment has been received. A receipt is available below.</p>
-            <div className="mt-5 w-full space-y-2 rounded-xl border border-border bg-surface-hover p-4 text-left text-body">
-              <div className="flex justify-between"><span className="text-muted">Reference</span><span className="font-semibold text-foreground">{payment.reference}</span></div>
-              <div className="flex justify-between"><span className="text-muted">Amount</span><span className="font-semibold text-foreground">{formatUGX(payment.amount)}</span></div>
-              <div className="flex justify-between"><span className="text-muted">Method</span><span className="capitalize text-foreground">{payment.method.replace("_", " ")}</span></div>
-              <div className="flex justify-between"><span className="text-muted">Date</span><span className="text-foreground">{formatDate(payment.date)}</span></div>
-            </div>
-            <div className="mt-5 flex w-full gap-3">
-              <Button variant="outline" className="flex-1 gap-2" onClick={() => { const { payload, filename } = receiptPdf(payment); downloadPdf(payload, filename); }}><Download size={16} /> Receipt</Button>
-              <Button className="flex-1" onClick={() => onOpenChange(false)}>Done</Button>
-            </div>
-          </div>
-        )}
-      </DialogContent>
-    </Dialog>
-  );
-}
+import { receiptPdf, maintenanceInvoicePdf } from "@/lib/pdf/builders";
+import { getTenant, type Invoice, type Payment, type Scope } from "@/lib/api/admin";
+import { PayChargeDialog } from "@/components/tenant/pay-charge-dialog";
+import { tenantMaintenanceInvoices } from "@/lib/api/maintenance-liability";
+import type { MaintenanceTicket } from "@/lib/mock/types";
 
 export default function TenantPaymentsPage() {
   const user = useSession((s) => s.user);
@@ -130,6 +29,7 @@ export default function TenantPaymentsPage() {
   const scope: Scope = React.useMemo(() => ({ forceError: debugErrorFlag() }), []);
   const { data, loading, error, reload } = useAsync(() => getTenant(tenantId, scope), [tenantId, scope]);
   const [paying, setPaying] = React.useState<Invoice | null>(null);
+  const [payingCharge, setPayingCharge] = React.useState<MaintenanceTicket | null>(null);
 
   // Only skeleton on FIRST load — a background refetch (live-revision bump after
   // a payment) must not unmount the Pay-Rent dialog mid-flow.
@@ -152,6 +52,21 @@ export default function TenantPaymentsPage() {
     { key: "amount", header: "Amount", align: "right", render: (i) => formatUGX(i.amount - i.paid) },
     { key: "status", header: "Status", render: (i) => <StatusBadge status={i.status} /> },
     { key: "pay", header: "", align: "right", render: (i) => <Button size="sm" onClick={() => setPaying(i)}>Pay</Button> },
+  ];
+
+  const charges = tenantMaintenanceInvoices(tenantId);
+  const chargeColumns: Column<MaintenanceTicket>[] = [
+    { key: "invoiceNumber", header: "Invoice", sortable: true, render: (t) => <span className="font-medium text-foreground">{t.invoiceNumber}</span> },
+    { key: "title", header: "Work", render: (t) => t.title },
+    { key: "invoiceDueDate", header: "Due", sortable: true, render: (t) => (t.invoiceDueDate ? formatDate(t.invoiceDueDate) : "—") },
+    { key: "invoiceAmount", header: "Amount", align: "right", render: (t) => formatUGX(t.invoiceAmount ?? t.cost ?? 0) },
+    { key: "paymentStatus", header: "Status", render: (t) => <StatusBadge status={t.paymentStatus === "paid" ? "paid" : "awaiting_payment"} /> },
+    {
+      key: "act", header: "", align: "right",
+      render: (t) => t.paymentStatus === "awaiting_payment"
+        ? <Button size="sm" onClick={() => setPayingCharge(t)}>Pay</Button>
+        : <Button variant="ghost" size="sm" className="gap-1.5" onClick={() => { const { payload, filename } = maintenanceInvoicePdf(t.id); downloadPdf(payload, filename); }}><Download size={15} /> Receipt</Button>,
+    },
   ];
 
   const paymentColumns: Column<Payment>[] = [
@@ -198,6 +113,16 @@ export default function TenantPaymentsPage() {
         </section>
       )}
 
+      {/* Maintenance charges — separate from rent, because they are a different
+          obligation with their own invoice and their own due date. */}
+      {charges.length > 0 && (
+        <section className="mt-8">
+          <h2 className="mb-4 font-heading text-h3 font-semibold text-foreground">Maintenance charges</h2>
+          <DataTable columns={chargeColumns} data={charges} getRowId={(t) => t.id}
+            emptyTitle="No maintenance charges" emptyDescription="Charges you're responsible for will show here." pageSize={6} />
+        </section>
+      )}
+
       {/* Payment history */}
       <section className="mt-8">
         <h2 className="mb-4 font-heading text-h3 font-semibold text-foreground">Payment history</h2>
@@ -208,7 +133,7 @@ export default function TenantPaymentsPage() {
         <Link href="/tenant" className="text-body font-medium text-primary transition-colors hover:text-accent">← Back to dashboard</Link>
       </div>
 
-      <PayRentDialog invoice={paying} onOpenChange={(o) => !o && setPaying(null)} onDone={reload} />
+      <PayChargeDialog invoice={paying} ticket={payingCharge} onOpenChange={(o) => { if (!o) { setPaying(null); setPayingCharge(null); } }} onDone={reload} />
     </div>
   );
 }
