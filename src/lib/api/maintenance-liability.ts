@@ -148,7 +148,18 @@ export async function closeTicketWithLiability(
   /* ---- BRANCH C: Nexora absorbs it ---- */
   const expense: Expense = {
     id: `exp_nx_${Date.now()}`,
-    // No propertyId — this must never reduce an owner's settlement.
+    /* ⚠️ propertyId IS DELIBERATELY EMPTY — DO NOT "FIX" THIS.
+     *
+     * Owner settlements deduct expenses by filtering on the owner's property IDs
+     * (see agreements.ts → ownerExpenses, and settlement.ts → computeOwnerSettlement).
+     * A Nexora-absorbed cost must never reach an owner, so we make that exclusion
+     * STRUCTURAL rather than procedural: with no propertyId there is no filter any
+     * present or future settlement calculation could match, so the cost cannot leak
+     * into a payout even if someone forgets to special-case it.
+     *
+     * The originating property is still recoverable — it is named in `description`
+     * and reachable via `maintenanceTicketId` — it just isn't a settlement key.
+     */
     propertyId: "",
     category: "admin",
     vendor: NEXORA_OPERATIONAL,

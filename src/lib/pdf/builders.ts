@@ -5,7 +5,7 @@
  */
 import * as db from "@/lib/mock/db";
 import type { Invoice, Payment, Lease } from "@/lib/mock/types";
-import type { InvoicePdfData, ReceiptPdfData, StatementPdfData, LeasePdfData, DepositSettlementPdfData, SettlementStatementPdfData, ServiceInvoicePdfData, PdfPayload } from "./documents";
+import type { InvoicePdfData, ReceiptPdfData, StatementPdfData, LeasePdfData, DepositSettlementPdfData, SettlementStatementPdfData, ServiceInvoicePdfData, MaintenanceInvoicePdfData, PdfPayload } from "./documents";
 import { computeOwnerSettlement } from "@/lib/api/settlement";
 import type { SettlementRecord } from "@/lib/mock/types";
 import { slugFile } from "./download";
@@ -87,6 +87,36 @@ export function serviceInvoicePdf(bookingId: string, mode: "invoice" | "receipt"
   return {
     payload: { kind: "service-invoice", data },
     filename: `Nexora-${mode === "receipt" ? "Service-Receipt" : "Service-Invoice"}-${data.number}`,
+  };
+}
+
+/** Maintenance invoice for a tenant-liable ticket (E4). */
+export function maintenanceInvoicePdf(ticketId: string): { payload: PdfPayload; filename: string } {
+  const t = db.tickets.find((x) => x.id === ticketId);
+  if (!t) throw new Error("Ticket not found");
+  const tenant = db.tenants.find((x) => x.id === t.tenantId);
+  const paid = t.paymentStatus === "paid";
+  const data: MaintenanceInvoicePdfData = {
+    number: t.invoiceNumber ?? `INV-${t.ref}`,
+    ticketRef: t.ref,
+    issued: formatDate(t.invoiceGeneratedAt ?? t.closedAt ?? t.createdAt),
+    due: t.invoiceDueDate ? formatDate(t.invoiceDueDate) : "On receipt",
+    status: paid ? "Paid" : "Awaiting payment",
+    tenantName: tenant?.name ?? "Tenant",
+    unitLabel: uLabel(t.unitId),
+    propertyName: pName(t.propertyId),
+    issue: t.title,
+    workPerformed: t.resolution ?? "-",
+    labour: t.labourCost ?? 0,
+    materials: t.materialsCost ?? 0,
+    total: t.invoiceAmount ?? t.cost ?? 0,
+    paid,
+    paymentReference: t.paymentReference,
+    paidAt: t.paidAt ? formatDate(t.paidAt) : undefined,
+  };
+  return {
+    payload: { kind: "maintenance-invoice", data },
+    filename: `Nexora-Maintenance-Invoice-${slugFile(data.number)}`,
   };
 }
 

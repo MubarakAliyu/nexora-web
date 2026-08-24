@@ -1,7 +1,8 @@
 "use client";
 
 import * as React from "react";
-import { Grid, ClipboardList, MapPin, UserCircle, Plus, PenNib, TrashBin, CheckCircle } from "flowbite-react-icons/outline";
+import Link from "next/link";
+import { Grid, ClipboardList, MapPin, UserCircle, Plus, PenNib, TrashBin, CheckCircle, FileLines, CashRegister, ChartMixed } from "flowbite-react-icons/outline";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
@@ -23,10 +24,18 @@ import { toast } from "@/components/ui/sonner";
 import { useAsync, debugErrorFlag } from "@/lib/use-async";
 import { formatUGX, formatDate } from "@/lib/format";
 import {
-  listTickets, createTicket, updateTicket, closeTicket, deleteTicket, propertyName, unitLabel, tenantName, propertyOptions, unitOptions, maintenanceStaff,
+  listTickets, createTicket, updateTicket, deleteTicket, propertyName, unitLabel, tenantName, propertyOptions, unitOptions, maintenanceStaff,
   type MaintenanceTicket, type TicketStatus, type TicketCategory, type TicketPriority, type Scope,
 } from "@/lib/api/admin";
 import { cn } from "@/lib/utils";
+import { CloseTicketDialog } from "@/components/admin/close-ticket-dialog";
+import { LiabilityBadge } from "@/components/admin/liability-badge";
+import { payMaintenanceCharge, getMaintenanceSummary, LIABILITY_LABEL } from "@/lib/api/maintenance-liability";
+import { maintenanceInvoicePdf } from "@/lib/pdf/builders";
+import { downloadPdf } from "@/lib/pdf/download";
+import { StatCard } from "@/components/ui/stat-card";
+import { CountUp } from "@/components/motion/count-up";
+import type { TicketLiability, TicketPaymentStatus } from "@/lib/mock/types";
 
 const COLUMNS: { status: TicketStatus; label: string }[] = [
   { status: "open", label: "Open" },
@@ -100,6 +109,14 @@ function TicketCard({ t, onClick }: { t: MaintenanceTicket; onClick: () => void 
       <p className="mt-1.5 text-body font-medium text-foreground">{t.title}</p>
       <p className="mt-1 inline-flex items-center gap-1 text-caption text-muted"><MapPin size={13} /> {propertyName(t.propertyId)} · {unitLabel(t.unitId)}</p>
       {t.assignee && <p className="mt-1 inline-flex items-center gap-1 text-caption text-muted"><UserCircle size={13} /> {t.assignee}</p>}
+      {/* Closed cards carry the outcome the PM asked for: who paid, and whether they have. */}
+      {t.liability && (
+        <div className="mt-2 flex flex-wrap items-center gap-1.5 border-t border-border pt-2">
+          <LiabilityBadge liability={t.liability} />
+          <span className="text-caption text-muted">{formatUGX(t.cost ?? 0)}</span>
+          {t.paymentStatus === "awaiting_payment" && <span className="text-caption font-medium text-primary">· Awaiting payment</span>}
+        </div>
+      )}
     </button>
   );
 }
@@ -111,6 +128,11 @@ export default function MaintenancePage() {
   const [selected, setSelected] = React.useState<MaintenanceTicket | null>(null);
   const [createOpen, setCreateOpen] = React.useState(false);
   const [deleting, setDeleting] = React.useState<MaintenanceTicket | null>(null);
+  // E4 — liability lens over the same ticket list.
+  const [liability, setLiability] = React.useState<"all" | TicketLiability>("all");
+  const [payment, setPayment] = React.useState<"all" | TicketPaymentStatus>("all");
+  const [closing, setClosing] = React.useState<{ ticket: MaintenanceTicket; resolution: string } | null>(null);
+  const [paying, setPaying] = React.useState<MaintenanceTicket | null>(null);
   const scope: Scope = React.useMemo(() => ({ forceError: debugErrorFlag() }), []);
   const options = React.useMemo(() => propertyOptions(), []);
 
@@ -119,7 +141,10 @@ export default function MaintenancePage() {
     [property, priority, scope],
   );
 
-  const tickets = data ?? [];
+  const tickets = (data ?? []).filter(
+    (t) => (liability === "all" || t.liability === liability) && (payment === "all" || t.paymentStatus === payment),
+  );
+  const summary = React.useMemo(() => getMaintenanceSummary(), [data]); // eslint-disable-line react-hooks/exhaustive-deps
 
   const columns: Column<MaintenanceTicket>[] = [
     { key: "ref", header: "Ref", sortable: true, render: (t) => <span className="font-medium text-foreground">{t.ref}</span> },
@@ -130,6 +155,14 @@ export default function MaintenancePage() {
     { key: "status", header: "Status", sortable: true, render: (t) => <StatusBadge status={t.status} /> },
     { key: "assignee", header: "Technician", render: (t) => t.assignee ?? <span className="text-muted">Unassigned</span> },
     { key: "cost", header: "Cost", align: "right", render: (t) => (t.cost ? formatUGX(t.cost) : "—") },
+    { key: "liability", header: "Liability", sortable: true, sortValue: (t) => t.liability ?? "", render: (t) => <LiabilityBadge liability={t.liability} /> },
+    {
+      key: "paymentStatus", header: "Payment", sortable: true, sortValue: (t) => t.paymentStatus ?? "",
+      render: (t) =>
+        t.paymentStatus === "paid" ? <StatusBadge status="paid" />
+          : t.paymentStatus === "awaiting_payment" ? <StatusBadge status="awaiting_payment" />
+            : <span className="text-muted">—</span>,
+    },
     {
       key: "actions", header: "", align: "right",
       render: (t) => (
@@ -163,6 +196,18 @@ export default function MaintenancePage() {
           <option value="urgent">Urgent</option><option value="high">High</option>
           <option value="medium">Medium</option><option value="low">Low</option>
         </select>
+        <select className={`${selectClass} sm:w-40`} value={liability} onChange={(e) => setLiability(e.target.value as typeof liability)} aria-label="Filter by liability">
+          <option value="all">All liability</option>
+          <option value="owner">Owner-liable</option>
+          <option value="tenant">Tenant-liable</option>
+          <option value="nexora">Nexora-absorbed</option>
+        </select>
+        <select className={`${selectClass} sm:w-44`} value={payment} onChange={(e) => setPayment(e.target.value as typeof payment)} aria-label="Filter by payment status">
+          <option value="all">All payment states</option>
+          <option value="awaiting_payment">Awaiting payment</option>
+          <option value="paid">Paid</option>
+          <option value="not_applicable">Not applicable</option>
+        </select>
       </div>
     </div>
   );
@@ -181,10 +226,30 @@ export default function MaintenancePage() {
               { header: "Status", accessor: (t) => t.status },
               { header: "Assignee", accessor: (t) => t.assignee ?? "" },
               { header: "Cost", accessor: (t) => t.cost ?? "" },
+              { header: "Liability", accessor: (t) => (t.liability ? LIABILITY_LABEL[t.liability] : "") },
+              { header: "Liability reason", accessor: (t) => t.liabilityReason ?? "" },
+              { header: "Invoice", accessor: (t) => t.invoiceNumber ?? "" },
+              { header: "Payment status", accessor: (t) => t.paymentStatus ?? "" },
             ]} />
             <Button onClick={() => setCreateOpen(true)} className="gap-2"><Plus size={18} /> Create ticket</Button>
           </div>
         } />
+      {/* E4 — where the maintenance money actually lands. */}
+      <div className="mb-5 grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
+        <StatCard label="Total maintenance cost" icon={<ChartMixed size={20} />}
+          value={<CountUp to={summary.totalCost} prefix="UGX " immediate />}
+          hint={`${summary.owner.count + summary.tenant.count + summary.nexora.count} costed tickets`} />
+        <StatCard label="Owner-liable" icon={<UserCircle size={20} />}
+          value={<CountUp to={summary.owner.amount} prefix="UGX " immediate />}
+          hint={`${summary.owner.count} tickets · deducted from settlements`} />
+        <StatCard label="Tenant-liable" icon={<FileLines size={20} />}
+          value={<CountUp to={summary.tenant.amount} prefix="UGX " immediate />}
+          hint={`${summary.tenant.count} tickets · ${summary.tenant.awaiting} awaiting payment`} />
+        <StatCard label="Nexora-absorbed" icon={<CashRegister size={20} />}
+          value={<CountUp to={summary.nexora.amount} prefix="UGX " immediate />}
+          hint={`${summary.nexora.count} tickets · not charged to owners`} />
+      </div>
+
       {filters}
 
       {loading ? (
@@ -219,7 +284,13 @@ export default function MaintenancePage() {
           emptyTitle="No tickets" emptyDescription="Maintenance tickets will appear here." pageSize={10} />
       )}
 
-      <TicketDialog ticket={selected} onClose={() => setSelected(null)} onSaved={reload} onDelete={(t) => { setSelected(null); setDeleting(t); }} />
+      <TicketDialog ticket={selected} onClose={() => setSelected(null)} onSaved={reload}
+        onDelete={(t) => { setSelected(null); setDeleting(t); }}
+        onClose2={(t, res) => { setSelected(null); setClosing({ ticket: t, resolution: res }); }}
+        onRecordPayment={(t) => { setSelected(null); setPaying(t); }} />
+      <CloseTicketDialog ticket={closing?.ticket ?? null} resolution={closing?.resolution ?? ""}
+        onOpenChange={(o) => !o && setClosing(null)} onDone={reload} />
+      <RecordMaintenancePaymentDialog ticket={paying} onOpenChange={(o) => !o && setPaying(null)} onDone={reload} />
       <CreateTicketDialog open={createOpen} onOpenChange={setCreateOpen} onDone={reload} />
       <DeleteConfirmation open={!!deleting} onOpenChange={(o) => !o && setDeleting(null)} entityLabel="ticket" entityName={deleting?.ref ?? ""}
         onConfirm={async () => { if (!deleting) return; try { await deleteTicket(deleting.id); toast.success("Ticket deleted"); reload(); } catch { toast.error("Couldn’t delete ticket"); } }} />
@@ -227,7 +298,12 @@ export default function MaintenancePage() {
   );
 }
 
-function TicketDialog({ ticket, onClose, onSaved, onDelete }: { ticket: MaintenanceTicket | null; onClose: () => void; onSaved: () => void; onDelete: (t: MaintenanceTicket) => void }) {
+function TicketDialog({ ticket, onClose, onSaved, onDelete, onClose2, onRecordPayment }: {
+  ticket: MaintenanceTicket | null; onClose: () => void; onSaved: () => void; onDelete: (t: MaintenanceTicket) => void;
+  /** Hands off to the liability dialog — closing a ticket now needs a payer. */
+  onClose2: (t: MaintenanceTicket, resolution: string) => void;
+  onRecordPayment: (t: MaintenanceTicket) => void;
+}) {
   const [status, setStatus] = React.useState<TicketStatus>("open");
   const [assignee, setAssignee] = React.useState("");
   const [cost, setCost] = React.useState("");
@@ -251,18 +327,6 @@ function TicketDialog({ ticket, onClose, onSaved, onDelete }: { ticket: Maintena
       toast.success("Ticket updated", { description: `${ticket.ref} → ${status.replace("_", " ")}.` });
       onSaved(); onClose();
     } catch { toast.error("Couldn’t update ticket"); }
-    finally { setBusy(null); }
-  };
-
-  const close = async () => {
-    if (!ticket) return;
-    if (!resolution.trim()) { toast.error("Resolution required", { description: "Add a resolution summary to close the ticket." }); return; }
-    setBusy("close");
-    try {
-      await closeTicket(ticket.id, resolution.trim());
-      toast.success("Ticket closed", { description: `${ticket.ref} resolved.` });
-      onSaved(); onClose();
-    } catch { toast.error("Couldn’t close ticket"); }
     finally { setBusy(null); }
   };
 
@@ -303,12 +367,125 @@ function TicketDialog({ ticket, onClose, onSaved, onDelete }: { ticket: Maintena
             <Field label="Resolution summary (required to close)" htmlFor="tk-res">
               <textarea id="tk-res" rows={2} className={`${selectClass} h-auto py-2`} value={resolution} onChange={(e) => setResolution(e.target.value)} placeholder="What was done to resolve it…" />
             </Field>
+
+            {/* E4 — who paid, and where the money went. Permanently visible so the
+                rationale stays auditable long after the ticket was closed. */}
+            {ticket.liability && (
+              <div className="rounded-xl border border-border p-4">
+                <div className="mb-2 flex items-center justify-between">
+                  <p className="text-caption font-medium uppercase tracking-wide text-muted">Cost liability</p>
+                  <LiabilityBadge liability={ticket.liability} />
+                </div>
+                <dl className="space-y-1.5 text-body">
+                  <div className="flex justify-between gap-4"><dt className="text-muted">Labour · materials</dt><dd className="text-foreground">{formatUGX(ticket.labourCost ?? 0)} · {formatUGX(ticket.materialsCost ?? 0)}</dd></div>
+                  <div className="flex justify-between gap-4"><dt className="text-muted">Total</dt><dd className="font-medium text-foreground">{formatUGX(ticket.cost ?? 0)}</dd></div>
+                  <div className="gap-4"><dt className="text-muted">Reason</dt><dd className="mt-0.5 text-foreground">{ticket.liabilityReason}</dd></div>
+                </dl>
+
+                {ticket.liability === "tenant" && ticket.invoiceNumber ? (
+                  <div className="mt-3 rounded-lg bg-surface-hover p-3">
+                    <div className="mb-1.5 flex items-center justify-between">
+                      <span className="font-medium text-foreground">{ticket.invoiceNumber}</span>
+                      <StatusBadge status={ticket.paymentStatus === "paid" ? "paid" : "awaiting_payment"} />
+                    </div>
+                    <dl className="space-y-1 text-caption">
+                      <div className="flex justify-between"><dt className="text-muted">Amount</dt><dd className="text-foreground">{formatUGX(ticket.invoiceAmount ?? 0)}</dd></div>
+                      {ticket.invoiceGeneratedAt && <div className="flex justify-between"><dt className="text-muted">Issued</dt><dd className="text-foreground">{formatDate(ticket.invoiceGeneratedAt)}</dd></div>}
+                      {ticket.invoiceDueDate && <div className="flex justify-between"><dt className="text-muted">Due</dt><dd className="text-foreground">{formatDate(ticket.invoiceDueDate)}</dd></div>}
+                      {ticket.paymentReference && <div className="flex justify-between"><dt className="text-muted">Payment ref</dt><dd className="font-mono text-foreground">{ticket.paymentReference}</dd></div>}
+                    </dl>
+                    <div className="mt-3 flex flex-wrap gap-2">
+                      <Button size="sm" variant="outline" className="gap-1.5" onClick={() => { const { payload, filename } = maintenanceInvoicePdf(ticket.id); downloadPdf(payload, filename); }}>
+                        <FileLines size={15} /> View Invoice
+                      </Button>
+                      {ticket.paymentStatus === "awaiting_payment" && (
+                        <Button size="sm" variant="secondary" onClick={() => onRecordPayment(ticket)}>Record Manual Payment</Button>
+                      )}
+                    </div>
+                  </div>
+                ) : ticket.expenseId ? (
+                  <div className="mt-3 rounded-lg bg-surface-hover p-3 text-caption">
+                    <p className="font-medium text-foreground">
+                      Recorded as {ticket.liability === "owner" ? "Owner Property Expense" : "Nexora Operational Cost"}
+                    </p>
+                    <p className="mt-0.5 text-muted">
+                      {formatUGX(ticket.cost ?? 0)}{ticket.closedAt ? ` · ${formatDate(ticket.closedAt)}` : ""}
+                      {ticket.liability === "nexora" ? " · not charged to any owner" : ""}
+                    </p>
+                    <Link href="/admin/finance" className="mt-1.5 inline-block font-medium text-primary hover:text-accent">View in Finance →</Link>
+                  </div>
+                ) : null}
+              </div>
+            )}
+
             <DialogFooter className="sm:justify-between">
               <Button type="button" variant="outline" className="gap-2 text-primary" onClick={() => onDelete(ticket)}><TrashBin size={16} /> Delete</Button>
               <div className="flex flex-col-reverse gap-2 sm:flex-row">
-                <Button type="button" variant="outline" className="gap-2" onClick={close} loading={busy === "close"} disabled={ticket.status === "closed"}><CheckCircle size={16} /> Close ticket</Button>
+                <Button type="button" variant="outline" className="gap-2" onClick={() => onClose2(ticket, resolution)} disabled={ticket.status === "closed"}><CheckCircle size={16} /> Close ticket</Button>
                 <Button onClick={save} loading={busy === "save"}>Save changes</Button>
               </div>
+            </DialogFooter>
+          </>
+        )}
+      </DialogContent>
+    </Dialog>
+  );
+}
+
+/**
+ * Admin-side settlement of a tenant maintenance charge — for cash or a transfer
+ * taken outside the tenant portal. Calls the same API the tenant flow does, so
+ * the money lands in the same place either way.
+ */
+function RecordMaintenancePaymentDialog({ ticket, onOpenChange, onDone }: {
+  ticket: MaintenanceTicket | null; onOpenChange: (o: boolean) => void; onDone: () => void;
+}) {
+  const [method, setMethod] = React.useState("mobile_money");
+  const [reference, setReference] = React.useState("");
+  const [busy, setBusy] = React.useState(false);
+
+  React.useEffect(() => { if (ticket) { setMethod("mobile_money"); setReference(""); } }, [ticket]);
+
+  const submit = async () => {
+    if (!ticket) return;
+    setBusy(true);
+    try {
+      const ref = reference.trim() || `MPY-${Date.now().toString().slice(-8)}`;
+      await payMaintenanceCharge(ticket.id, { amount: ticket.invoiceAmount ?? ticket.cost ?? 0, method, reference: ref });
+      toast.success("Payment recorded", { description: `${ticket.invoiceNumber} settled · ${ref}` });
+      onOpenChange(false); onDone();
+    } catch { toast.error("Couldn’t record the payment"); }
+    finally { setBusy(false); }
+  };
+
+  return (
+    <Dialog open={!!ticket} onOpenChange={onOpenChange}>
+      <DialogContent>
+        {ticket && (
+          <>
+            <DialogHeader>
+              <DialogTitle>Record payment</DialogTitle>
+              <DialogDescription>{ticket.invoiceNumber} · {tenantName(ticket.tenantId)}</DialogDescription>
+            </DialogHeader>
+            <div className="space-y-4">
+              <div className="flex items-center justify-between rounded-xl border border-primary/30 bg-primary/5 p-4">
+                <span className="text-body font-medium text-foreground">Amount due</span>
+                <span className="font-heading text-h3 font-semibold text-primary">{formatUGX(ticket.invoiceAmount ?? ticket.cost ?? 0)}</span>
+              </div>
+              <Field label="Payment method" htmlFor="mp-method">
+                <select id="mp-method" className={selectClass} value={method} onChange={(e) => setMethod(e.target.value)}>
+                  <option value="mobile_money">Mobile money</option>
+                  <option value="bank_transfer">Bank transfer</option>
+                  <option value="cash">Cash</option>
+                </select>
+              </Field>
+              <Field label="Payment reference" htmlFor="mp-ref">
+                <Input id="mp-ref" value={reference} onChange={(e) => setReference(e.target.value)} placeholder="Leave blank to generate one" />
+              </Field>
+            </div>
+            <DialogFooter>
+              <DialogClose asChild><Button variant="outline">Cancel</Button></DialogClose>
+              <Button onClick={submit} loading={busy}>Record payment</Button>
             </DialogFooter>
           </>
         )}

@@ -502,6 +502,77 @@ export function ServiceInvoiceDoc({ d }: { d: ServiceInvoicePdfData }) {
   );
 }
 
+/* ------------------------------------------------- maintenance invoice */
+
+export interface MaintenanceInvoicePdfData {
+  number: string; ticketRef: string; issued: string; due: string; status: string;
+  tenantName: string; unitLabel: string; propertyName: string;
+  issue: string; workPerformed: string;
+  labour: number; materials: number; total: number;
+  paid?: boolean; paymentReference?: string; paidAt?: string;
+}
+
+export function MaintenanceInvoiceDoc({ d }: { d: MaintenanceInvoicePdfData }) {
+  return (
+    <Document title={`Maintenance Invoice ${d.number}`} author="Nexora Property Management">
+      <Page size="A4" style={s.page}>
+        <Header title="MAINTENANCE INVOICE" />
+        {d.paid && <View style={s.stamp}><Text style={s.stampText}>PAID</Text></View>}
+        <View style={s.row}>
+          <View style={s.block}>
+            <Text style={s.label}>Billed to</Text>
+            <Text style={[s.strong, s.metaLine]}>{d.tenantName}</Text>
+            <Text style={s.metaLine}>Unit {d.unitLabel}, {d.propertyName}</Text>
+          </View>
+          <View style={s.block}>
+            <Text style={s.label}>Invoice no.</Text>
+            <Text style={[s.strong, s.metaLine]}>{d.number}</Text>
+            <Text style={s.label}>Ticket reference</Text>
+            <Text style={s.metaLine}>{d.ticketRef}</Text>
+            <Text style={s.label}>Issued</Text>
+            <Text style={s.metaLine}>{d.issued}</Text>
+            <Text style={s.label}>Due</Text>
+            <Text style={s.metaLine}>{d.due}</Text>
+          </View>
+        </View>
+
+        <Text style={s.clauseH}>Issue &amp; work performed</Text>
+        <View style={s.table}>
+          <View style={s.tr}><Text style={s.cell}>Reported issue</Text><Text style={s.cellRight}>{d.issue}</Text></View>
+          <View style={[s.tr, s.trAlt]}><Text style={s.cell}>Work performed</Text><Text style={s.cellRight}>{d.workPerformed}</Text></View>
+        </View>
+
+        <Text style={s.clauseH}>Cost breakdown</Text>
+        <View style={s.table}>
+          <View style={s.th}><Text style={s.cell}>Item</Text><Text style={s.cellRight}>Amount</Text></View>
+          <View style={s.tr}><Text style={s.cell}>Labour</Text><Text style={s.cellRight}>{money(d.labour)}</Text></View>
+          <View style={[s.tr, s.trAlt]}><Text style={s.cell}>Materials</Text><Text style={s.cellRight}>{money(d.materials)}</Text></View>
+        </View>
+        <View style={s.grandRow}>
+          <Text style={s.grandLabel}>{d.paid ? "Amount paid" : "Total due"}</Text>
+          <Text style={s.grandValue}>{money(d.total)}</Text>
+        </View>
+
+        <View style={s.note}>
+          {d.paid ? (
+            <>
+              <Text style={s.noteTitle}>Payment received — thank you</Text>
+              <Text>Reference: {d.paymentReference ?? "-"}{d.paidAt ? ` · ${d.paidAt}` : ""}</Text>
+            </>
+          ) : (
+            <>
+              <Text style={s.noteTitle}>Payment instructions</Text>
+              <Text>Pay from your Nexora resident dashboard, or by mobile money or bank transfer, quoting {d.number}.</Text>
+            </>
+          )}
+        </View>
+
+        <Footer note={`Maintenance charge · ${d.ticketRef}`} />
+      </Page>
+    </Document>
+  );
+}
+
 /* -------------------------------------------------- settlement statement */
 
 export interface SettlementStatementPdfData {
@@ -585,7 +656,8 @@ export type PdfPayload =
   | { kind: "lease"; data: LeasePdfData }
   | { kind: "deposit"; data: DepositSettlementPdfData }
   | { kind: "settlement"; data: SettlementStatementPdfData }
-  | { kind: "service-invoice"; data: ServiceInvoicePdfData };
+  | { kind: "service-invoice"; data: ServiceInvoicePdfData }
+  | { kind: "maintenance-invoice"; data: MaintenanceInvoicePdfData };
 
 
 export function renderDocument(p: PdfPayload): React.ReactElement<DocumentProps> {
@@ -596,6 +668,7 @@ export function renderDocument(p: PdfPayload): React.ReactElement<DocumentProps>
     : p.kind === "deposit" ? <DepositSettlementDoc d={p.data} />
     : p.kind === "settlement" ? <SettlementStatementDoc d={p.data} />
     : p.kind === "service-invoice" ? <ServiceInvoiceDoc d={p.data} />
+    : p.kind === "maintenance-invoice" ? <MaintenanceInvoiceDoc d={p.data} />
     : <LeaseDoc d={p.data} />;
   return el as unknown as React.ReactElement<DocumentProps>;
 }
