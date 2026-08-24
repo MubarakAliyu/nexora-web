@@ -79,7 +79,8 @@ export function serviceInvoicePdf(bookingId: string, mode: "invoice" | "receipt"
     assessedBy: sb.assessedBy,
     assessedAt: sb.assessedAt ? formatDate(sb.assessedAt) : undefined,
     amount: sb.invoiceAmount ?? sb.assessedAmount ?? 0,
-    paidAmount: sb.paidAmount, paymentMethod: sb.paymentMethod,
+    paidAmount: sb.paidAmount,
+    paymentMethod: sb.paymentMethod ? cap(sb.paymentMethod.replace(/_/g, " ")) : undefined,
     paymentReference: sb.paymentReference,
     paidAt: sb.paidAt ? formatDate(sb.paidAt) : undefined,
   };

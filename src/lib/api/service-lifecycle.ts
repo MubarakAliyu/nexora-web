@@ -277,7 +277,9 @@ export async function rejectServiceCompletion(id: string, reason: string): Promi
     after: { status: "in_progress", rejectionReason: reason },
     notify: { type: "system", title: "Completion rejected", body: `${sb.reference} sent back to in progress — ${reason}` },
   });
-  if (sb.assignee) pushNotify("system", "Completion rejected", `Completion rejected — ${reason}. Please review.`, "service-booking", id);
+  // Trim any trailing punctuation so the sentence doesn't end in a double period.
+  const cleanReason = reason.trim().replace(/\.+$/, "");
+  if (sb.assignee) pushNotify("system", "Completion rejected", `Completion rejected — ${cleanReason}. Please review.`, "service-booking", id);
   return sb;
 }
 

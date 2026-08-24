@@ -1,9 +1,35 @@
 /* eslint-disable jsx-a11y/alt-text -- @react-pdf <Image> has no alt prop */
 import * as React from "react";
-import { Document, Page, View, Text, Image, StyleSheet, type DocumentProps } from "@react-pdf/renderer";
+import { Document, Page, View, Text as RpText, Image, StyleSheet, type DocumentProps } from "@react-pdf/renderer";
 import { PDF } from "./theme";
 
 const c = PDF.colors;
+
+/**
+ * The standard PDF fonts (Helvetica) use WinAnsiEncoding, which has no glyph for
+ * em/en dashes, curly quotes or an ellipsis — those characters silently vanish
+ * from the rendered page. Swap them for safe equivalents so neither our own copy
+ * nor anything a user typed (an assessment scope, a resolution note) loses
+ * characters. Middle dot (·) IS in WinAnsi, so it is left alone.
+ */
+const WINANSI_SAFE: [RegExp, string][] = [
+  [/[—–]/g, "-"],
+  [/[’‘]/g, "'"],
+  [/[“”]/g, '"'],
+  [/…/g, "..."],
+];
+function winAnsiSafe(node: React.ReactNode): React.ReactNode {
+  if (typeof node === "string") {
+    return WINANSI_SAFE.reduce((s, [re, to]) => s.replace(re, to), node);
+  }
+  if (Array.isArray(node)) return node.map(winAnsiSafe);
+  return node;
+}
+
+/** Drop-in <Text> that sanitises its string children for WinAnsi. */
+function Text({ children, ...rest }: React.ComponentProps<typeof RpText> & { children?: React.ReactNode }) {
+  return <RpText {...rest}>{winAnsiSafe(children)}</RpText>;
+}
 
 const s = StyleSheet.create({
   page: { paddingTop: 36, paddingBottom: 64, paddingHorizontal: 40, fontSize: 10, color: c.text, fontFamily: "Helvetica" },
