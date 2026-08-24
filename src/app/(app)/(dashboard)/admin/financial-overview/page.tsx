@@ -46,7 +46,7 @@ function MoneyStat({ value }: { value: number }) {
 }
 
 const KIND_TONE: Record<string, "default" | "muted" | "accent"> = {
-  "Rent Payment": "default", "Service Payment": "accent", "Owner Settlement": "muted",
+  "Rent Payment": "default", "Service Payment": "accent", "Maintenance Revenue": "accent", "Owner Settlement": "muted",
   Commission: "default", Expense: "muted", Refund: "accent",
 };
 
@@ -335,7 +335,7 @@ export default function FinancialOverviewPage() {
             </div>
             <select className={selectClass} value={kind} onChange={(e) => setKind(e.target.value)} aria-label="Type">
               <option value="all">All types</option>
-              <option>Rent Payment</option><option>Service Payment</option><option>Owner Settlement</option><option>Commission</option><option>Expense</option>
+              <option>Rent Payment</option><option>Service Payment</option><option>Maintenance Revenue</option><option>Owner Settlement</option><option>Commission</option><option>Expense</option>
             </select>
             <select className={selectClass} value={status} onChange={(e) => setStatus(e.target.value)} aria-label="Status">
               <option value="all">All statuses</option><option value="completed">Completed</option><option value="pending">Pending</option><option value="failed">Failed</option>

@@ -146,6 +146,18 @@ export default function MaintenancePage() {
   );
   const summary = React.useMemo(() => getMaintenanceSummary(), [data]); // eslint-disable-line react-hooks/exhaustive-deps
 
+  // Deep link from the finance ledger (?ticket=…) — clicking a maintenance
+  // number there lands on the ticket that produced it.
+  // Read from location rather than useSearchParams so the page needs no Suspense
+  // boundary — this only ever runs in the browser.
+  React.useEffect(() => {
+    if (!data) return;
+    const id = new URLSearchParams(window.location.search).get("ticket");
+    if (!id) return;
+    const t = data.find((x) => x.id === id);
+    if (t) setSelected(t);
+  }, [data]);
+
   const columns: Column<MaintenanceTicket>[] = [
     { key: "ref", header: "Ref", sortable: true, render: (t) => <span className="font-medium text-foreground">{t.ref}</span> },
     { key: "title", header: "Issue", render: (t) => t.title },

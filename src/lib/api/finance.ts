@@ -11,6 +11,7 @@ import {
 } from "@/lib/api/agreements";
 import { hasSettlementForPeriod, defaultSettlementPeriod } from "@/lib/api/settlement";
 import { serviceRevenueCollected } from "@/lib/api/service-lifecycle";
+import { maintenanceRevenueCollected } from "@/lib/api/maintenance-liability";
 import type { ContractType } from "@/lib/mock/types";
 
 const mDelay = (ms = 400) => new Promise((r) => setTimeout(r, ms));
@@ -56,7 +57,9 @@ export async function getFinancialKpis(scope?: { forceError?: boolean }): Promis
   const processed = db.settlements.reduce((s, r) => s + r.netPayout, 0);
   totalSettlements += processed;
   pendingPayouts = Math.max(0, pendingPayouts - processed);
-  return { totalRevenue: rentRevenue + serviceRevenue, totalSettlements, pendingPayouts, nexoraEarnings };
+  // E4: maintenance charges recovered from tenants are revenue in their own right.
+  const maintenanceRevenue = maintenanceRevenueCollected();
+  return { totalRevenue: rentRevenue + serviceRevenue + maintenanceRevenue, totalSettlements, pendingPayouts, nexoraEarnings };
 }
 
 /* ------------------------------------------------------ revenue breakdown */
@@ -89,7 +92,7 @@ export async function getRevenueBreakdown(scope?: { forceError?: boolean }): Pro
 
 /* ------------------------------------------------- transaction history */
 
-export type TxKind = "Rent Payment" | "Service Payment" | "Owner Settlement" | "Commission" | "Expense" | "Refund";
+export type TxKind = "Rent Payment" | "Service Payment" | "Maintenance Revenue" | "Owner Settlement" | "Commission" | "Expense" | "Refund";
 export interface FinanceTxRow {
   id: string;
   date: string;
@@ -146,13 +149,33 @@ function allTransactions(): FinanceTxRow[] {
     });
   });
 
+  // E4: maintenance charges the tenant actually paid. Only settled charges appear —
+  // an unpaid invoice is a receivable, not revenue.
+  db.tickets.forEach((t) => {
+    if (t.liability !== "tenant" || t.paymentStatus !== "paid") return;
+    const tenant = db.tenants.find((x) => x.id === t.tenantId);
+    rows.push({
+      id: `tx_${t.id}`, date: t.paidAt ?? t.closedAt ?? t.updatedAt, kind: "Maintenance Revenue",
+      description: `Maintenance charge — ${t.title}${tenant ? `, ${tenant.name}` : ""} (${t.ref})`,
+      amount: t.paidAmount ?? t.invoiceAmount ?? 0, direction: "in", status: "completed",
+      reference: t.paymentReference ?? t.invoiceNumber ?? t.ref,
+      entity: { label: t.ref, href: `/admin/maintenance?ticket=${t.id}` },
+      propertyId: t.propertyId,
+    });
+  });
+
   db.expenses.forEach((e) => {
+    // A maintenance expense links back to the ticket that caused it, so the PM can
+    // click a number in the ledger and land on the work it paid for.
+    const ticket = e.maintenanceTicketId ? db.tickets.find((t) => t.id === e.maintenanceTicketId) : undefined;
     rows.push({
       id: `tx_${e.id}`, date: e.date, kind: "Expense",
       description: `${e.description}`,
       amount: e.amount, direction: "out",
       status: e.status === "approved" || e.status === "reimbursed" ? "completed" : "pending",
-      reference: `EXP-${e.id.replace(/\D/g, "")}`, propertyId: e.propertyId,
+      reference: ticket ? `EXP-${ticket.ref}` : `EXP-${e.id.replace(/\D/g, "")}`,
+      entity: ticket ? { label: ticket.ref, href: `/admin/maintenance?ticket=${ticket.id}` } : undefined,
+      propertyId: e.propertyId,
     });
   });
 
