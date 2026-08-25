@@ -2,12 +2,15 @@
 
 import * as React from "react";
 import { useRouter } from "next/navigation";
-import { Search, Plus, PenNib } from "flowbite-react-icons/outline";
+import { Search, Plus, PenNib, LockOpen } from "flowbite-react-icons/outline";
 import { PageHeader } from "@/components/app/page-header";
 import { ExportCsvButton } from "@/components/app/export-csv-button";
 import { StatusBadge } from "@/components/app/status";
 import { RowActions } from "@/components/app/row-actions";
 import { TenantFormDialog } from "@/components/admin/tenant-form-dialog";
+import { ResetPasswordDialog } from "@/components/admin/reset-password-dialog";
+import { hasLoginAccount } from "@/lib/api/password-reset";
+import { useSession } from "@/lib/stores/session";
 import { DataTable, type Column } from "@/components/ui/data-table";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
@@ -35,6 +38,9 @@ export default function TenantsPage() {
   const [status, setStatus] = React.useState("all");
   const [formOpen, setFormOpen] = React.useState(false);
   const [editing, setEditing] = React.useState<Tenant | null>(null);
+  // Password reset is a Super Admin action only — support staff must escalate.
+  const isSuperAdmin = useSession((st) => st.user?.role) === "super_admin";
+  const [resetting, setResetting] = React.useState<Tenant | null>(null);
   const scope: Scope = React.useMemo(() => ({ forceError: debugErrorFlag() }), []);
   const props = React.useMemo(() => propertyOptions(), []);
 
@@ -70,6 +76,9 @@ export default function TenantsPage() {
         <RowActions actions={[
           { label: "View", icon: <Search size={16} />, onClick: () => router.push(`/admin/tenants/${t.id}`) },
           { label: "Edit", icon: <PenNib size={16} />, onClick: () => { setEditing(t); setFormOpen(true); } },
+          ...(isSuperAdmin && hasLoginAccount(t.id)
+            ? [{ label: "Reset password", icon: <LockOpen size={16} />, onClick: () => setResetting(t), separatorBefore: true }]
+            : []),
         ]} />
       ),
     },
@@ -127,6 +136,8 @@ export default function TenantsPage() {
       />
 
       <TenantFormDialog open={formOpen} onOpenChange={setFormOpen} editing={editing} onDone={reload} />
+      <ResetPasswordDialog entityId={resetting?.id ?? ""} entityName={resetting?.name ?? ""}
+        open={!!resetting} onOpenChange={(o) => !o && setResetting(null)} />
     </div>
   );
 }

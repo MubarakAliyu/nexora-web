@@ -2,7 +2,7 @@
 
 import * as React from "react";
 import { useRouter } from "next/navigation";
-import { Search, Plus, PenNib } from "flowbite-react-icons/outline";
+import { Search, Plus, PenNib, LockOpen } from "flowbite-react-icons/outline";
 import { PageHeader } from "@/components/app/page-header";
 import { ExportCsvButton } from "@/components/app/export-csv-button";
 import { RowActions } from "@/components/app/row-actions";
@@ -14,6 +14,9 @@ import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { useAsync, debugErrorFlag } from "@/lib/use-async";
 import { formatDate } from "@/lib/format";
 import { listOwners, type Owner, type Scope } from "@/lib/api/admin";
+import { ResetPasswordDialog } from "@/components/admin/reset-password-dialog";
+import { hasLoginAccount } from "@/lib/api/password-reset";
+import { useSession } from "@/lib/stores/session";
 
 function initials(name: string) {
   return name.split(" ").map((p) => p[0]).slice(0, 2).join("").toUpperCase();
@@ -24,6 +27,9 @@ export default function OwnersPage() {
   const [q, setQ] = React.useState("");
   const [formOpen, setFormOpen] = React.useState(false);
   const [editing, setEditing] = React.useState<Owner | null>(null);
+  // Password reset is a Super Admin action only — support staff must escalate.
+  const isSuperAdmin = useSession((st) => st.user?.role) === "super_admin";
+  const [resetting, setResetting] = React.useState<Owner | null>(null);
   const scope: Scope = React.useMemo(() => ({ forceError: debugErrorFlag() }), []);
   const { data, loading, error, reload } = useAsync(() => listOwners(scope), [scope]);
 
@@ -56,6 +62,9 @@ export default function OwnersPage() {
         <RowActions actions={[
           { label: "View", icon: <Search size={16} />, onClick: () => router.push(`/admin/owners/${o.id}`) },
           { label: "Edit", icon: <PenNib size={16} />, onClick: () => { setEditing(o); setFormOpen(true); } },
+          ...(isSuperAdmin && hasLoginAccount(o.id)
+            ? [{ label: "Reset password", icon: <LockOpen size={16} />, onClick: () => setResetting(o), separatorBefore: true }]
+            : []),
         ]} />
       ),
     },
@@ -93,6 +102,8 @@ export default function OwnersPage() {
       />
 
       <OwnerFormDialog open={formOpen} onOpenChange={setFormOpen} editing={editing} onDone={reload} />
+      <ResetPasswordDialog entityId={resetting?.id ?? ""} entityName={resetting?.name ?? ""}
+        open={!!resetting} onOpenChange={(o) => !o && setResetting(null)} />
     </div>
   );
 }

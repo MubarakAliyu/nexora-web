@@ -15,7 +15,11 @@ import {
   PenNib,
   Clock,
   Receipt,
+  LockOpen,
 } from "flowbite-react-icons/outline";
+import { ResetPasswordDialog } from "@/components/admin/reset-password-dialog";
+import { hasLoginAccount } from "@/lib/api/password-reset";
+import { useSession } from "@/lib/stores/session";
 import { PageHeader } from "@/components/app/page-header";
 import { StatusBadge, PriorityBadge } from "@/components/app/status";
 import { TenantFormDialog } from "@/components/admin/tenant-form-dialog";
@@ -52,6 +56,8 @@ export default function TenantDetailPage() {
   const params = useParams<{ id: string }>();
   const router = useRouter();
   const [editOpen, setEditOpen] = React.useState(false);
+  const [resetOpen, setResetOpen] = React.useState(false);
+  const isSuperAdmin = useSession((st) => st.user?.role) === "super_admin";
   const scope: Scope = React.useMemo(() => ({ forceError: debugErrorFlag() }), []);
   const { data, loading, error, reload } = useAsync(() => getTenant(params.id, scope), [params.id, scope]);
 
@@ -121,6 +127,9 @@ export default function TenantDetailPage() {
         actions={
           <div className="flex gap-2">
             <Button variant="outline" className="gap-2" onClick={() => setEditOpen(true)}><PenNib size={18} /> Edit</Button>
+            {isSuperAdmin && hasLoginAccount(tenant.id) && (
+              <Button variant="outline" className="gap-2" onClick={() => setResetOpen(true)}><LockOpen size={18} /> Reset password</Button>
+            )}
             <Button className="gap-2" asChild><a href={`mailto:${tenant.email}`}><Envelope size={18} /> Message</a></Button>
           </div>
         }
@@ -260,6 +269,8 @@ export default function TenantDetailPage() {
       </Tabs>
 
       <TenantFormDialog open={editOpen} onOpenChange={setEditOpen} editing={tenant} onDone={reload} />
+      <ResetPasswordDialog entityId={tenant.id} entityName={tenant.name}
+        open={resetOpen} onOpenChange={setResetOpen} />
 
       <div className="mt-8">
         <Link href="/admin/tenants" className="text-body font-medium text-primary transition-colors hover:text-accent">

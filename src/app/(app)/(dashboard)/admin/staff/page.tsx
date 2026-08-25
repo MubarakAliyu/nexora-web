@@ -2,13 +2,16 @@
 
 import * as React from "react";
 import { useRouter } from "next/navigation";
-import { Users, Plus, PenNib, TrashBin, Search } from "flowbite-react-icons/outline";
+import { Users, Plus, PenNib, TrashBin, Search, LockOpen } from "flowbite-react-icons/outline";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
 import { PageHeader } from "@/components/app/page-header";
 import { StatusBadge } from "@/components/app/status";
 import { RowActions } from "@/components/app/row-actions";
+import { ResetPasswordDialog } from "@/components/admin/reset-password-dialog";
+import { hasLoginAccount } from "@/lib/api/password-reset";
+import { useSession } from "@/lib/stores/session";
 import { DeleteConfirmation } from "@/components/app/delete-confirmation";
 import { AvailabilityBadge } from "@/components/admin/availability-badge";
 import { OperationalStaffDialog } from "@/components/admin/operational-staff-dialog";
@@ -144,6 +147,9 @@ export default function StaffPage() {
   const [editing, setEditing] = React.useState<Staff | null>(null);
   const [removing, setRemoving] = React.useState<Staff | null>(null);
   const [deactivating, setDeactivating] = React.useState<Staff | null>(null);
+  // Only system users have a login; operational staff have nothing to reset.
+  const isSuperAdmin = useSession((st) => st.user?.role) === "super_admin";
+  const [resetting, setResetting] = React.useState<Staff | null>(null);
   const [q, setQ] = React.useState("");
   const [type, setType] = React.useState<"all" | "system_user" | "operational_staff">("all");
   const [dept, setDept] = React.useState("all");
@@ -226,6 +232,9 @@ export default function StaffPage() {
           s.status === "suspended"
             ? { label: "Reactivate", onClick: () => doReactivate(s) }
             : { label: "Deactivate", onClick: () => setDeactivating(s) },
+          ...(isSuperAdmin && !isOps(s) && hasLoginAccount(s.id)
+            ? [{ label: "Reset password", icon: <LockOpen size={16} />, onClick: () => setResetting(s), separatorBefore: true }]
+            : []),
           { label: "Remove", icon: <TrashBin size={16} />, onClick: () => setRemoving(s), danger: true, separatorBefore: true },
         ]} />
       ),
@@ -340,6 +349,8 @@ export default function StaffPage() {
         </DialogContent>
       </Dialog>
 
+      <ResetPasswordDialog entityId={resetting?.id ?? ""} entityName={resetting?.name ?? ""}
+        open={!!resetting} onOpenChange={(o) => !o && setResetting(null)} />
       <DeleteConfirmation
         open={!!removing}
         onOpenChange={(o) => !o && setRemoving(null)}

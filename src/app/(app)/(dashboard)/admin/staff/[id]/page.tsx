@@ -2,8 +2,11 @@
 
 import * as React from "react";
 import { useParams, useRouter } from "next/navigation";
-import { AngleLeft, Envelope, Phone, Briefcase, CalendarMonth, Tools, ClipboardList, MapPin } from "flowbite-react-icons/outline";
+import { AngleLeft, Envelope, Phone, Briefcase, CalendarMonth, Tools, ClipboardList, MapPin, LockOpen } from "flowbite-react-icons/outline";
 import { PageHeader } from "@/components/app/page-header";
+import { ResetPasswordDialog } from "@/components/admin/reset-password-dialog";
+import { hasLoginAccount } from "@/lib/api/password-reset";
+import { useSession } from "@/lib/stores/session";
 import { StatusBadge } from "@/components/app/status";
 import { AvailabilityBadge } from "@/components/admin/availability-badge";
 import { Card } from "@/components/ui/card";
@@ -30,6 +33,8 @@ export default function StaffDetailPage() {
   const id = params.id;
   const scope: Scope = React.useMemo(() => ({ forceError: debugErrorFlag() }), []);
   const { data, loading, error, reload } = useAsync(() => getStaffMember(id, scope), [id, scope]);
+  const [resetOpen, setResetOpen] = React.useState(false);
+  const isSuperAdmin = useSession((st) => st.user?.role) === "super_admin";
 
   const assignmentCols: Column<StaffAssignment>[] = [
     {
@@ -80,7 +85,16 @@ export default function StaffDetailPage() {
       <PageHeader
         title={m.name}
         subtitle={isOps ? `${m.jobTitle ?? "Operational staff"} · ${dept ?? "Operations"}` : (m.role ? roleLabels[m.role] : "Staff")}
+        actions={
+          /* Only system users have a login to reset — operational staff have none. */
+          isSuperAdmin && !isOps && hasLoginAccount(m.id) ? (
+            <Button variant="outline" className="gap-2" onClick={() => setResetOpen(true)}>
+              <LockOpen size={18} /> Reset password
+            </Button>
+          ) : undefined
+        }
       />
+      <ResetPasswordDialog entityId={m.id} entityName={m.name} open={resetOpen} onOpenChange={setResetOpen} />
 
       <div className="mb-6 flex flex-wrap items-center gap-3">
         <Avatar className="h-16 w-16"><AvatarFallback className="text-h3">{initials(m.name)}</AvatarFallback></Avatar>

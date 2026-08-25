@@ -4,7 +4,10 @@ import * as React from "react";
 import Link from "next/link";
 import Image from "next/image";
 import { useParams, useRouter } from "next/navigation";
-import { Phone, Envelope, Cash, ChartLineUp, Receipt, Building, FileLines, UserCircle, PenNib, Home, Clock } from "flowbite-react-icons/outline";
+import { Phone, Envelope, Cash, ChartLineUp, Receipt, Building, FileLines, UserCircle, PenNib, Home, Clock, LockOpen } from "flowbite-react-icons/outline";
+import { ResetPasswordDialog } from "@/components/admin/reset-password-dialog";
+import { hasLoginAccount } from "@/lib/api/password-reset";
+import { useSession } from "@/lib/stores/session";
 import { PageHeader } from "@/components/app/page-header";
 import { StatusBadge } from "@/components/app/status";
 import { UploadButton } from "@/components/app/upload-button";
@@ -34,6 +37,8 @@ export default function OwnerDetailPage() {
   const params = useParams<{ id: string }>();
   const router = useRouter();
   const [editOpen, setEditOpen] = React.useState(false);
+  const [resetOpen, setResetOpen] = React.useState(false);
+  const isSuperAdmin = useSession((st) => st.user?.role) === "super_admin";
   const scope: Scope = React.useMemo(() => ({ forceError: debugErrorFlag() }), []);
   const { data, loading, error, reload } = useAsync(() => getOwnerDetail(params.id, scope), [params.id, scope]);
 
@@ -81,6 +86,9 @@ export default function OwnerDetailPage() {
           <div className="flex gap-2">
             <Button variant="outline" className="gap-2" onClick={() => { const { payload, filename } = statementPdf(owner.id); downloadPdf(payload, filename); }}><FileLines size={18} /> Statement</Button>
             <Button variant="outline" className="gap-2" onClick={() => setEditOpen(true)}><PenNib size={18} /> Edit</Button>
+            {isSuperAdmin && hasLoginAccount(owner.id) && (
+              <Button variant="outline" className="gap-2" onClick={() => setResetOpen(true)}><LockOpen size={18} /> Reset password</Button>
+            )}
             <Button className="gap-2" asChild><a href={`mailto:${owner.email}`}><Envelope size={18} /> Message</a></Button>
           </div>
         } />
@@ -168,6 +176,8 @@ export default function OwnerDetailPage() {
       </Tabs>
 
       <OwnerFormDialog open={editOpen} onOpenChange={setEditOpen} editing={owner} onDone={reload} />
+      <ResetPasswordDialog entityId={owner.id} entityName={owner.name}
+        open={resetOpen} onOpenChange={setResetOpen} />
 
       <div className="mt-8"><Link href="/admin/owners" className="text-body font-medium text-primary transition-colors hover:text-accent">← Back to owners</Link></div>
     </div>
