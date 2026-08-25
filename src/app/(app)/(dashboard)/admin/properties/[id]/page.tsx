@@ -26,7 +26,6 @@ import { DataTable, type Column } from "@/components/ui/data-table";
 import { DonutChart, CHART_PALETTE } from "@/components/ui/chart";
 import { EmptyState } from "@/components/ui/empty-state";
 import { Skeleton, SkeletonText } from "@/components/ui/skeleton";
-import { toast } from "@/components/ui/sonner";
 import { useAsync, debugErrorFlag } from "@/lib/use-async";
 import { formatUGX } from "@/lib/format";
 import {
