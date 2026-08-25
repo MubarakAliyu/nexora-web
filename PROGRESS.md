@@ -470,6 +470,86 @@ handlers behaved correctly throughout.
 **Gate:** lint + `tsc --noEmit` clean · `npm run build` clean (exit 0, **85 static pages**,
 one pre-existing unused-import warning in `admin/properties/[id]/page.tsx`).
 
+## Execution Batch E5 ✅ COMPLETE — Password Reset, Data Consistency, Full Regression QA
+
+**E5.0 housekeeping**
+- Removed the pre-existing unused `toast` import in `admin/properties/[id]/page.tsx` —
+  lint is now fully clean (0 errors, 0 warnings).
+- **Login "self-clearing form" investigation — CONCLUSION: tooling, not an app defect.**
+  Proven three ways: (1) structurally nothing can remount `LoginPage` — the hydrator
+  renders `null`, the page subscribes to no store, no `key` changes; (2) real key events
+  persisted across repeated round trips and `form` DOM node identity never changed;
+  (3) `requestSubmit()` with values entered *only* via real key events authenticated with
+  **zero validation errors**, proving RHF captured every keystroke. The earlier clearing
+  was a navigation race — `location.href` starts a new document and typing landed in the
+  outgoing one.
+- Confirmed Total Revenue KPI hint reads "rent + service + maintenance".
+
+**E5.1 — Admin-initiated password reset** (`lib/api/password-reset.ts`,
+`components/admin/reset-password-dialog.tsx`)
+- Super Admin only; hidden for Property Manager / Finance Officer (verified by clicking).
+- Available on Owners, Tenants and **system-user** Staff (operational staff have no login,
+  so the action is hidden) — row-actions menu *and* detail page.
+- Three-section dialog: identity checklist (all 3 required, with masked registered
+  email/phone to compare against the caller) → verification method + mandatory notes →
+  confirm. Button stays disabled at 2/3 checks (verified).
+- **Security boundary:** the admin can INITIATE a reset but can never READ a password —
+  nothing in the module returns `user.password`. Only a fresh `TempPass-XXXX` is emitted,
+  shown once, with a copy button.
+- Sets `requiresPasswordChange`, drops any live session for that user, and writes the
+  verification method + full notes verbatim into the audit trail as the compliance record.
+- **Verified end-to-end:** reset Salim → temp `TempPass-6894` → old password rejected →
+  temp password accepted → forced redirect to `/change-password` (Revision B gate, reused)
+  → new password set → landed on `/owner` → re-login with the new password succeeded →
+  audit entry contains actor, target, method and notes.
+
+**E5.2 — Cross-module ID consistency** (7 fixes)
+| # | Reference | Was | Now |
+|---|-----------|-----|-----|
+| 1 | `MaintenanceTicket.assignee` | staff **name**, matched via `staff.name` | `assigneeId` |
+| 2 | `ServiceBooking.assignee` | staff **name** | `assigneeId` |
+| 3 | `ServiceBooking.completedBy` | staff **name** | `completedById` |
+| 4 | Move-out `inspector` | name, and **not persisted at all** — existed only inside the audit summary | `Lease.inspectorId` + `inspector`/`inspectionDate`/`moveOutDate` persisted |
+| 5 | `Lead.owner` | staff **name** | `ownerStaffId` |
+| 6 | Rental-inquiry property | recoverable only by **regex-parsing the activity note** | `Lead.propertyId` |
+| 7 | `Announcement.audienceLabel` | tenant notices matched on property **name** | `audiencePropertyId` |
+
+`resolveStaff`/`staffRef` accept either form; a seed backfill pass upgrades every existing
+record once the whole object graph exists. Legacy name fields are kept and still read as a
+fallback, so nothing breaks. Verified: staff detail still resolves "Assignments (9)" across
+both maintenance and service after the migration.
+
+Confirmed **already correct** (id present, name denormalised for display only):
+agreements→`ownerId`, settlements→`ownerId`, leases→tenant/unit/property, invoices→
+`tenantId`/`propertyId`, expenses→`propertyId`, transactions→entity+id, lead
+`convertedTo{type,id,name}`. The deliberately-empty `propertyId` on Nexora-absorbed
+expenses is preserved, with the explanatory comment requested in E4 in place.
+
+**E5.3 — Full system regression QA**
+- All marketing routes, all 6 service sub-pages, blog/portfolio details: **200**.
+- All admin / owner / tenant routes: **200**.
+- Role scoping verified by logging in as each: Super Admin **17** modules ·
+  Property Manager **13** (operations, no Staff/Settings/Analytics/Announcements) ·
+  Finance Officer **7** (finance-forward).
+- Dark mode round-trips (bg `#F5F5F5` ↔ `#1A1A1A`); sidebar, bell badge (4→3 on read).
+- **Regression found & fixed:** notification click-to-navigate did nothing for the
+  *seeded* notifications — they carried no `entityType`, so `notificationHref` returned
+  null. The E1 routing fix was intact and runtime notifications worked; only the seed was
+  missing entity links. Added them to all 14 seeded admin/owner/tenant notifications.
+  Verified: clicking "New maintenance request" now navigates `/admin` → `/admin/maintenance`.
+- **Dead code removed:** `components/app/dashboard-stub.tsx` was referenced nowhere.
+- Persistence: created a probe ticket, hard-reloaded, record survived.
+- **All 8 PDF types decode-verified** (content stream inflated + text extracted, not just
+  "a file downloaded"): Invoice, Receipt, Statement, Lease (2 pages), Deposit Settlement,
+  Service Invoice, Settlement Statement, Maintenance Invoice. No dropped glyphs — the
+  WinAnsi em-dash/curly-quote fix holds across every builder.
+- Responsive: zero horizontal overflow at 375px on home, leases, maintenance,
+  financial-overview.
+
+**E5.4 sweep:** `wallet` 0 · `groupe|m-zi|group md` 0 · `lucide` 0 ·
+`SERVICE_PRICE|rate card|priceList` → comments only, confirming none exists ·
+`TODO|FIXME` 0 · remaining "placeholder" hits are input props / swappable contact details.
+
 ## 🏁 PROJECT COMPLETE — final summary
 
 Nexora Property Management frontend is **complete** (mock-data). Single Next.js 15 app;

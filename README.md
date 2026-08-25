@@ -159,7 +159,36 @@ The app currently runs on mocked authentication. Every account uses password **`
 | `mubarak@gmail.com` | Tenant | `/tenant` (rents Nakasero A-407) |
 | `newowner@test.com` | Owner (onboarding demo) | Forced `/change-password` on first login — temp password **`TempPass-1234`** |
 
-**Branded PDFs:** Invoice · Receipt · Owner Statement · Lease Agreement · Deposit Settlement Statement (Move-Out) · Settlement Statement (owner payout). **CSV exports** on every admin list (properties, units, tenants, owners, leases, invoices, payments, expenses, tickets, leads, bookings, transactions, analytics).
+**Branded PDFs (8 types):** Invoice · Receipt · Owner Statement · Lease Agreement ·
+Deposit Settlement Statement (Move-Out) · Settlement Statement (owner payout) ·
+Service Invoice / Receipt · Maintenance Invoice. **CSV exports** on every admin list
+(properties, units, tenants, owners, leases, invoices, payments, expenses, tickets, leads,
+bookings, transactions, analytics).
+
+### Operational modules
+
+- **Operational Staff** — staff are split into *system users* (have a login) and
+  *operational staff* (field workers: cleaners, technicians, drivers — no login).
+  Availability, department, assignment counters, and a per-member assignments +
+  performance view. Cross-module assignment increments the member's job counter.
+- **Service booking financial lifecycle** — pricing is assessment-based by design (there
+  is deliberately **no rate card**): request → on-site assessment → invoice → payment →
+  work → completion → manager confirmation (with a reject-back path). Service revenue
+  only counts once collected.
+- **Maintenance cost liability & invoicing** — closing a ticket records *who pays*, not
+  just what it cost. Three branches: **Owner** → property expense, deducted from that
+  owner's settlement · **Tenant** → invoice raised (`INV-TKT-0019`), payable from the
+  tenant portal through the same multi-step flow as rent · **Nexora** → absorbed as an
+  operational cost that structurally cannot reach an owner payout. Admin gets liability /
+  payment columns, filters and summary cards; the ledger links each figure back to its
+  source ticket.
+- **Admin-initiated password reset** — Super Admin only. Support can issue a temporary
+  credential when a user phones in, gated behind a three-point identity checklist and
+  mandatory verification notes that are written into the audit trail. The admin can
+  initiate a reset but can **never read an existing password**; the user is forced to
+  set a new one on next login.
+- **Reset Demo Data** — Super Admin control (Settings) that restores every collection to
+  its pristine seed and clears persisted state.
 
 ---
 
