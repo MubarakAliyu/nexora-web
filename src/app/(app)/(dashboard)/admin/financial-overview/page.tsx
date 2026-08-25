@@ -301,7 +301,7 @@ export default function FinancialOverviewPage() {
         <EmptyState icon={<ChartPie size={22} />} title="Couldn’t load financials" description={kpis.error} action={<Button variant="outline" size="sm" onClick={kpis.reload}>Try again</Button>} />
       ) : kpis.data ? (
         <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-4">
-          <StatCard label="Total revenue" value={<MoneyStat value={kpis.data.totalRevenue} />} icon={<Cash size={22} />} hint="rent + service" />
+          <StatCard label="Total revenue" value={<MoneyStat value={kpis.data.totalRevenue} />} icon={<Cash size={22} />} hint="rent + service + maintenance" />
           <StatCard label="Total settlements" value={<MoneyStat value={kpis.data.totalSettlements} />} icon={<ChartLineUp size={22} />} hint="paid to owners" />
           <StatCard label="Pending payouts" value={<MoneyStat value={kpis.data.pendingPayouts} />} icon={<Receipt size={22} />} hint="awaiting settlement" />
           <StatCard label="Nexora earnings" value={<MoneyStat value={kpis.data.nexoraEarnings} />} icon={<ChartPie size={22} />} hint="commissions & fees" />

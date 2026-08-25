@@ -390,6 +390,86 @@ wants service income shared under a management agreement.
 **Gate:** lint + `tsc --noEmit` clean throughout · `npm run build` clean (exit 0, **85
 static pages**).
 
+## Execution Batch E4 — Maintenance Cost Liability & Invoicing (PM Feedback R2)
+
+The PM's complaint: closing a ticket recorded a cost but not **who pays it**, so the number
+went nowhere ("Ticket 0019 — cracked wall — UGX 95,000… these are just numbers"; "Go to
+invoice now… there's no invoice for that"). Every closure now routes the money.
+
+### Three branches
+
+| Liability | What happens | Reaches |
+|---|---|---|
+| **Owner** | Property expense written against the ticket's property | Owner settlement deductions |
+| **Tenant** | Invoice `INV-{ticket.ref}` raised, tenant pays from their dashboard | Nexora maintenance revenue |
+| **Nexora** | Operational cost absorbed | Neither party charged |
+
+Closure captures resolution summary, labour/materials split, liability, and a **required**
+reason recorded in the audit trail. Tenant branch adds an invoice due date.
+
+**Nexora-absorbed costs are excluded structurally, not procedurally.** The expense is written
+with an **empty `propertyId`**, so no settlement filter — present or future — can match it.
+See the comment block in `maintenance-liability.ts`; the originating property stays
+recoverable via `description` and `maintenanceTicketId`.
+
+### Verified end-to-end (clean seed, admin → owner → tenant)
+
+**Owner branch** — TKT-0023 (Fridge repair, Nakasero Heights, Salim's property) closed as
+owner-liable, labour 180,000 + materials 220,000 = **400,000**.
+
+| Salim's settlement | Before | After |
+|---|---|---|
+| Gross revenue | 16,100,000 | 16,100,000 |
+| Management fee (15%) | −2,415,000 | −2,415,000 |
+| Property expenses | **−350,000** | **−750,000** |
+| Total deductions | −2,765,000 | −3,165,000 |
+| **Net payout** | **13,335,000** | **12,935,000** |
+
+Expenses rose by exactly the 400,000 charged. Ledger row: `Expense · Fridge repair request —
+A-205, Nakasero Heights (TKT-0023) · −UGX 400K · EXP-TKT-0023 · → TKT-0023`.
+
+**Nexora branch** — TKT-0027 (Lobby intercom, same property) closed as Nexora-absorbed at
+**600,000**. Salim's settlement did **not** move: expenses stayed at 750,000, not 1,350,000.
+The cost is visible in the admin ledger (`EXP-TKT-0027`) but carries no property key.
+
+**Tenant branch** — TKT-0004 (Cracked wall in living area, Mubarak Aliyu, A-407),
+`INV-TKT-0004`, **95,000** (labour 60,000 + materials 35,000). Paid from the tenant portal via
+the **reused Pay Rent flow** (method → processing → confirmation), Bank Transfer.
+
+- **Payment reference: `MPY-73843344`** · UGX 95,000 · 10 Jul 2026
+- Financial Overview row: `10 Jul 2026 · Maintenance Revenue · Maintenance charge — Cracked
+  wall in living area, Mubarak Aliyu (TKT-0004) · +UGX 95K · Completed · MPY-73843344 · TKT-0004`
+- The reference links to `/admin/maintenance?ticket=tkt_4`, which opens the source ticket.
+
+### Surfaces
+
+- **Admin maintenance**: Liability + Payment columns, liability and payment-state filters,
+  four summary cards (total 6,245,000 · owner 1,950,000 · tenant 3,695,000 w/ 4 awaiting ·
+  Nexora 600,000), board cards carry liability + awaiting-payment on closed tickets, and the
+  ticket dialog keeps a permanent liability/invoice/expense section. CSV gained four columns.
+- **Tenant**: dashboard alert card (own Tools icon and "Maintenance charge" label, distinct
+  from the rent banner), charge cards + table column on `/tenant/maintenance`, a Maintenance
+  charges section on `/tenant/payments`, and invoice/receipt in `/tenant/documents`.
+- **Maintenance Invoice PDF** (7th document type) — **click-tested and content-stream
+  decoded**, not trusted to the toast. Verified present: title, `INV-TKT-0004`, ticket ref,
+  billed-to, issued/due, reported issue, work performed, labour/materials/total, payment
+  instructions. After payment the same builder renders the **PAID** stamp, "Amount paid",
+  and `Reference: MPY-73843344 · 10 Jul 2026`. No dropped glyphs (em-dash fix holds).
+
+### Fixed in passing
+
+Seed invoices were dated from `updatedAt`, which for a few tickets sits **ahead of** `NOW` —
+Mubarak's invoice read "Issued 18 Jul 2026" against a 10 Jul clock. Issue dates are now
+clamped to `NOW` (and `paidAt` with them); the receipt re-renders as "Issued 6 Jul 2026".
+
+**Known tooling note (not an app defect):** the Browser pane's synthetic clicks stopped
+reaching the page mid-session (focus never left `BODY`). Interactions were driven via
+`element.focus()` + real key events and `form.requestSubmit()` instead. The app's own
+handlers behaved correctly throughout.
+
+**Gate:** lint + `tsc --noEmit` clean · `npm run build` clean (exit 0, **85 static pages**,
+one pre-existing unused-import warning in `admin/properties/[id]/page.tsx`).
+
 ## 🏁 PROJECT COMPLETE — final summary
 
 Nexora Property Management frontend is **complete** (mock-data). Single Next.js 15 app;

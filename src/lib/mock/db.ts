@@ -557,12 +557,15 @@ export const tickets: MaintenanceTicket[] = Array.from({ length: 26 }, (_, i) =>
       const settled = i % 3 === 0;
       t.invoiceNumber = `INV-${t.ref}`;
       t.invoiceAmount = total;
-      t.invoiceGeneratedAt = t.updatedAt;
-      t.invoiceDueDate = iso(new Date(t.updatedAt).getTime() + 14 * DAY);
+      // Clamp to NOW — a handful of tickets carry an updatedAt slightly ahead of
+      // it, and an invoice dated in the future reads as a bug on the PDF.
+      const issuedMs = Math.min(new Date(t.updatedAt).getTime(), NOW.getTime());
+      t.invoiceGeneratedAt = iso(issuedMs);
+      t.invoiceDueDate = iso(issuedMs + 14 * DAY);
       t.paymentStatus = settled ? "paid" : "awaiting_payment";
       if (settled) {
         t.paidAmount = total;
-        t.paidAt = iso(new Date(t.updatedAt).getTime() + 3 * DAY);
+        t.paidAt = iso(Math.min(issuedMs + 3 * DAY, NOW.getTime()));
         t.paymentMethod = "mobile_money";
         t.paymentReference = `MNT-${rint(100000, 999999)}`;
       }
@@ -588,7 +591,9 @@ export const tickets: MaintenanceTicket[] = Array.from({ length: 26 }, (_, i) =>
     mubTicket.liabilityReason = "Damage caused by tenant while mounting a wall unit.";
     mubTicket.invoiceNumber = `INV-${mubTicket.ref}`;
     mubTicket.invoiceAmount = 95_000;
-    mubTicket.invoiceGeneratedAt = mubTicket.updatedAt;
+    // Anchor to NOW, not updatedAt — a few tickets carry an updatedAt slightly
+    // ahead of NOW, and an invoice must never look like it was issued in the future.
+    mubTicket.invoiceGeneratedAt = iso(NOW.getTime() - 4 * DAY);
     mubTicket.invoiceDueDate = iso(NOW.getTime() + 10 * DAY);
     mubTicket.paymentStatus = "awaiting_payment";
     mubTicket.paidAmount = undefined;
