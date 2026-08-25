@@ -10,7 +10,7 @@
 
 import * as db from "@/lib/mock/db";
 import { recordMutation } from "@/lib/api/actions";
-import { incrementStaffJobs, pushNotify } from "@/lib/api/admin-mutations";
+import { incrementStaffJobs, pushNotify, staffRef, resolveStaff } from "@/lib/api/admin-mutations";
 import { leaseView } from "@/lib/lease";
 import { roleLabels, type Role } from "@/lib/roles";
 import { monthlyCommission, effectiveRate, agreementRateLabel, CONTRACT_TYPE_LABEL } from "@/lib/api/agreements";
@@ -783,10 +783,10 @@ export async function getStaffMember(id: string, scope?: Scope): Promise<StaffDe
   const member = db.staff.find((s) => s.id === id);
   if (!member) throw new NotFoundError(id);
   const tickets: StaffAssignment[] = db.tickets
-    .filter((t) => t.assignee === member.name)
+    .filter((t) => (t.assigneeId ? t.assigneeId === member.id : t.assignee === member.name))
     .map((t) => ({ id: t.id, kind: "maintenance", ref: t.ref, title: t.title, status: t.status, date: t.updatedAt }));
   const services: StaffAssignment[] = db.serviceBookings
-    .filter((b) => b.assignee === member.name)
+    .filter((b) => (b.assigneeId ? b.assigneeId === member.id : b.assignee === member.name))
     .map((b) => ({ id: b.id, kind: "service", ref: b.reference, title: `${b.category} — ${b.name}`, status: b.status, date: b.date }));
   const assignments = [...tickets, ...services].sort((a, b) => (a.date < b.date ? 1 : -1));
   const completed = assignments.filter((a) => a.status === "completed" || a.status === "closed").length;
@@ -1293,6 +1293,12 @@ export async function settleMoveOut(id: string, input: MoveOutSettlementInput): 
     reason: input.settlementNote || "Move-out settlement",
   };
 
+  const settleInspector = resolveStaff(input.inspector);
+  lease.inspectorId = settleInspector?.id ?? lease.inspectorId;
+  lease.inspector = settleInspector?.name ?? input.inspector ?? lease.inspector;
+  lease.inspectionDate = input.inspectionDate ?? lease.inspectionDate;
+  lease.moveOutDate = input.moveOutDate ?? lease.moveOutDate;
+
   lease.status = "terminated";
   if (unit) unit.status = "vacant";
   if (tenant) tenant.status = "past";
@@ -1334,10 +1340,17 @@ export async function initiateMoveOut(id: string, input: { moveOutDate: string; 
   const unit = db.units.find((u) => u.id === lease.unitId);
   const propName = propertyName(lease.propertyId);
   if (input.inspector) incrementStaffJobs(input.inspector);
+  // E5 — persist the inspection on the lease itself, ID-linked. It used to exist
+  // only inside the audit summary, so the assignment wasn't recoverable from the record.
+  const inspectorStaff = resolveStaff(input.inspector);
+  lease.inspectorId = inspectorStaff?.id;
+  lease.inspector = inspectorStaff?.name ?? input.inspector;
+  lease.inspectionDate = input.inspectionDate;
+  lease.moveOutDate = input.moveOutDate;
   recordMutation({
     entityType: "lease", entityId: id, entityName: tenant?.name ?? id, action: "updated",
-    summary: `Move-out initiated for ${tenant?.name ?? "tenant"} (${unit?.label ?? ""}); inspection ${_dateOf(input.inspectionDate)} · inspector ${input.inspector}`,
-    after: { moveOutDate: input.moveOutDate, inspectionDate: input.inspectionDate, inspector: input.inspector },
+    summary: `Move-out initiated for ${tenant?.name ?? "tenant"} (${unit?.label ?? ""}); inspection ${_dateOf(input.inspectionDate)} · inspector ${lease.inspector}`,
+    after: { moveOutDate: input.moveOutDate, inspectionDate: input.inspectionDate, inspectorId: lease.inspectorId, inspector: lease.inspector },
     notify: { type: "lease", title: "Move-out initiated", body: `Move-out started for ${tenant?.name ?? "a tenant"} at ${unit?.label ?? "a unit"}. Inspection ${_dateOf(input.inspectionDate)}.` },
   });
   pushNotify("lease", "Your move-out has been initiated", `Your move-out has been initiated. An inspection is scheduled for ${_dateOf(input.inspectionDate)}.`, "lease", id, "updated");
@@ -1353,7 +1366,7 @@ export async function updateTicketStatus(id: string, status: TicketStatus): Prom
   if (!t) throw new NotFoundError(id);
   t.status = status;
   t.updatedAt = db.NOW_ISO;
-  if (status !== "open" && !t.assignee) t.assignee = "James Odoi";
+  if (status !== "open" && !t.assignee) Object.assign(t, staffRef("James Odoi"));
   return t;
 }
 
@@ -1366,9 +1379,9 @@ export async function updateTicket(
   if (!t) throw new NotFoundError(id);
   const before = { status: t.status, assignee: t.assignee, cost: t.cost };
   if (patch.status) t.status = patch.status;
-  if (patch.assignee !== undefined) t.assignee = patch.assignee || undefined;
+  if (patch.assignee !== undefined) Object.assign(t, staffRef(patch.assignee));
   if (patch.cost !== undefined) t.cost = patch.cost || undefined;
-  if (t.status !== "open" && !t.assignee) t.assignee = "James Odoi";
+  if (t.status !== "open" && !t.assignee) Object.assign(t, staffRef("James Odoi"));
   // Assigning to a new technician bumps their job counter.
   if (t.assignee && t.assignee !== before.assignee) incrementStaffJobs(t.assignee);
   t.updatedAt = db.NOW_ISO;
@@ -1392,7 +1405,7 @@ export async function assignTicket(id: string, assignee: string): Promise<Mainte
   const t = db.tickets.find((x) => x.id === id);
   if (!t) throw new NotFoundError(id);
   const prev = t.assignee;
-  t.assignee = assignee;
+  Object.assign(t, staffRef(assignee));
   if (assignee && assignee !== prev) incrementStaffJobs(assignee);
   if (t.status === "open") t.status = "assigned";
   t.updatedAt = db.NOW_ISO;
@@ -1485,7 +1498,7 @@ export async function listAnnouncements(scope?: Scope): Promise<Announcement[]> 
   return respond([...db.announcements].sort((a, b) => (a.sentAt < b.sentAt ? 1 : -1)), { error: scope?.forceError });
 }
 
-export async function createAnnouncement(input: { title: string; body: string; audience: AudienceKind; audienceLabel: string; channels: BroadcastChannel[] }): Promise<Announcement> {
+export async function createAnnouncement(input: { title: string; body: string; audience: AudienceKind; audienceLabel: string; audiencePropertyId?: string; channels: BroadcastChannel[] }): Promise<Announcement> {
   await new Promise((r) => setTimeout(r, 600));
   const recipients =
     input.audience === "owners" ? db.owners.length : input.audience === "property" ? Math.round(db.tenants.length / 3) : db.tenants.length;
@@ -1494,6 +1507,13 @@ export async function createAnnouncement(input: { title: string; body: string; a
     title: input.title,
     body: input.body,
     audience: input.audience,
+    // E5 — property announcements carry the id; matching on the label alone broke
+    // as soon as a property was renamed.
+    audiencePropertyId:
+      input.audiencePropertyId ??
+      (input.audience === "property"
+        ? db.properties.find((p) => p.name === input.audienceLabel)?.id
+        : undefined),
     audienceLabel: input.audienceLabel,
     channels: input.channels,
     recipients,

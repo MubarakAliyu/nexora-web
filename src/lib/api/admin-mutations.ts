@@ -489,7 +489,12 @@ export async function updateLead(id: string, patch: { status?: LeadStatus; owner
   if (!lead) throw new NotFoundError(id);
   const before = { status: lead.status, owner: lead.owner };
   if (patch.status) lead.status = patch.status;
-  if (patch.owner) lead.owner = patch.owner;
+  if (patch.owner) {
+    // E5 — the lead's handler is a Staff record, so store the id and derive the name.
+    const handler = resolveStaff(patch.owner);
+    lead.ownerStaffId = handler?.id;
+    lead.owner = handler?.name ?? patch.owner;
+  }
   recordMutation({
     entityType: "lead", entityId: id, entityName: lead.name, action: "updated",
     summary: `Updated lead ${lead.name} to ${lead.status}`, before, after: { status: lead.status, owner: lead.owner },
@@ -757,16 +762,39 @@ export async function removeOperationalStaff(id: string): Promise<{ ok: true; un
 }
 
 /** Count a staff member's currently-open assignments (used by the remove warning). */
+/**
+ * Resolve a Staff record from either an id or a name (E5).
+ *
+ * Assignments are ID-linked as of E5, but records written before it carry only a
+ * name, so both are accepted. New writes always set the id — see `staffRef`.
+ */
+export function resolveStaff(ref?: string): Staff | undefined {
+  if (!ref) return undefined;
+  return db.staff.find((s) => s.id === ref) ?? db.staff.find((s) => s.name === ref);
+}
+
+/** Normalise an assignment input (id OR name) into the pair we persist. */
+export function staffRef(ref?: string): { assigneeId?: string; assignee?: string } {
+  const m = resolveStaff(ref);
+  if (!m) return { assigneeId: undefined, assignee: ref || undefined };
+  return { assigneeId: m.id, assignee: m.name };
+}
+
+/** True when a ticket/booking belongs to this staff member, by id or legacy name. */
+const assignedTo = (row: { assigneeId?: string; assignee?: string }, m: Staff) =>
+  row.assigneeId ? row.assigneeId === m.id : row.assignee === m.name;
+
 export function openAssignmentsFor(name: string): number {
-  const t = db.tickets.filter((x) => x.assignee === name && x.status !== "completed" && x.status !== "closed").length;
-  const s = db.serviceBookings.filter((x) => x.assignee === name && x.status !== "completed" && x.status !== "cancelled").length;
+  const member = resolveStaff(name);
+  if (!member) return 0;
+  const t = db.tickets.filter((x) => assignedTo(x, member) && x.status !== "completed" && x.status !== "closed").length;
+  const s = db.serviceBookings.filter((x) => assignedTo(x, member) && x.status !== "completed" && x.status !== "cancelled").length;
   return t + s;
 }
 
 /** Release one job from a staff member's counter when work finishes. */
-export function decrementStaffJobs(name?: string): void {
-  if (!name) return;
-  const member = db.staff.find((s) => s.name === name);
+export function decrementStaffJobs(ref?: string): void {
+  const member = resolveStaff(ref);
   if (member) member.assignedJobs = Math.max(0, (member.assignedJobs ?? 0) - 1);
 }
 
@@ -791,8 +819,8 @@ export async function cycleStaffAvailability(id: string): Promise<Staff> {
 
 /** Increment a staff member's job counter when they're assigned work in another
  *  module (maintenance / services). No-op if the name matches no active staff. */
-export function incrementStaffJobs(name: string): void {
-  const member = db.staff.find((s) => s.name === name);
+export function incrementStaffJobs(ref: string): void {
+  const member = resolveStaff(ref);
   if (member) member.assignedJobs = (member.assignedJobs ?? 0) + 1;
 }
 

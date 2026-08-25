@@ -274,6 +274,11 @@ export interface Lease {
   depositReason?: string;
   depositSettledAt?: string; // ISO
   depositAdditionalOwed?: number;
+  /* ---- move-out inspection (Revision C · ID-linked in E5) ---- */
+  inspectorId?: string;
+  inspector?: string;
+  inspectionDate?: string; // ISO
+  moveOutDate?: string; // ISO
   /* ---- renewal request (Revision C) ---- */
   renewalRequestedAt?: string; // ISO
   renewalRequestedEnd?: string; // ISO — tenant's preferred new end date
@@ -367,6 +372,9 @@ export interface MaintenanceTicket {
   category: TicketCategory;
   priority: TicketPriority;
   status: TicketStatus;
+  /** Authoritative link to the Staff record. `assignee` is the denormalised
+   *  display name, kept for legacy records written before E5. */
+  assigneeId?: string;
   assignee?: string;
   cost?: number;
   resolution?: string;
@@ -428,7 +436,12 @@ export interface Lead {
   status: LeadStatus;
   value: number; // estimated monthly UGX
   createdAt: string; // ISO
-  owner: string; // assigned staff name
+  /** Authoritative link to the Staff record handling this lead. */
+  ownerStaffId?: string;
+  /** Set on rental inquiries — the property enquired about. Previously this was
+   *  only recoverable by regex-parsing the activity note. */
+  propertyId?: string;
+  owner: string; // assigned staff name (display)
   activities: LeadActivity[];
   /** Set when the lead is converted — links to the created owner/tenant record. */
   convertedTo?: { type: "owner" | "tenant"; id: string; name: string };
@@ -487,6 +500,8 @@ export interface Announcement {
   title: string;
   body: string;
   audience: AudienceKind;
+  /** Set when `audience` is "property" — matching by name is fragile. */
+  audiencePropertyId?: string;
   audienceLabel: string;
   channels: BroadcastChannel[];
   recipients: number;
@@ -601,6 +616,8 @@ export interface ServiceBooking {
   date: string; // ISO preferred date
   time: string; // preferred time slot
   status: ServiceBookingStatus;
+  /** Authoritative link to the Staff record; `assignee` is the display name. */
+  assigneeId?: string;
   assignee?: string; // assigned staff/technician
   createdAt: string; // ISO
   /* ---- transaction detail (E1 · R3). Pricing is assessment-based (see E3), so
@@ -632,6 +649,7 @@ export interface ServiceBooking {
   paidAmount?: number;
 
   workStartedAt?: string;
+  completedById?: string;
   completedBy?: string;
   completionNotes?: string;
   completionPhotos?: string[];

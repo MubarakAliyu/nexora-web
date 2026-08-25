@@ -957,6 +957,29 @@ export const serviceBookings: ServiceBooking[] = Array.from({ length: 10 }, (_, 
   };
 }).sort((a, b) => (a.createdAt < b.createdAt ? 1 : -1));
 
+/* ---------------------------------------------------------------------------
+ * E5 — cross-module ID backfill.
+ *
+ * The seed writes staff and property references as display names because those
+ * arrays are declared after the records that point at them. This pass runs once
+ * the whole graph exists and upgrades every name reference to an id, so nothing
+ * in the app has to match on a string that a rename would break.
+ * ------------------------------------------------------------------------- */
+{
+  const staffByName = new Map(staff.map((m) => [m.name, m.id]));
+  const propByName = new Map(properties.map((p) => [p.name, p.id]));
+
+  tickets.forEach((t) => { if (t.assignee) t.assigneeId = staffByName.get(t.assignee); });
+  serviceBookings.forEach((b) => {
+    if (b.assignee) b.assigneeId = staffByName.get(b.assignee);
+    if (b.completedBy) b.completedById = staffByName.get(b.completedBy);
+  });
+  leads.forEach((l) => { if (l.owner) l.ownerStaffId = staffByName.get(l.owner); });
+  announcements.forEach((a) => {
+    if (a.audience === "property") a.audiencePropertyId = propByName.get(a.audienceLabel);
+  });
+}
+
 // Seed a few long-term rental inquiries as CRM leads so /admin/bookings and
 // /admin/leads show inquiry rows on a fresh load (source: "rental-inquiry").
 const longTermProps = properties.filter((p) => p.rentalType === "long-term");
@@ -972,6 +995,7 @@ for (let i = 0; i < 5; i++) {
     phone: rPhone(),
     source: "rental-inquiry",
     service: "Rental Management",
+    propertyId: p.id,
     status: rpick(inquiryStatuses),
     value: rint(4, 20) * 500_000,
     createdAt: iso(createdMs),

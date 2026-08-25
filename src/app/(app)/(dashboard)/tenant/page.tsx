@@ -68,7 +68,13 @@ export default function TenantDashboardPage() {
   const openTickets = tickets.filter((t) => t.status !== "closed" && t.status !== "completed");
   const maintCharges = tenantMaintenanceCharges(tenant.id);
   const maintTotal = maintCharges.reduce((s, t) => s + (t.invoiceAmount ?? t.cost ?? 0), 0);
-  const notices = (announcements.data ?? []).filter((a) => a.audience === "all_tenants" || a.audienceLabel === property?.name).slice(0, 3);
+  // Match property announcements by id where one is stored (E5); fall back to the
+  // label for records written before announcements carried a property id.
+  const notices = (announcements.data ?? [])
+    .filter((a) =>
+      a.audience === "all_tenants" ||
+      (a.audiencePropertyId ? a.audiencePropertyId === property?.id : a.audienceLabel === property?.name))
+    .slice(0, 3);
 
   const paymentColumns: Column<Payment>[] = [
     { key: "date", header: "Date", sortable: true, render: (p) => formatDate(p.date) },

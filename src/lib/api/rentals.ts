@@ -7,7 +7,7 @@
 
 import * as db from "@/lib/mock/db";
 import { recordMutation } from "@/lib/api/actions";
-import { incrementStaffJobs, decrementStaffJobs } from "@/lib/api/admin-mutations";
+import { incrementStaffJobs, decrementStaffJobs, staffRef } from "@/lib/api/admin-mutations";
 import { useNotifications } from "@/lib/stores/notifications";
 import type {
   Booking,
@@ -234,6 +234,8 @@ export async function createRentalInquiry(input: RentalInquiryInput) {
   // E1: the inquiry reference must live ON the lead, not just be returned to the
   // page — otherwise the admin CRM shows a generic NX-LD- ref the customer never saw.
   lead.reference = reference;
+  // E5 — store the enquired property as an id; the note text is display only.
+  lead.propertyId = input.propertyId ?? db.properties.find((p) => p.name === propName)?.id;
   recordMutation({
     entityType: "lead",
     entityId: lead.id,
@@ -350,7 +352,15 @@ export interface AdminBookingRow {
   leadId?: string;
 }
 
-function inquiryProperty(note: string | undefined): { name: string; id?: string } {
+/**
+ * Resolve the property an inquiry is about. Prefers the lead's `propertyId` (E5);
+ * falls back to parsing the activity note for leads written before that existed.
+ */
+function inquiryProperty(note: string | undefined, propertyId?: string): { name: string; id?: string } {
+  if (propertyId) {
+    const byId = db.properties.find((p) => p.id === propertyId);
+    if (byId) return { name: byId.name, id: byId.id };
+  }
   const m = note?.match(/Rental inquiry for (.+?)\./);
   const name = m?.[1]?.trim() ?? "—";
   const prop = db.properties.find((p) => p.name === name);
@@ -362,7 +372,7 @@ function inquiryRows(): AdminBookingRow[] {
     .filter((l) => l.source === "rental-inquiry")
     .map((l) => {
       const note = l.activities.find((a) => a.kind === "note")?.text;
-      const prop = inquiryProperty(note);
+      const prop = inquiryProperty(note, l.propertyId);
       return {
         id: l.id,
         kind: "long-term" as const,
@@ -436,7 +446,7 @@ export async function getBookingDetail(id: string): Promise<BookingDetail> {
   if (booking) return { kind: "short-term", booking, propertyName: booking.propertyName, propertyId: booking.propertyId };
   const lead = db.leads.find((l) => l.id === id && l.source === "rental-inquiry");
   if (lead) {
-    const prop = inquiryProperty(lead.activities.find((a) => a.kind === "note")?.text);
+    const prop = inquiryProperty(lead.activities.find((a) => a.kind === "note")?.text, lead.propertyId);
     return { kind: "long-term", lead, propertyName: prop.name, propertyId: prop.id, stage: LEAD_TO_STAGE[lead.status] ?? "new" };
   }
   throw new Error("Booking not found");
@@ -534,7 +544,7 @@ export async function assignServiceBooking(id: string, assignee: string): Promis
   const sb = db.serviceBookings.find((s) => s.id === id);
   if (!sb) throw new Error("Service booking not found");
   const prev = sb.assignee;
-  sb.assignee = assignee;
+  Object.assign(sb, staffRef(assignee));
   if (assignee && assignee !== prev) incrementStaffJobs(assignee);
   if (sb.status === "new") sb.status = "assigned";
   recordMutation({
@@ -574,7 +584,7 @@ export async function getRecentBookings(limit = 5): Promise<RecentBookingItem[]>
   const inquiries: RecentBookingItem[] = db.leads
     .filter((l) => l.source === "rental-inquiry")
     .map((l) => ({
-      id: l.id, kind: "inquiry", label: `${l.name} · ${inquiryProperty(l.activities.find((a) => a.kind === "note")?.text).name}`,
+      id: l.id, kind: "inquiry", label: `${l.name} · ${inquiryProperty(l.activities.find((a) => a.kind === "note")?.text, l.propertyId).name}`,
       sublabel: "Long-term inquiry", status: LEAD_TO_STAGE[l.status] ?? "new", at: l.createdAt,
     }));
   return [...stays, ...services, ...inquiries].sort((a, b) => (a.at < b.at ? 1 : -1)).slice(0, limit);
