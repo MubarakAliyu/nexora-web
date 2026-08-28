@@ -550,6 +550,86 @@ expenses is preserved, with the explanatory comment requested in E4 in place.
 `SERVICE_PRICE|rate card|priceList` → comments only, confirming none exists ·
 `TODO|FIXME` 0 · remaining "placeholder" hits are input props / swappable contact details.
 
+## Execution Batch F1 ✅ COMPLETE — Service Catalogue, Component Pricing & Quotation
+
+**Context — a reversal, accepted.** E3 built assessment-first pricing and deleted the rate
+card. The 27 Aug stakeholder meeting reversed that: standardised services are priced from a
+catalogue **before** work begins. Both models now coexist — E3's assessment machinery is
+**repositioned, not removed**, and remains the path for non-standard (`requires_quotation`)
+and additional work.
+
+**F1.1–F1.2 — three-level admin-managed model** (`lib/mock/types.ts`, `lib/api/catalogue.ts`)
+`ServiceType → ServiceCategory → CatalogueItem`, all admin-managed rows. **Nothing about the
+catalogue lives in code**: not service types, categories, item names, units or prices.
+`unit` is free text (verified: "per visit" / "per hour" / "per tree" were typed by hand and
+work). `selectionMode` on the category is what drives the booking-form widget — that one
+field is why a single generic renderer serves every service type with no switch on service
+name. Seeded Cleaning / Laundry / Mobile Car Wash with **obvious round placeholder prices**
+and `pricesConfirmed: false`. All four collections persist via E1.
+
+**F1.3 — `/admin/service-catalogue`** (Super Admin + Finance Officer)
+Left panel of service types, right panel of categories and items. Built for entering a price
+list by hand: **inline price editing** (click, type, Enter/blur), sort-order number inputs
+rather than drag-and-drop (drag conflicts with the standing animation rule), duplicate item,
+and **bulk reprice with a line-by-line preview** before anything is written. Placeholder-
+pricing banner until the admin marks a service confirmed. **Every price change records old
+AND new value in the audit trail** — repricing is a financial control.
+
+**CSV import/export.** Export writes the full catalogue; import shows a diff
+(added / updated / unchanged / errors) and requires confirmation. Unknown service types and
+malformed prices are rejected **with their row number**.
+
+**F1.4 — booking forms build themselves.** One `CatalogueStep` renders any service type.
+`/book/[slug]` serves **any** active service type, so an admin-created type is bookable
+immediately with no route file and no deploy. Wizard grew 5 → 6 steps (Service, Details,
+**Components**, Schedule, Contact, **Quotation**); existing steps, animation and styling
+unchanged.
+
+**F1.5 — quotation review + agreement.** Itemised breakdown, subtotal, prominent total,
+address/date/time carried through, excluded items listed separately. Accept is gated on a
+required checkbox. On acceptance a `Quotation` is written with **`unitPriceAtBooking` frozen
+per line** — an agreed quote must never rewrite itself when prices move.
+
+**F1.6 — lifecycle.** `pending → quote_accepted → awaiting_payment → paid → assigned →
+in_progress → completed → confirmed`, with `requires_quotation → assessment_completed →
+quote_accepted` retained for non-standard work.
+
+**F1.7 — admin visibility.** Quote Total column (flagged when a booking contains
+separately-quoted items), accepted-quotation panel on the detail dialog, and the Service
+Invoice PDF now itemises from the snapshot.
+
+### Verification — all 16 items
+
+| # | Check | Result |
+|---|---|---|
+| 1 | **New service type end-to-end, zero code change** | Created **Garden Maintenance** in the admin UI → category "Garden Services" (quantity, required) → Lawn Mowing (per visit, 45,000), Hedge Trimming (per hour, 35,000), Tree Pruning (per tree, 60,000). `/book/garden-maintenance` rendered a working priced form. Total 45,000 + 60,000 = **105,000** ✅ |
+| 2 | Inline price edit reflects publicly | 45,000 → **52,000**, 35,000 → **41,000**; both appeared on the public form ✅ |
+| 3 | Bulk price update | +10% on 3 items; preview listed each from→to; applied ✅ |
+| 4 | CSV round-trip | 24 items exported; edited file re-imported → **1 added, 2 updated, 22 unchanged, 2 errors** (unknown service type, invalid price — both by row number) ✅ |
+| 5 | All three selection modes | Quantity steppers (Rooms), single-choice radios (Wash Service), multi-choice checkboxes (Add-ons) ✅ |
+| 6 | "Other" item | Excluded from total (UGX 15,000 not 15,000+0), "1 item quoted separately" note, required description enforced ✅ |
+| 7 | Deactivation | Tree Pruning vanished from the form; deactivating all three showed **"This service is being updated."** rather than a broken form ✅ |
+| 8 | Quotation step | Itemised table, checkbox gates the button (disabled → enabled on tick), acceptance fired toast + notification + audit ✅ |
+| 9 | **PRICE SNAPSHOT** | Accepted a quote with Bedroom at 20,000 → changed the catalogue to **33,000** → the quotation still shows **UGX 20,000**, total unchanged at 120,000. The PDF also renders 20,000 ✅ |
+| 10 | No hardcoded prices/lists | Zero 4-digit literals in catalogue components (only a `setTimeout`); zero switches on service name; only seed data in `db.ts` ✅ |
+| 11 | Audit records old + new | *"Hedge Trimming price changed from UGX 35,000 to UGX 41,000"* with before/after JSON ✅ |
+| 12 | E3 assessment still reachable | `requires_quotation` and `assigned` still route to Record Assessment ✅ |
+| 13 | Service Invoice PDF | Decoded: itemised breakdown with Carpet 1×50,000, Bedroom 2×20,000, Bathroom 2×30,000, Amount due 120,000 ✅ |
+| 14 | Persistence | Garden Maintenance + all edits survived a hard reload ✅ |
+| 15 | Zero E3 regressions | Assessment, invoice, payment, completion dialogs intact ✅ |
+| 16 | Dark mode + 375px | Dark tokens correct; steppers exactly **44×44**; zero horizontal overflow ✅ |
+
+**Bugs found and fixed during F1 verification**
+1. Inline price toast reported the new value as the old one — the mock store mutates records
+   in place, so `item.price` after `await` was already updated. Captured before the await.
+   (The audit entry was always correct.)
+2. No contextual action for `quote_accepted`, so a catalogue-priced booking could not reach
+   invoicing.
+3. Service Invoice footer claimed on-site assessment pricing for quotes agreed up front.
+4. Catalogue grid children sized to the item table's 640px min-width, overflowing at 375px.
+
+**Gate:** lint + `tsc --noEmit` clean · `npm run build` **warning-free, 86 static pages**.
+
 ## 🏁 PROJECT COMPLETE — final summary
 
 Nexora Property Management frontend is **complete** (mock-data). Single Next.js 15 app;
