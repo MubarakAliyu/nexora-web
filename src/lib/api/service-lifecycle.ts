@@ -30,6 +30,8 @@ const find = (id: string): ServiceBooking => {
 export const SERVICE_STATUS_LABEL: Record<ServiceBookingStatus, string> = {
   new: "New",
   pending: "Pending",
+  quote_accepted: "Quote Accepted",
+  requires_quotation: "Requires Quotation",
   assigned: "Assigned",
   assessment_required: "Assessment Required",
   assessment_completed: "Assessed",
@@ -47,14 +49,20 @@ export const SERVICE_STATUS_LABEL: Record<ServiceBookingStatus, string> = {
  * `new` to `completed` — the money steps in between cannot be skipped.
  */
 export const VALID_TRANSITIONS: Record<ServiceBookingStatus, ServiceBookingStatus[]> = {
-  new: ["assigned", "assessment_required", "cancelled"],
-  pending: ["assigned", "assessment_required", "cancelled"],
+  /* F1 — two entry paths now converge on the money steps:
+   *   standardised  : pending → quote_accepted → awaiting_payment → paid → …
+   *   non-standard  : requires_quotation → assessment_completed → quote_accepted → …
+   * E3's assessment machinery is preserved for the second path. */
+  new: ["quote_accepted", "requires_quotation", "assigned", "assessment_required", "cancelled"],
+  pending: ["quote_accepted", "requires_quotation", "assigned", "assessment_required", "cancelled"],
+  quote_accepted: ["invoice_generated", "awaiting_payment", "paid", "cancelled"],
+  requires_quotation: ["assessment_completed", "assessment_required", "cancelled"],
   assigned: ["assessment_required", "assessment_completed", "cancelled"],
   assessment_required: ["assessment_completed", "cancelled"],
-  assessment_completed: ["invoice_generated", "cancelled"],
+  assessment_completed: ["quote_accepted", "invoice_generated", "cancelled"],
   invoice_generated: ["awaiting_payment", "paid", "cancelled"],
   awaiting_payment: ["paid", "cancelled"],
-  paid: ["in_progress", "cancelled"],
+  paid: ["assigned", "in_progress", "cancelled"],
   in_progress: ["completed", "cancelled"],
   completed: ["confirmed", "in_progress"],
   confirmed: [],

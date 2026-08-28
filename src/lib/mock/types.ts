@@ -551,6 +551,9 @@ export type BookingStatus =
 export type ServiceBookingStatus =
   | "new"
   | "pending"
+  /* ---- F1: quote-before-work path for standardised, catalogue-priced services ---- */
+  | "quote_accepted"
+  | "requires_quotation"
   | "assigned"
   | "assessment_required"
   | "assessment_completed"
@@ -623,6 +626,12 @@ export interface ServiceBooking {
   /* ---- transaction detail (E1 · R3). Pricing is assessment-based (see E3), so
      amount stays undefined until an assessment has been recorded. ---- */
   customerId?: string;
+  /** F1 — the accepted quotation and its snapshotted total. */
+  quotationId?: string;
+  quoteTotal?: number;
+  /** F1 — set when the booking contains items flagged for separate quotation. */
+  hasSeparatelyQuotedItems?: boolean;
+  serviceTypeId?: string;
   amount?: number;
   paymentMethod?: string;
   paymentReference?: string;
@@ -674,4 +683,117 @@ export interface Activity {
   at: string; // ISO
   kind: "payment" | "lease" | "ticket" | "lead" | "property" | "tenant";
   text: string;
+}
+
+/* ==================================================================
+ * SERVICE CATALOGUE (F1) — three levels, ALL admin-managed.
+ *
+ * Nothing about the catalogue lives in code. The admin creates service
+ * types, categories within them, and priced items within those. The public
+ * booking forms build themselves from whatever is configured, so when the
+ * stakeholder finally supplies a price list nobody has to touch a file.
+ *
+ * `selectionMode` on the CATEGORY is what drives the booking-form UI — that
+ * single field is how one generic renderer serves every service type, present
+ * and future, without a switch on service name.
+ * ================================================================== */
+
+/** How the customer chooses from a category. Drives the booking-form widget. */
+export type SelectionMode = "quantity" | "single_choice" | "multi_choice";
+
+export type CatalogueCurrency = "UGX" | "USD";
+
+/** LEVEL 1 — a top-level bookable service. */
+export interface ServiceType {
+  id: string;
+  name: string;
+  /** Auto-generated from name; used in URLs. */
+  slug: string;
+  description: string | null;
+  /** Flowbite icon key, chosen by the admin from a visual picker. */
+  icon: string;
+  /** Which public booking form serves it, when it maps to one. */
+  bookingRoute?: string | null;
+  active: boolean;
+  sortOrder: number;
+  /** False while placeholder pricing is in use — drives the admin banner. */
+  pricesConfirmed: boolean;
+  createdAt: string;
+  updatedAt: string;
+}
+
+/** LEVEL 2 — a grouping within a service type. */
+export interface ServiceCategory {
+  id: string;
+  serviceTypeId: string;
+  name: string;
+  description: string | null;
+  selectionMode: SelectionMode;
+  /** Must the customer choose from this category before continuing? */
+  required: boolean;
+  active: boolean;
+  sortOrder: number;
+}
+
+/** LEVEL 3 — the priced thing. */
+export interface CatalogueItem {
+  id: string;
+  serviceTypeId: string;
+  categoryId: string;
+  name: string;
+  description: string | null;
+  /** FREE TEXT label the admin types ("per room", "per kg"). Never an enum —
+   *  if they invent "per square metre" tomorrow it must work with no code change. */
+  unit: string;
+  price: number;
+  currency: CatalogueCurrency;
+  minQuantity: number | null;
+  maxQuantity: number | null;
+  /** "Other" behaviour: reveals a required description field when selected. */
+  requiresDescription: boolean;
+  /** Shown to the customer but NOT counted — quoted separately after review. */
+  excludeFromTotal: boolean;
+  active: boolean;
+  sortOrder: number;
+  createdAt: string;
+  updatedAt: string;
+}
+
+/** A line on an accepted quotation — prices are SNAPSHOT, never re-read. */
+export interface QuotationLine {
+  itemId: string;
+  categoryId: string;
+  name: string;
+  unit: string;
+  quantity: number;
+  /** The price AS IT WAS when the customer accepted. Never recomputed. */
+  unitPriceAtBooking: number;
+  lineTotal: number;
+  /** Free-text detail captured for requiresDescription items. */
+  description?: string;
+  /** Mirrors CatalogueItem.excludeFromTotal at acceptance time. */
+  excludedFromTotal: boolean;
+}
+
+export type QuotationStatus = "accepted" | "superseded" | "cancelled";
+
+/**
+ * A customer-accepted quotation.
+ *
+ * PRICE SNAPSHOTTING IS THE POINT. If the admin reprices an item tomorrow, an
+ * already-accepted quotation must not silently rewrite itself — that would be an
+ * accounting problem, not a display quirk. Every line stores the price it was
+ * accepted at, and nothing here is ever recalculated from the live catalogue.
+ */
+export interface Quotation {
+  id: string;
+  bookingId: string;
+  serviceTypeId: string;
+  serviceTypeName: string;
+  lines: QuotationLine[];
+  subtotal: number;
+  total: number;
+  currency: CatalogueCurrency;
+  acceptedAt: string;
+  status: QuotationStatus;
 }

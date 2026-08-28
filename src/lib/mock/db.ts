@@ -43,6 +43,10 @@ import type {
   StaffAvailability,
   StaffDepartment,
   TicketLiability,
+  ServiceType,
+  ServiceCategory,
+  CatalogueItem,
+  Quotation,
   TicketCategory,
   TicketPriority,
   TicketStatus,
@@ -1155,4 +1159,118 @@ export function addMarketingLead(input: {
 export function findUser(email: string, password: string): MockUser | undefined {
   const e = email.trim().toLowerCase();
   return users.find((u) => u.email.toLowerCase() === e && u.password === password);
+}
+
+/* ==================================================================
+ * SERVICE CATALOGUE SEED (F1)
+ *
+ * The STRUCTURE here is real — it mirrors what was discussed on 27 Aug. The
+ * PRICES are deliberately obvious round placeholders, and every service type
+ * ships with `pricesConfirmed: false` so the admin UI keeps warning that these
+ * are not final until the stakeholder's price list is entered.
+ *
+ * The admin can change every single value below, including the service types
+ * themselves. Nothing here is depended on by any component.
+ * ================================================================== */
+
+const CAT_NOW = NOW.toISOString();
+let _stSeq = 0, _scSeq = 0, _ciSeq = 0;
+
+export const serviceTypes: ServiceType[] = [];
+export const serviceCategories: ServiceCategory[] = [];
+export const catalogueItems: CatalogueItem[] = [];
+/** Accepted quotations (price-snapshotted). Empty until a customer accepts one. */
+export const quotations: Quotation[] = [];
+
+function seedType(name: string, icon: string, description: string, bookingRoute: string | null, sortOrder: number) {
+  const st: ServiceType = {
+    id: `svt_${++_stSeq}`,
+    name,
+    slug: name.toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/^-|-$/g, ""),
+    description,
+    icon,
+    bookingRoute,
+    active: true,
+    sortOrder,
+    pricesConfirmed: false, // placeholder pricing until the real list lands
+    createdAt: CAT_NOW,
+    updatedAt: CAT_NOW,
+  };
+  serviceTypes.push(st);
+  return st;
+}
+
+function seedCategory(
+  st: ServiceType, name: string, selectionMode: ServiceCategory["selectionMode"],
+  required: boolean, sortOrder: number, description: string | null = null,
+) {
+  const sc: ServiceCategory = {
+    id: `svc_${++_scSeq}`,
+    serviceTypeId: st.id,
+    name, description, selectionMode, required,
+    active: true, sortOrder,
+  };
+  serviceCategories.push(sc);
+  return sc;
+}
+
+function seedItem(
+  sc: ServiceCategory, name: string, unit: string, price: number, sortOrder: number,
+  opts: Partial<Pick<CatalogueItem, "description" | "minQuantity" | "maxQuantity" | "requiresDescription" | "excludeFromTotal">> = {},
+) {
+  catalogueItems.push({
+    id: `cit_${++_ciSeq}`,
+    serviceTypeId: sc.serviceTypeId,
+    categoryId: sc.id,
+    name,
+    description: opts.description ?? null,
+    unit,
+    price,
+    currency: "UGX",
+    minQuantity: opts.minQuantity ?? 0,
+    maxQuantity: opts.maxQuantity ?? 20,
+    requiresDescription: opts.requiresDescription ?? false,
+    excludeFromTotal: opts.excludeFromTotal ?? false,
+    active: true,
+    sortOrder,
+    createdAt: CAT_NOW,
+    updatedAt: CAT_NOW,
+  });
+}
+
+{
+  /* ---- Cleaning ---- */
+  const cleaning = seedType("Cleaning", "Home", "Room-by-room residential and office cleaning.", "/book/cleaning", 1);
+  const rooms = seedCategory(cleaning, "Rooms", "quantity", true, 1, "Tell us how many of each room needs cleaning.");
+  seedItem(rooms, "Bedroom", "per room", 20_000, 1);
+  seedItem(rooms, "Bathroom", "per room", 15_000, 2);
+  seedItem(rooms, "Kitchen", "per room", 25_000, 3);
+  seedItem(rooms, "Living Room", "per room", 30_000, 4);
+  const addons = seedCategory(cleaning, "Add-ons", "multi_choice", false, 2, "Optional extras.");
+  seedItem(addons, "Carpet Cleaning", "per service", 50_000, 1);
+  seedItem(addons, "Windows", "per service", 40_000, 2);
+  seedItem(addons, "Balcony", "per service", 20_000, 3);
+
+  /* ---- Laundry ---- */
+  const laundry = seedType("Laundry", "Tools", "Wash, dry, fold and dry cleaning.", "/book/lifestyle", 2);
+  const wash = seedCategory(laundry, "Wash Service", "single_choice", true, 1, "Choose one wash service.");
+  seedItem(wash, "Wash & Fold", "per kg", 5_000, 1);
+  seedItem(wash, "Wash, Dry & Fold", "per kg", 8_000, 2);
+  const dry = seedCategory(laundry, "Dry Cleaning", "quantity", false, 2, "Priced per item.");
+  ["Shirt", "Trousers", "Suit", "Dress", "Coat", "Bedsheet", "Curtain", "Blanket"].forEach((n, i) =>
+    seedItem(dry, n, "per item", 10_000 + i * 5_000, i + 1),
+  );
+  const other = seedCategory(laundry, "Other Items", "quantity", false, 3, "Anything not listed above.");
+  seedItem(other, "Other Item", "per item", 0, 1, {
+    description: "Describe the item and we will quote it separately.",
+    requiresDescription: true,
+    excludeFromTotal: true,
+  });
+
+  /* ---- Mobile Car Wash ---- */
+  const carwash = seedType("Mobile Car Wash", "MapPin", "We come to you.", "/book/lifestyle", 3);
+  const washType = seedCategory(carwash, "Wash Type", "single_choice", true, 1, "Choose one.");
+  seedItem(washType, "Interior Wash", "per vehicle", 30_000, 1);
+  seedItem(washType, "Exterior Wash", "per vehicle", 25_000, 2);
+  seedItem(washType, "Full Wash", "per vehicle", 50_000, 3);
 }
