@@ -15,6 +15,9 @@ import { SectionIcon } from "@/components/marketing/section-icons";
 import { toast } from "@/components/ui/sonner";
 import { cn } from "@/lib/utils";
 import { createServiceBooking, type ServiceBookingKind } from "@/lib/api/rentals";
+import { CatalogueStep, validateSelection, type CatalogueSelection } from "@/components/marketing/catalogue-step";
+import { QuotationStep } from "@/components/marketing/quotation-step";
+import { serviceTypesSync, catalogueTree, acceptQuotation, hasBookableItems } from "@/lib/api/catalogue";
 
 /* ------------------------------------------------------------- config */
 
@@ -53,9 +56,9 @@ const contactSchema = z.object({
 type DetailsValues = z.infer<typeof detailsSchema>;
 type ContactValues = z.infer<typeof contactSchema>;
 
-type Step = 1 | 2 | 3 | 4 | 5 | 6; // 6 = confirmed
+type Step = 1 | 2 | 3 | 4 | 5 | 6 | 7; // 7 = confirmed
 
-const STEP_LABELS = ["Service", "Details", "Schedule", "Contact", "Review"];
+const STEP_LABELS = ["Service", "Details", "Components", "Schedule", "Contact", "Quotation"];
 
 const fmtDay = (d?: Date) =>
   d ? d.toLocaleDateString("en-GB", { weekday: "long", day: "numeric", month: "long", year: "numeric" }) : "—";
@@ -69,6 +72,26 @@ export function ServiceBookingWizard({ config }: { config: WizardConfig }) {
   const [time, setTime] = React.useState<string | undefined>();
   const [reference, setReference] = React.useState("");
   const [submitting, setSubmitting] = React.useState(false);
+  /* F1 — catalogue-driven component selection and the quotation the customer agrees to. */
+  const [selection, setSelection] = React.useState<CatalogueSelection>({});
+  const [agreed, setAgreed] = React.useState(false);
+  const [quoteTotal, setQuoteTotal] = React.useState("");
+
+  /**
+   * Resolve the chosen wizard category to a configured service type BY NAME.
+   * This is a lookup, not a hardcoded mapping — a service type the admin creates
+   * tomorrow resolves the same way with no code change. Falls back to the first
+   * active type so a form always has something to price.
+   */
+  const serviceTypeId = React.useMemo(() => {
+    const types = serviceTypesSync(true);
+    if (types.length === 0) return "";
+    const label = (category?.label ?? "").toLowerCase();
+    const exact = types.find((t) => t.name.toLowerCase() === label);
+    if (exact) return exact.id;
+    const partial = types.find((t) => label.includes(t.name.toLowerCase()) || t.name.toLowerCase().includes(label));
+    return (partial ?? types[0]).id;
+  }, [category]);
 
   const today = React.useMemo(() => { const d = new Date(); d.setHours(0, 0, 0, 0); return d; }, []);
 
@@ -99,9 +122,18 @@ export function ServiceBookingWizard({ config }: { config: WizardConfig }) {
         date: date!.toISOString(),
         time: time!,
       });
+      // F1 — freeze the agreed prices onto the booking. From here the quotation is
+      // a snapshot: repricing the catalogue tomorrow must not alter what was agreed.
+      const lines = Object.entries(selection)
+        .filter(([, v]) => v.quantity > 0)
+        .map(([itemId, v]) => ({ itemId, quantity: v.quantity, description: v.description }));
+      if (serviceTypeId && lines.length > 0) {
+        const quote = await acceptQuotation(booking.id, serviceTypeId, lines);
+        setQuoteTotal(`${quote.currency} ${Math.round(quote.total).toLocaleString("en-UG")}`);
+      }
       setReference(booking.reference);
-      setStep(6);
-      toast.success("Booking confirmed", { description: `Reference ${booking.reference}` });
+      setStep(7);
+      toast.success("Quotation accepted — proceed to payment", { description: `Reference ${booking.reference}` });
     } catch {
       toast.error("Something went wrong", { description: "Please try again." });
     } finally {
@@ -198,9 +230,41 @@ export function ServiceBookingWizard({ config }: { config: WizardConfig }) {
       </form>
     );
   } else if (step === 3) {
+    const problems = validateSelection(catalogueTree(serviceTypeId, true), selection);
+    const bookable = serviceTypeId ? hasBookableItems(serviceTypeId) : false;
     panel = (
       <div className="motion-safe:animate-in motion-safe:fade-in motion-safe:slide-in-from-right-2">
         <button type="button" onClick={back(2)} className="inline-flex items-center gap-1.5 text-caption font-medium text-muted transition-colors hover:text-primary">
+          <AngleLeft size={16} /> Back
+        </button>
+        <h3 className="mt-4 font-heading text-h3 font-semibold text-foreground">What do you need?</h3>
+        <p className="mt-1 text-caption text-muted">Tell us the scope so we can price it before we start.</p>
+        <div className="mt-5">
+          <CatalogueStep
+            serviceTypeId={serviceTypeId}
+            selection={selection}
+            onChange={(next) => { setSelection(next); setAgreed(false); }}
+          />
+        </div>
+        {problems.length > 0 && (
+          <ul className="mt-4 space-y-1">
+            {problems.map((p) => <li key={p} className="text-caption text-primary">{p}</li>)}
+          </ul>
+        )}
+        <div className="mt-5 flex justify-end">
+          <Button
+            disabled={!bookable || problems.length > 0 || Object.keys(selection).length === 0}
+            onClick={() => setStep(4)}
+          >
+            Continue
+          </Button>
+        </div>
+      </div>
+    );
+  } else if (step === 4) {
+    panel = (
+      <div className="motion-safe:animate-in motion-safe:fade-in motion-safe:slide-in-from-right-2">
+        <button type="button" onClick={back(3)} className="inline-flex items-center gap-1.5 text-caption font-medium text-muted transition-colors hover:text-primary">
           <AngleLeft size={16} /> Back
         </button>
         <h3 className="mt-4 font-heading text-h3 font-semibold text-foreground">Preferred date &amp; time</h3>
@@ -246,18 +310,18 @@ export function ServiceBookingWizard({ config }: { config: WizardConfig }) {
           </div>
         </div>
         <div className="mt-5 flex justify-end">
-          <Button disabled={!date || !time} onClick={() => setStep(4)}>Continue</Button>
+          <Button disabled={!date || !time} onClick={() => setStep(5)}>Continue</Button>
         </div>
       </div>
     );
-  } else if (step === 4) {
+  } else if (step === 5) {
     panel = (
       <form
-        onSubmit={contactForm.handleSubmit(() => setStep(5))}
+        onSubmit={contactForm.handleSubmit(() => setStep(6))}
         noValidate
         className="motion-safe:animate-in motion-safe:fade-in motion-safe:slide-in-from-right-2"
       >
-        <button type="button" onClick={back(3)} className="inline-flex items-center gap-1.5 text-caption font-medium text-muted transition-colors hover:text-primary">
+        <button type="button" onClick={back(4)} className="inline-flex items-center gap-1.5 text-caption font-medium text-muted transition-colors hover:text-primary">
           <AngleLeft size={16} /> Back
         </button>
         <h3 className="mt-4 font-heading text-h3 font-semibold text-foreground">Contact details</h3>
@@ -279,12 +343,12 @@ export function ServiceBookingWizard({ config }: { config: WizardConfig }) {
         </div>
       </form>
     );
-  } else if (step === 5) {
+  } else if (step === 6) {
     const d = detailsForm.getValues();
     const c = contactForm.getValues();
     panel = (
       <div className="motion-safe:animate-in motion-safe:fade-in motion-safe:slide-in-from-right-2">
-        <button type="button" onClick={back(4)} className="inline-flex items-center gap-1.5 text-caption font-medium text-muted transition-colors hover:text-primary">
+        <button type="button" onClick={back(5)} className="inline-flex items-center gap-1.5 text-caption font-medium text-muted transition-colors hover:text-primary">
           <AngleLeft size={16} /> Back
         </button>
         <h3 className="mt-4 font-heading text-h3 font-semibold text-foreground">Review your booking</h3>
@@ -297,9 +361,19 @@ export function ServiceBookingWizard({ config }: { config: WizardConfig }) {
           <div className="flex justify-between gap-4"><dt className="text-muted">Time</dt><dd className="text-right text-foreground">{time}</dd></div>
           <div className="flex justify-between gap-4 border-t border-border pt-3"><dt className="text-muted">Contact</dt><dd className="text-right text-foreground">{c.name} · {c.phone}</dd></div>
         </dl>
-        <p className="mt-3 text-caption text-muted">We&rsquo;ll confirm availability and pricing by phone or email before the visit.</p>
+        <div className="mt-6">
+          <QuotationStep
+            serviceTypeId={serviceTypeId}
+            selection={selection}
+            agreed={agreed}
+            onAgreedChange={setAgreed}
+            address={d.location}
+            dateLabel={fmtDay(date)}
+            time={time}
+          />
+        </div>
         <div className="mt-5 flex justify-end">
-          <Button onClick={submit} loading={submitting}>Confirm booking</Button>
+          <Button onClick={submit} loading={submitting} disabled={!agreed}>Accept &amp; Continue to Payment</Button>
         </div>
       </div>
     );
@@ -311,12 +385,14 @@ export function ServiceBookingWizard({ config }: { config: WizardConfig }) {
         </span>
         <h3 className="mt-5 font-heading text-h2 font-semibold text-foreground">Booking received</h3>
         <p className="mt-2 max-w-sm text-body text-muted">
-          Your {category?.label.toLowerCase()} booking is in. Our team will confirm the visit shortly.
+          Your {category?.label.toLowerCase()} booking is in{quoteTotal ? " and your quotation is agreed" : ""}.
+          {quoteTotal ? " We’ll take payment next, then schedule the visit." : " Our team will confirm the visit shortly."}
         </p>
         <div className="mt-5 w-full max-w-sm space-y-2 rounded-xl border border-border bg-surface-hover p-4 text-left text-body">
           <div className="flex justify-between"><span className="text-muted">Reference</span><span className="font-semibold text-foreground">{reference}</span></div>
           <div className="flex justify-between"><span className="text-muted">Service</span><span className="text-foreground">{category?.label}</span></div>
           <div className="flex justify-between"><span className="text-muted">When</span><span className="text-foreground">{fmtDay(date)} · {time}</span></div>
+          {quoteTotal && <div className="flex justify-between border-t border-border pt-2"><span className="text-muted">Agreed total</span><span className="font-semibold text-primary">{quoteTotal}</span></div>}
         </div>
         <div className="mt-6 flex flex-wrap justify-center gap-3">
           <Button asChild><Link href="/services">Explore services</Link></Button>
@@ -330,7 +406,7 @@ export function ServiceBookingWizard({ config }: { config: WizardConfig }) {
 
   return (
     <div className="mx-auto max-w-3xl overflow-hidden rounded-2xl border border-border bg-background shadow-xl">
-      {step !== 6 && (
+      {step !== 7 && (
         <div className="flex items-center gap-2 border-b border-border bg-surface-hover px-5 py-3">
           {STEP_LABELS.map((label, i) => (
             <React.Fragment key={label}>
