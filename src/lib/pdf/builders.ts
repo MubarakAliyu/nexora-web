@@ -7,6 +7,7 @@ import * as db from "@/lib/mock/db";
 import type { Invoice, Payment, Lease } from "@/lib/mock/types";
 import type { InvoicePdfData, ReceiptPdfData, StatementPdfData, LeasePdfData, DepositSettlementPdfData, SettlementStatementPdfData, ServiceInvoicePdfData, MaintenanceInvoicePdfData, PdfPayload } from "./documents";
 import { computeOwnerSettlement } from "@/lib/api/settlement";
+import { quotationForBooking } from "@/lib/api/catalogue";
 import type { SettlementRecord } from "@/lib/mock/types";
 import { slugFile } from "./download";
 import { formatDate, formatUGX } from "@/lib/format";
@@ -66,6 +67,7 @@ export function serviceInvoicePdf(bookingId: string, mode: "invoice" | "receipt"
   const sb = db.serviceBookings.find((b) => b.id === bookingId);
   if (!sb) throw new Error("Service booking not found");
   const number = sb.invoiceNumber ?? sb.reference.replace("NX-SV-", "INV-SV-");
+  const quote = quotationForBooking(sb.id);
   const data: ServiceInvoicePdfData = {
     mode,
     number: mode === "receipt" ? number.replace("INV-", "RCP-") : number,
@@ -78,11 +80,20 @@ export function serviceInvoicePdf(bookingId: string, mode: "invoice" | "receipt"
     scope: sb.assessmentScope ?? "Scope pending assessment",
     assessedBy: sb.assessedBy,
     assessedAt: sb.assessedAt ? formatDate(sb.assessedAt) : undefined,
-    amount: sb.invoiceAmount ?? sb.assessedAmount ?? 0,
+    amount: quote?.total ?? sb.invoiceAmount ?? sb.assessedAmount ?? 0,
     paidAmount: sb.paidAmount,
     paymentMethod: sb.paymentMethod ? cap(sb.paymentMethod.replace(/_/g, " ")) : undefined,
     paymentReference: sb.paymentReference,
     paidAt: sb.paidAt ? formatDate(sb.paidAt) : undefined,
+    // F1 — itemise from the accepted quotation when there is one; assessment-priced
+    // bookings keep the single assessed figure.
+    lines: quote?.lines.filter((l) => !l.excludedFromTotal).map((l) => ({
+      name: l.name, unit: l.unit, quantity: l.quantity,
+      unitPrice: l.unitPriceAtBooking, lineTotal: l.lineTotal,
+    })),
+    excludedLines: quote?.lines.filter((l) => l.excludedFromTotal).map((l) => ({
+      name: l.name, quantity: l.quantity, description: l.description,
+    })),
   };
   return {
     payload: { kind: "service-invoice", data },

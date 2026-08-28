@@ -438,6 +438,9 @@ export interface ServiceInvoicePdfData {
   clientName: string; email: string; phone: string; address: string;
   serviceType: string; category: string;
   scope: string; assessedBy?: string; assessedAt?: string;
+  /** F1 — itemised catalogue breakdown, at the prices agreed on the quotation. */
+  lines?: { name: string; unit: string; quantity: number; unitPrice: number; lineTotal: number }[];
+  excludedLines?: { name: string; quantity: number; description?: string }[];
   amount: number;
   paidAmount?: number; paymentMethod?: string; paymentReference?: string; paidAt?: string;
 }
@@ -470,12 +473,50 @@ export function ServiceInvoiceDoc({ d }: { d: ServiceInvoicePdfData }) {
           </View>
         </View>
 
-        <Text style={s.clauseH}>Service &amp; assessed scope</Text>
+        <Text style={s.clauseH}>Service</Text>
         <View style={s.table}>
           <View style={s.tr}><Text style={s.cell}>Service</Text><Text style={s.cellRight}>{d.serviceType} — {d.category}</Text></View>
-          <View style={[s.tr, s.trAlt]}><Text style={s.cell}>Assessed scope</Text><Text style={s.cellRight}>{d.scope}</Text></View>
+          {!d.lines?.length && <View style={[s.tr, s.trAlt]}><Text style={s.cell}>Assessed scope</Text><Text style={s.cellRight}>{d.scope}</Text></View>}
           {d.assessedBy && <View style={s.tr}><Text style={s.cell}>Assessed by</Text><Text style={s.cellRight}>{d.assessedBy}{d.assessedAt ? ` · ${d.assessedAt}` : ""}</Text></View>}
         </View>
+
+        {/* F1 — catalogue-priced bookings itemise; assessment-priced ones keep the
+            single assessed figure above. */}
+        {!!d.lines?.length && (
+          <>
+            <Text style={s.clauseH}>Itemised breakdown</Text>
+            <View style={s.table}>
+              <View style={s.th}>
+                <Text style={s.cell}>Item</Text>
+                <Text style={{ width: 46, textAlign: "center" }}>Qty</Text>
+                <Text style={{ width: 90, textAlign: "right" }}>Unit price</Text>
+                <Text style={{ width: 90, textAlign: "right" }}>Total</Text>
+              </View>
+              {d.lines.map((l, i) => (
+                <View key={l.name + i} style={i % 2 === 1 ? [s.tr, s.trAlt] : s.tr}>
+                  <Text style={s.cell}>{l.name} ({l.unit})</Text>
+                  <Text style={{ width: 46, textAlign: "center" }}>{l.quantity}</Text>
+                  <Text style={{ width: 90, textAlign: "right" }}>{money(l.unitPrice)}</Text>
+                  <Text style={{ width: 90, textAlign: "right" }}>{money(l.lineTotal)}</Text>
+                </View>
+              ))}
+            </View>
+          </>
+        )}
+
+        {!!d.excludedLines?.length && (
+          <>
+            <Text style={s.clauseH}>To be quoted separately</Text>
+            <View style={s.table}>
+              {d.excludedLines.map((l, i) => (
+                <View key={l.name + i} style={i % 2 === 1 ? [s.tr, s.trAlt] : s.tr}>
+                  <Text style={s.cell}>{l.name}{l.quantity > 1 ? ` x ${l.quantity}` : ""}</Text>
+                  <Text style={s.cellRight}>{l.description ?? "Not included in this total"}</Text>
+                </View>
+              ))}
+            </View>
+          </>
+        )}
 
         <View style={s.grandRow}>
           <Text style={s.grandLabel}>{isReceipt ? "Amount paid" : "Amount due"}</Text>

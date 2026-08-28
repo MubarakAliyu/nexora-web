@@ -27,6 +27,8 @@ import {
   AssessmentDialog, InvoiceDialog, PaymentDialog, CompletionDialog,
   ConfirmCompletionDialog, CancelBookingDialog, AssessmentPanel,
 } from "@/components/admin/service-workflow-dialogs";
+import { QuotationPanel } from "@/components/admin/quotation-panel";
+import { quotationForBooking } from "@/lib/api/catalogue";
 import { downloadPdf } from "@/lib/pdf/download";
 import { serviceInvoicePdf } from "@/lib/pdf/builders";
 import { Download } from "flowbite-react-icons/outline";
@@ -142,6 +144,7 @@ function DetailDialog({ id, onOpenChange, onDone, onWorkflow, refreshKey }: {
                 </div>
               </div>
               <AssessmentPanel booking={data} />
+              <QuotationPanel bookingId={data.id} />
 
               {/* Contextual primary action — drives the money workflow */}
               {(() => {
@@ -251,6 +254,23 @@ export default function ServiceBookingsPage() {
     { key: "status", header: "Status", sortable: true, render: (s) => <StatusBadge status={s.status} /> },
     { key: "paymentStatus", header: "Payment", render: (s) => <StatusBadge status={s.paymentStatus ?? "not_invoiced"} /> },
     {
+      /* F1 — what the customer actually agreed to, at the prices they agreed to. */
+      key: "quoteTotal", header: "Quote Total", align: "right", sortable: true,
+      sortValue: (s) => s.quoteTotal ?? 0,
+      render: (s) => {
+        const q = quotationForBooking(s.id);
+        if (!q) return <span className="text-caption text-muted">—</span>;
+        const flagged = q.lines.some((l) => l.excludedFromTotal);
+        return (
+          <span className="inline-flex items-center justify-end gap-1.5">
+            <span className="tabular-nums font-medium text-foreground">{formatUGX(q.total)}</span>
+            {/* Items needing a separate quote are the ones an admin must chase. */}
+            {flagged && <Badge className="border-accent/40 bg-surface-active text-foreground">Quote</Badge>}
+          </span>
+        );
+      },
+    },
+    {
       key: "amount", header: "Amount", align: "right",
       render: (s) => {
         const amt = s.invoiceAmount ?? s.assessedAmount;
@@ -272,6 +292,7 @@ export default function ServiceBookingsPage() {
           { header: "Date", accessor: (s) => s.date.slice(0, 10) },
           { header: "Assignee", accessor: (s) => s.assignee ?? "" },
           { header: "Status", accessor: (s) => s.status },
+          { header: "Quote Total", accessor: (s) => s.quoteTotal ?? "" },
           { header: "Location", accessor: (s) => s.location },
         ]} />} />
 
