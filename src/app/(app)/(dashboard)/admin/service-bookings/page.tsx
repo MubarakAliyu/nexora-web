@@ -61,6 +61,12 @@ function DetailDialog({ id, onOpenChange, onDone, onWorkflow, refreshKey }: {
     switch (sb.status) {
       case "new": case "pending":
         return { label: "Assign Staff", run: () => document.getElementById("sb-assignee")?.focus() };
+      // F1 — quote-before-work: an accepted quotation goes straight to invoicing,
+      // since the price was agreed by the customer before anything was scheduled.
+      case "quote_accepted":
+        return { label: "Generate Invoice", run: () => onWorkflow("invoice", sb) };
+      // The non-standard path still runs E3's assessment machinery.
+      case "requires_quotation":
       case "assigned": case "assessment_required":
         return { label: "Record Assessment", run: () => onWorkflow("assess", sb) };
       case "assessment_completed":

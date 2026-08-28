@@ -537,7 +537,9 @@ export function ServiceInvoiceDoc({ d }: { d: ServiceInvoicePdfData }) {
           )}
         </View>
 
-        <Footer note={`Priced from an on-site assessment · ${d.bookingRef}`} />
+        {/* Catalogue-priced bookings were agreed up front; assessment-priced ones
+            were scoped on site. Say which, rather than always claiming the latter. */}
+        <Footer note={`${d.lines?.length ? "Priced from the agreed quotation" : "Priced from an on-site assessment"} · ${d.bookingRef}`} />
       </Page>
     </Document>
   );

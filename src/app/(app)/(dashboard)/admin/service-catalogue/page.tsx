@@ -216,9 +216,9 @@ export default function ServiceCataloguePage() {
         </Card>
       )}
 
-      <div className="grid gap-6 lg:grid-cols-[280px_minmax(0,1fr)]">
+      <div className="grid min-w-0 gap-6 lg:grid-cols-[280px_minmax(0,1fr)]">
         {/* Service types */}
-        <div className="space-y-2">
+        <div className="min-w-0 space-y-2">
           {types.length === 0 && (
             <Card className="p-6 text-center">
               <p className="text-body text-muted">No service types yet.</p>
@@ -255,7 +255,7 @@ export default function ServiceCataloguePage() {
 
         {/* Selected type */}
         {selectedType && tree ? (
-          <div className="space-y-5">
+          <div className="min-w-0 space-y-5">
             <Card className="p-5">
               <div className="flex flex-col justify-between gap-3 sm:flex-row sm:items-start">
                 <div className="min-w-0">
