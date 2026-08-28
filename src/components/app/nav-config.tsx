@@ -18,6 +18,7 @@ import {
   CalendarWeek,
   FileDoc,
   ChartPie,
+  Tag,
 } from "flowbite-react-icons/outline";
 import type { SidebarItem } from "@/components/ui/sidebar";
 import type { Role } from "@/lib/roles";
@@ -68,6 +69,7 @@ export function navForRole(role: Role): SidebarItem[] {
     leads: { label: "CRM / Leads", href: "/admin/leads", icon: <ClipboardList size={sz} /> },
     bookings: { label: "Bookings", href: "/admin/bookings", icon: <CalendarMonth size={sz} /> },
     serviceBookings: { label: "Service Bookings", href: "/admin/service-bookings", icon: <CalendarWeek size={sz} /> },
+    serviceCatalogue: { label: "Service Catalogue", href: "/admin/service-catalogue", icon: <Tag size={sz} /> },
     analytics: { label: "Analytics", href: "/admin/analytics", icon: <ChartLineUp size={sz} /> },
     announcements: { label: "Announcements", href: "/admin/announcements", icon: <Bullhorn size={sz} /> },
     staff: { label: "Staff", href: "/admin/staff", icon: <UsersGroup size={sz} /> },
@@ -79,7 +81,7 @@ export function navForRole(role: Role): SidebarItem[] {
     ops_manager: Object.keys(all),
     property_manager: ["dashboard", "properties", "units", "owners", "agreements", "tenants", "leases", "finance", "financialOverview", "maintenance", "leads", "bookings", "serviceBookings"],
     maintenance_officer: ["dashboard", "maintenance", "properties"],
-    finance_officer: ["dashboard", "finance", "financialOverview", "owners", "agreements", "analytics", "announcements"],
+    finance_officer: ["dashboard", "finance", "financialOverview", "serviceCatalogue", "owners", "agreements", "analytics", "announcements"],
     owner: [],
     tenant: [],
   };
