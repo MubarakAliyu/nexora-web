@@ -48,11 +48,14 @@ function PriceCell({ item, onSaved }: { item: CatalogueItem; onSaved: () => void
     const next = Number(value);
     setEditing(false);
     if (!Number.isFinite(next) || next < 0 || next === item.price) { setValue(String(item.price)); return; }
+    // Capture BEFORE the await — the mock store mutates the record in place, so
+    // reading item.price afterwards would report the new value as the old one.
+    const oldPrice = item.price;
     setBusy(true);
     try {
       await updateItem(item.id, { price: next });
       toast.success("Price updated", {
-        description: `${item.name}: ${fmt(item.price, item.currency)} → ${fmt(next, item.currency)}`,
+        description: `${item.name}: ${fmt(oldPrice, item.currency)} → ${fmt(next, item.currency)}`,
       });
       onSaved();
     } catch { toast.error("Couldn’t update the price"); setValue(String(item.price)); }
