@@ -690,6 +690,40 @@ change needs a version bump**; that is the rule this broke.
 
 **Gate:** lint + `tsc --noEmit` clean · `npm run build` **warning-free, 86 static pages**.
 
+## Execution Batch F3 — IN PROGRESS
+
+**RESUME HERE: F3.3 onwards — the UI layer.** The model, API and seed are complete and
+committed; what remains is wiring them into screens.
+
+**Done and committed**
+- **F2 housekeeping** (`bfb1ee3`) — payment outcome picker guarded behind
+  `NEXT_PUBLIC_DEV_PAYMENTS=1` **or** `?devPayment=1`; non-tenant approval now says
+  "Customer contacted offline — record their response below" and requires capturing the
+  response method (phone / email / WhatsApp / in person), stored on the charge with the
+  recording admin and written into the audit summary.
+- **F3.1 + F3.2 model, API, seed** (`dc458a3`)
+  - `src/lib/mock/types.ts` — assessment, routing, owner-approval and variance fields added;
+    every E4 field preserved. `TicketStatus` extended with the six new states.
+  - `src/lib/api/maintenance-routing.ts` — NEW. Transition map + hints, threshold
+    (`DEFAULT_OWNER_APPROVAL_THRESHOLD = 500,000`, placeholder), `suggestedRoute`,
+    `recordAssessment`, `routeCharge` (three branches), `approveMaintenance`,
+    `declineMaintenance`, `sendApprovalReminder`, `markTenantPaidAndSchedule`,
+    `ticketsAwaitingOwnerApproval`, `hoursAwaiting`/`waitingLabel`.
+  - `src/lib/mock/db.ts` — six tickets seeded across every new state (awaiting approval past
+    48h, approved+in progress, declined+closed, awaiting tenant payment, Nexora scheduled,
+    owner-below-threshold scheduled). Only OPEN/ASSIGNED tickets were touched, so E4's
+    closed tickets and their verified settlement figures are untouched.
+  - `SCHEMA_VERSION` → `f3-2026-08-27`.
+
+**Still to build**
+- F3.3 Record Assessment dialog (`assigned` → `assessed`)
+- F3.4 Route Charge dialog with suggestion hint + override handling
+- F3.5 `/owner/approvals` + owner sidebar badge + dashboard alert; threshold in
+  Settings → Global
+- F3.6 closure variance + liability pre-fill in the existing close dialog
+- Admin table/board updates for the new statuses, waiting time and 48h flag
+- The 20-item verification list, including the E4 three-branch settlement regression
+
 ## 🏁 PROJECT COMPLETE — final summary
 
 Nexora Property Management frontend is **complete** (mock-data). Single Next.js 15 app;
