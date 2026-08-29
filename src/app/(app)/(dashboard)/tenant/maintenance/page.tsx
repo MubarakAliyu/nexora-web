@@ -27,6 +27,7 @@ import { useSession } from "@/lib/stores/session";
 import { formatDate, fromNow, formatUGX } from "@/lib/format";
 import { downloadPdf } from "@/lib/pdf/download";
 import { maintenanceInvoicePdf } from "@/lib/pdf/builders";
+import { billedToTenant } from "@/lib/api/maintenance-liability";
 import { PayChargeDialog } from "@/components/tenant/pay-charge-dialog";
 import { getTenant, createTicket, NOW_ISO, type MaintenanceTicket, type TicketCategory, type TicketPriority, type Scope } from "@/lib/api/admin";
 
@@ -80,7 +81,7 @@ function TicketDetailDialog({ ticket, onOpenChange, onPay }: {
               </Timeline>
             </div>
             {/* E4 — the charge, if this repair was found to be the tenant's. */}
-            {ticket.liability === "tenant" && ticket.invoiceNumber && (
+            {billedToTenant(ticket) && ticket.invoiceNumber && (
               <div className="rounded-xl border border-primary/30 bg-primary/5 p-4">
                 <div className="flex items-center justify-between gap-3">
                   <p className="text-caption font-medium uppercase tracking-wide text-muted">Maintenance charge</p>
@@ -174,7 +175,7 @@ export default function TenantMaintenancePage() {
     { key: "createdAt", header: "Submitted", sortable: true, align: "right", render: (t) => formatDate(t.createdAt) },
     {
       key: "charge", header: "Charge", align: "right",
-      render: (t) => t.liability === "tenant" && t.invoiceNumber
+      render: (t) => billedToTenant(t) && t.invoiceNumber
         ? (t.paymentStatus === "awaiting_payment"
           ? <Button size="sm" onClick={(e) => { e.stopPropagation(); setPayingCharge(t); }}>Pay {formatUGX(t.invoiceAmount ?? 0)}</Button>
           : <span className="text-caption text-muted">Paid</span>)
@@ -182,7 +183,9 @@ export default function TenantMaintenancePage() {
     },
   ];
 
-  const openCharges = allTickets.filter((t) => t.liability === "tenant" && t.paymentStatus === "awaiting_payment");
+  // Use the shared predicate — a ticket routed to the tenant (F3) has chargeTo but
+  // no liability until closure, and must still show as a live charge.
+  const openCharges = allTickets.filter((t) => billedToTenant(t) && t.paymentStatus === "awaiting_payment");
 
   return (
     <div>

@@ -241,16 +241,27 @@ export async function payMaintenanceCharge(
 
 /* ------------------------------------------------------------ queries */
 
+/**
+ * Is this ticket billed to the tenant?
+ *
+ * E4 recorded that as `liability` at closure. F3 moved the decision earlier, to
+ * `chargeTo` at routing — so an open ticket routed to the tenant has an invoice and
+ * a `chargeTo` but no `liability` yet. Checking both is what stops a live invoice
+ * being invisible to the person who has to pay it.
+ */
+export const billedToTenant = (t: MaintenanceTicket) =>
+  t.liability === "tenant" || (!t.liability && t.chargeTo === "tenant");
+
 /** Unpaid maintenance charges for a tenant (drives the dashboard alert). */
 export function tenantMaintenanceCharges(tenantId: string): MaintenanceTicket[] {
   return db.tickets.filter(
-    (t) => t.tenantId === tenantId && t.liability === "tenant" && t.paymentStatus === "awaiting_payment",
+    (t) => t.tenantId === tenantId && billedToTenant(t) && t.paymentStatus === "awaiting_payment",
   );
 }
 
 /** Every maintenance charge for a tenant, paid or not (payments/documents pages). */
 export function tenantMaintenanceInvoices(tenantId: string): MaintenanceTicket[] {
-  return db.tickets.filter((t) => t.tenantId === tenantId && t.liability === "tenant" && !!t.invoiceNumber);
+  return db.tickets.filter((t) => t.tenantId === tenantId && billedToTenant(t) && !!t.invoiceNumber);
 }
 
 export interface MaintenanceSummary {
@@ -278,7 +289,7 @@ export function getMaintenanceSummary(from?: string, to?: string): MaintenanceSu
     tenant: {
       amount: sum("tenant"),
       count: count("tenant"),
-      awaiting: rows.filter((t) => t.liability === "tenant" && t.paymentStatus === "awaiting_payment").length,
+      awaiting: rows.filter((t) => billedToTenant(t) && t.paymentStatus === "awaiting_payment").length,
     },
     nexora: { amount: sum("nexora"), count: count("nexora") },
   };
@@ -287,6 +298,6 @@ export function getMaintenanceSummary(from?: string, to?: string): MaintenanceSu
 /** Total maintenance revenue actually collected from tenants. */
 export function maintenanceRevenueCollected(): number {
   return db.tickets
-    .filter((t) => t.liability === "tenant" && t.paymentStatus === "paid")
+    .filter((t) => billedToTenant(t) && t.paymentStatus === "paid")
     .reduce((s, t) => s + (t.paidAmount ?? 0), 0);
 }
