@@ -690,44 +690,36 @@ change needs a version bump**; that is the rule this broke.
 
 **Gate:** lint + `tsc --noEmit` clean · `npm run build` **warning-free, 86 static pages**.
 
-## Execution Batch F3 — IN PROGRESS (all six chunks built; verification partly done)
+## Execution Batch F3 — IN PROGRESS (features complete; verification 4/20 remaining items)
 
-**RESUME HERE: F3 verification items 4, 6, 7, 8, 10, 13, 14, 17, 18, 19, 20 + the build gate.**
-All six commits are in and the app is lint/tsc clean. What remains is finishing the
-verification list and the final gate — no unbuilt features.
+**RESUME HERE: verification items 6, 7, 8, 10, 13, 14, 15, 17, 18, 19, 20 + the build gate.**
+No unbuilt features. Three defects found and fixed during verification so far.
 
-**Built and committed**
-| Commit | What |
-|---|---|
-| `bfb1ee3` | F2 housekeeping — payment picker guarded (`NEXT_PUBLIC_DEV_PAYMENTS=1` **or** `?devPayment=1`); non-tenant approval captures response method + who recorded it, into the audit |
-| `dc458a3` | F3.1/F3.2 model, `maintenance-routing.ts`, seed across every new state, `SCHEMA_VERSION` → `f3-2026-08-27` |
-| `3214dcf` | F3.3 Record Assessment dialog |
-| `16a2994` | F3.4 Route Charge with suggestion + override gating; board regrouped; transition gating |
-| `c553ad6` | F3.5 `/owner/approvals`, sidebar badge, dashboard alert, threshold in Settings → Global |
-| `5fed655` | F3.5b admin waiting time, 48h chase flag, Send Reminder |
-| `df3a390` | F3.6 closure variance + liability pre-fill |
-| `097d35d` | F3.2b table/board/gating |
-| `2f904c6` | fix: assessor name resolved on the approvals card (was printing `stf_maint`) |
+**Verification results so far**
+| # | Item | Result |
+|---|---|---|
+| 1 | Payment picker hidden by default | ✅ `devPickerVisible=false` in the tenant pay dialog |
+| 2 | Non-tenant approval captures method + recorder | ✅ (F2 housekeeping) |
+| 3 | Assessment on an assigned ticket | ✅ TKT-0024 → `assessed`, "UGX 770K estimated" |
+| 4 | **Tenant routing end-to-end** | ✅ TKT-0027 created on Mubarak's A-407 → assessed **UGX 200,000** → routed to Tenant → invoice **INV-TKT-0027** → tenant paid **MPY-37403682**. Release verified separately on seeded **TKT-0013** → paid `MM-TKT13-5521` → status **`scheduled`** |
+| 5 | Owner above threshold → approve | ✅ TKT-0023, UGX 850K, badge → alert → card → approve |
+| 9 | Override gating | ✅ block appears, submit disabled until justified |
+| 12 | Waiting time + 48h flag | ✅ "Awaiting owner approval — 2 days" |
+| 16 | Board columns | ✅ 8 columns, routing branches share one Awaiting column |
 
-**Verification done so far**
-1. ✅ Payment picker hidden by default (dual guard).
-2. ✅ Non-tenant approval captures method + timestamp + recorder in the audit.
-3. ✅ Assessment on TKT-0024 → `assessed`, toast "Assessment recorded — UGX 770K estimated".
-5. ✅ TKT-0023 (Nakasero Heights, Salim) assessed at **UGX 850K** → routed to OWNER above
-   threshold → `awaiting_owner_approval` → owner nav badge **Approvals 1** → dashboard alert
-   "You have 1 maintenance approval awaiting your decision" → `/owner/approvals` showed the
-   full assessment (technician findings, labour 400K / materials 450K, assessor, waiting
-   time) → **Approve** → toast "Repair approved — work will be scheduled", empty state after.
-9. ✅ Override: selecting Tenant against the Owner suggestion revealed the override block and
-   held submit disabled until justified.
-12. ✅ Waiting time on the board ("Awaiting owner approval — 2 days" on TKT-0001).
-16. ✅ Board regrouped to 8 columns; the three routing branches share one Awaiting column.
+**Defects found and fixed during verification**
+1. `f09448c` — **F3-routed tenant charges were invisible to the tenant.** Every tenant-facing
+   filter keyed off `liability` (set at closure) rather than `chargeTo` (set at routing), so a
+   live invoice the tenant had to pay before work could start appeared nowhere. Added a shared
+   `billedToTenant()` predicate accepting either.
+2. `467ae9a` — **Paying a routed charge did not release the work.** `payMaintenanceCharge`
+   recorded the money but left the ticket in `awaiting_tenant_payment`; nobody was told work
+   could start. Payment now advances to `scheduled` and notifies admin + technician.
+3. `b17ba0d` — **Admin panel had the same `liability`-only assumption**, hiding the invoice
+   panel, the Record Manual Payment action, the badge and the filter for routed tickets.
 
-**Still to verify:** 4 (tenant route → pay → scheduled), 6 (decline + tenant privacy),
-7 (owner below threshold), 8 (Nexora), 10 (threshold change), 13 (closure variance),
-**14 (E4 three-branch settlement regression — the most important)**, 15 (gating),
-17 (persistence), 18 (F1/F2 regressions incl. price snapshot), 19 (dark mode + 375px),
-20 (greps). Then: stop dev server, ONE `npm run build`, report page count, push.
+These three share one root cause worth remembering: **F3 moved the payer decision earlier, so
+any code that asks "who pays?" must read `chargeTo` as well as `liability`.**
 
 ## 🏁 PROJECT COMPLETE — final summary
 
