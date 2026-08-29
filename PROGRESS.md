@@ -690,39 +690,44 @@ change needs a version bump**; that is the rule this broke.
 
 **Gate:** lint + `tsc --noEmit` clean · `npm run build` **warning-free, 86 static pages**.
 
-## Execution Batch F3 — IN PROGRESS
+## Execution Batch F3 — IN PROGRESS (all six chunks built; verification partly done)
 
-**RESUME HERE: F3.3 onwards — the UI layer.** The model, API and seed are complete and
-committed; what remains is wiring them into screens.
+**RESUME HERE: F3 verification items 4, 6, 7, 8, 10, 13, 14, 17, 18, 19, 20 + the build gate.**
+All six commits are in and the app is lint/tsc clean. What remains is finishing the
+verification list and the final gate — no unbuilt features.
 
-**Done and committed**
-- **F2 housekeeping** (`bfb1ee3`) — payment outcome picker guarded behind
-  `NEXT_PUBLIC_DEV_PAYMENTS=1` **or** `?devPayment=1`; non-tenant approval now says
-  "Customer contacted offline — record their response below" and requires capturing the
-  response method (phone / email / WhatsApp / in person), stored on the charge with the
-  recording admin and written into the audit summary.
-- **F3.1 + F3.2 model, API, seed** (`dc458a3`)
-  - `src/lib/mock/types.ts` — assessment, routing, owner-approval and variance fields added;
-    every E4 field preserved. `TicketStatus` extended with the six new states.
-  - `src/lib/api/maintenance-routing.ts` — NEW. Transition map + hints, threshold
-    (`DEFAULT_OWNER_APPROVAL_THRESHOLD = 500,000`, placeholder), `suggestedRoute`,
-    `recordAssessment`, `routeCharge` (three branches), `approveMaintenance`,
-    `declineMaintenance`, `sendApprovalReminder`, `markTenantPaidAndSchedule`,
-    `ticketsAwaitingOwnerApproval`, `hoursAwaiting`/`waitingLabel`.
-  - `src/lib/mock/db.ts` — six tickets seeded across every new state (awaiting approval past
-    48h, approved+in progress, declined+closed, awaiting tenant payment, Nexora scheduled,
-    owner-below-threshold scheduled). Only OPEN/ASSIGNED tickets were touched, so E4's
-    closed tickets and their verified settlement figures are untouched.
-  - `SCHEMA_VERSION` → `f3-2026-08-27`.
+**Built and committed**
+| Commit | What |
+|---|---|
+| `bfb1ee3` | F2 housekeeping — payment picker guarded (`NEXT_PUBLIC_DEV_PAYMENTS=1` **or** `?devPayment=1`); non-tenant approval captures response method + who recorded it, into the audit |
+| `dc458a3` | F3.1/F3.2 model, `maintenance-routing.ts`, seed across every new state, `SCHEMA_VERSION` → `f3-2026-08-27` |
+| `3214dcf` | F3.3 Record Assessment dialog |
+| `16a2994` | F3.4 Route Charge with suggestion + override gating; board regrouped; transition gating |
+| `c553ad6` | F3.5 `/owner/approvals`, sidebar badge, dashboard alert, threshold in Settings → Global |
+| `5fed655` | F3.5b admin waiting time, 48h chase flag, Send Reminder |
+| `df3a390` | F3.6 closure variance + liability pre-fill |
+| `097d35d` | F3.2b table/board/gating |
+| `2f904c6` | fix: assessor name resolved on the approvals card (was printing `stf_maint`) |
 
-**Still to build**
-- F3.3 Record Assessment dialog (`assigned` → `assessed`)
-- F3.4 Route Charge dialog with suggestion hint + override handling
-- F3.5 `/owner/approvals` + owner sidebar badge + dashboard alert; threshold in
-  Settings → Global
-- F3.6 closure variance + liability pre-fill in the existing close dialog
-- Admin table/board updates for the new statuses, waiting time and 48h flag
-- The 20-item verification list, including the E4 three-branch settlement regression
+**Verification done so far**
+1. ✅ Payment picker hidden by default (dual guard).
+2. ✅ Non-tenant approval captures method + timestamp + recorder in the audit.
+3. ✅ Assessment on TKT-0024 → `assessed`, toast "Assessment recorded — UGX 770K estimated".
+5. ✅ TKT-0023 (Nakasero Heights, Salim) assessed at **UGX 850K** → routed to OWNER above
+   threshold → `awaiting_owner_approval` → owner nav badge **Approvals 1** → dashboard alert
+   "You have 1 maintenance approval awaiting your decision" → `/owner/approvals` showed the
+   full assessment (technician findings, labour 400K / materials 450K, assessor, waiting
+   time) → **Approve** → toast "Repair approved — work will be scheduled", empty state after.
+9. ✅ Override: selecting Tenant against the Owner suggestion revealed the override block and
+   held submit disabled until justified.
+12. ✅ Waiting time on the board ("Awaiting owner approval — 2 days" on TKT-0001).
+16. ✅ Board regrouped to 8 columns; the three routing branches share one Awaiting column.
+
+**Still to verify:** 4 (tenant route → pay → scheduled), 6 (decline + tenant privacy),
+7 (owner below threshold), 8 (Nexora), 10 (threshold change), 13 (closure variance),
+**14 (E4 three-branch settlement regression — the most important)**, 15 (gating),
+17 (persistence), 18 (F1/F2 regressions incl. price snapshot), 19 (dark mode + 375px),
+20 (greps). Then: stop dev server, ONE `npm run build`, report page count, push.
 
 ## 🏁 PROJECT COMPLETE — final summary
 
