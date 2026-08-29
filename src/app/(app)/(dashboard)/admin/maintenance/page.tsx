@@ -24,7 +24,7 @@ import { toast } from "@/components/ui/sonner";
 import { useAsync, debugErrorFlag } from "@/lib/use-async";
 import { formatUGX, formatDate } from "@/lib/format";
 import {
-  listTickets, createTicket, updateTicket, deleteTicket, propertyName, unitLabel, tenantName, propertyOptions, unitOptions, maintenanceStaff,
+  listTickets, createTicket, updateTicket, deleteTicket, propertyName, unitLabel, tenantName, propertyOptions, unitOptions, maintenanceStaff, ownerNameFor,
   type MaintenanceTicket, type TicketStatus, type TicketCategory, type TicketPriority, type Scope,
 } from "@/lib/api/admin";
 import { cn } from "@/lib/utils";
@@ -34,16 +34,36 @@ import { payMaintenanceCharge, getMaintenanceSummary, LIABILITY_LABEL } from "@/
 import { maintenanceInvoicePdf } from "@/lib/pdf/builders";
 import { downloadPdf } from "@/lib/pdf/download";
 import { StatCard } from "@/components/ui/stat-card";
+import { Badge } from "@/components/ui/badge";
 import { CountUp } from "@/components/motion/count-up";
 import type { TicketLiability, TicketPaymentStatus } from "@/lib/mock/types";
+import { AssessmentDialog, RouteChargeDialog } from "@/components/admin/maintenance-routing-dialogs";
+import {
+  TICKET_STATUS_LABEL, canTransitionTicket, ticketTransitionHint,
+  waitingLabel, hoursAwaiting, sendApprovalReminder,
+} from "@/lib/api/maintenance-routing";
 
-const COLUMNS: { status: TicketStatus; label: string }[] = [
-  { status: "open", label: "Open" },
-  { status: "assigned", label: "Assigned" },
-  { status: "in_progress", label: "In progress" },
-  { status: "completed", label: "Completed" },
-  { status: "closed", label: "Closed" },
+/**
+ * Board columns (F3). The three routing branches share one "Awaiting" column —
+ * nine narrow columns would be unreadable, and what a manager needs to see is
+ * simply "this is blocked on somebody", not which flavour of blocked.
+ */
+const BOARD_COLUMNS: { label: string; statuses: TicketStatus[] }[] = [
+  { label: "Open", statuses: ["open"] },
+  { label: "Assigned", statuses: ["assigned"] },
+  { label: "Assessed", statuses: ["assessed"] },
+  { label: "Awaiting approval / payment", statuses: ["awaiting_owner_approval", "awaiting_tenant_payment"] },
+  { label: "Scheduled", statuses: ["owner_approved", "scheduled"] },
+  { label: "In progress", statuses: ["in_progress"] },
+  { label: "Completed", statuses: ["completed"] },
+  { label: "Closed", statuses: ["closed", "owner_declined"] },
 ];
+
+/** Every status, for the filter and the detail-dialog select. */
+const ALL_TICKET_STATUSES = Object.keys(TICKET_STATUS_LABEL) as TicketStatus[];
+
+/** Which owner an approval is waiting on. */
+const ownerNameForProperty = (propertyId: string) => ownerNameFor(propertyId);
 const TICKET_CATS: TicketCategory[] = ["plumbing", "electrical", "hvac", "appliance", "structural", "cleaning", "security", "other"];
 const PRIORITIES: TicketPriority[] = ["low", "medium", "high", "urgent"];
 
@@ -109,6 +129,11 @@ function TicketCard({ t, onClick }: { t: MaintenanceTicket; onClick: () => void 
       <p className="mt-1.5 text-body font-medium text-foreground">{t.title}</p>
       <p className="mt-1 inline-flex items-center gap-1 text-caption text-muted"><MapPin size={13} /> {propertyName(t.propertyId)} · {unitLabel(t.unitId)}</p>
       {t.assignee && <p className="mt-1 inline-flex items-center gap-1 text-caption text-muted"><UserCircle size={13} /> {t.assignee}</p>}
+      {t.status === "awaiting_owner_approval" && (
+        <p className={cn("mt-1 text-caption", hoursAwaiting(t) >= 48 ? "font-medium text-primary" : "text-muted")}>
+          Awaiting owner approval — {waitingLabel(t)}
+        </p>
+      )}
       {/* Closed cards carry the outcome the PM asked for: who paid, and whether they have. */}
       {t.liability && (
         <div className="mt-2 flex flex-wrap items-center gap-1.5 border-t border-border pt-2">
@@ -133,6 +158,9 @@ export default function MaintenancePage() {
   const [payment, setPayment] = React.useState<"all" | TicketPaymentStatus>("all");
   const [closing, setClosing] = React.useState<{ ticket: MaintenanceTicket; resolution: string } | null>(null);
   const [paying, setPaying] = React.useState<MaintenanceTicket | null>(null);
+  /* F3 — assessment and routing, the two steps that now sit before any work. */
+  const [assessing, setAssessing] = React.useState<MaintenanceTicket | null>(null);
+  const [routing, setRouting] = React.useState<MaintenanceTicket | null>(null);
   const scope: Scope = React.useMemo(() => ({ forceError: debugErrorFlag() }), []);
   const options = React.useMemo(() => propertyOptions(), []);
 
@@ -164,7 +192,21 @@ export default function MaintenancePage() {
     { key: "propertyId", header: "Property", sortValue: (t) => propertyName(t.propertyId), render: (t) => propertyName(t.propertyId) },
     { key: "unitId", header: "Unit", render: (t) => unitLabel(t.unitId) },
     { key: "priority", header: "Priority", sortable: true, render: (t) => <PriorityBadge priority={t.priority} /> },
-    { key: "status", header: "Status", sortable: true, render: (t) => <StatusBadge status={t.status} /> },
+    {
+      key: "status", header: "Status", sortable: true,
+      render: (t) => (
+        <span>
+          <StatusBadge status={t.status} />
+          {/* F3 — a manager needs to see at a glance who is being waited on and
+              for how long; past 48 hours it stops being normal and starts needing a chase. */}
+          {t.status === "awaiting_owner_approval" && (
+            <span className={cn("mt-0.5 block text-caption", hoursAwaiting(t) >= 48 ? "font-medium text-primary" : "text-muted")}>
+              {ownerNameFor(t.propertyId)} — {waitingLabel(t)}{hoursAwaiting(t) >= 48 ? " · chase" : ""}
+            </span>
+          )}
+        </span>
+      ),
+    },
     { key: "assignee", header: "Technician", render: (t) => t.assignee ?? <span className="text-muted">Unassigned</span> },
     { key: "cost", header: "Cost", align: "right", render: (t) => (t.cost ? formatUGX(t.cost) : "—") },
     { key: "liability", header: "Liability", sortable: true, sortValue: (t) => t.liability ?? "", render: (t) => <LiabilityBadge liability={t.liability} /> },
@@ -265,17 +307,17 @@ export default function MaintenancePage() {
       {filters}
 
       {loading ? (
-        <div className="grid gap-4 md:grid-cols-3 xl:grid-cols-5">
-          {Array.from({ length: 5 }).map((_, i) => <Skeleton key={i} className="h-64 w-full rounded-lg" />)}
+        <div className="grid gap-4 md:grid-cols-3 xl:grid-cols-4">
+          {Array.from({ length: 8 }).map((_, i) => <Skeleton key={i} className="h-64 w-full rounded-lg" />)}
         </div>
       ) : error ? (
         <EmptyState title="Couldn’t load tickets" description={error} action={<Button variant="outline" size="sm" onClick={reload}>Try again</Button>} />
       ) : view === "board" ? (
-        <div className="grid gap-4 md:grid-cols-3 xl:grid-cols-5">
-          {COLUMNS.map((col) => {
-            const items = tickets.filter((t) => t.status === col.status);
+        <div className="grid gap-4 md:grid-cols-3 xl:grid-cols-4">
+          {BOARD_COLUMNS.map((col) => {
+            const items = tickets.filter((t) => col.statuses.includes(t.status));
             return (
-              <div key={col.status} className="rounded-lg bg-surface-hover/50 p-3">
+              <div key={col.label} className="rounded-lg bg-surface-hover/50 p-3">
                 <div className="mb-3 flex items-center justify-between px-1">
                   <h3 className="font-heading text-body font-semibold text-foreground">{col.label}</h3>
                   <span className="rounded-full bg-surface-active px-2 py-0.5 text-caption font-medium text-muted">{items.length}</span>
@@ -299,9 +341,13 @@ export default function MaintenancePage() {
       <TicketDialog ticket={selected} onClose={() => setSelected(null)} onSaved={reload}
         onDelete={(t) => { setSelected(null); setDeleting(t); }}
         onClose2={(t, res) => { setSelected(null); setClosing({ ticket: t, resolution: res }); }}
-        onRecordPayment={(t) => { setSelected(null); setPaying(t); }} />
+        onRecordPayment={(t) => { setSelected(null); setPaying(t); }}
+        onAssess={(t) => { setSelected(null); setAssessing(t); }}
+        onRoute={(t) => { setSelected(null); setRouting(t); }} />
       <CloseTicketDialog ticket={closing?.ticket ?? null} resolution={closing?.resolution ?? ""}
         onOpenChange={(o) => !o && setClosing(null)} onDone={reload} />
+      <AssessmentDialog ticket={assessing} onOpenChange={(o) => !o && setAssessing(null)} onDone={reload} />
+      <RouteChargeDialog ticket={routing} onOpenChange={(o) => !o && setRouting(null)} onDone={reload} />
       <RecordMaintenancePaymentDialog ticket={paying} onOpenChange={(o) => !o && setPaying(null)} onDone={reload} />
       <CreateTicketDialog open={createOpen} onOpenChange={setCreateOpen} onDone={reload} />
       <DeleteConfirmation open={!!deleting} onOpenChange={(o) => !o && setDeleting(null)} entityLabel="ticket" entityName={deleting?.ref ?? ""}
@@ -310,11 +356,14 @@ export default function MaintenancePage() {
   );
 }
 
-function TicketDialog({ ticket, onClose, onSaved, onDelete, onClose2, onRecordPayment }: {
+function TicketDialog({ ticket, onClose, onSaved, onDelete, onClose2, onRecordPayment, onAssess, onRoute }: {
   ticket: MaintenanceTicket | null; onClose: () => void; onSaved: () => void; onDelete: (t: MaintenanceTicket) => void;
   /** Hands off to the liability dialog — closing a ticket now needs a payer. */
   onClose2: (t: MaintenanceTicket, resolution: string) => void;
   onRecordPayment: (t: MaintenanceTicket) => void;
+  /** F3 — the two pre-work steps. */
+  onAssess: (t: MaintenanceTicket) => void;
+  onRoute: (t: MaintenanceTicket) => void;
 }) {
   const [status, setStatus] = React.useState<TicketStatus>("open");
   const [assignee, setAssignee] = React.useState("");
@@ -363,7 +412,15 @@ function TicketDialog({ ticket, onClose, onSaved, onDelete, onClose2, onRecordPa
             <div className="grid gap-4 sm:grid-cols-2">
               <Field label="Status" htmlFor="tk-status">
                 <select id="tk-status" className={selectClass} value={status} onChange={(e) => setStatus(e.target.value as TicketStatus)}>
-                  {COLUMNS.map((c) => <option key={c.status} value={c.status}>{c.label}</option>)}
+                  {ALL_TICKET_STATUSES.map((st) => {
+                    const allowed = st === ticket.status || canTransitionTicket(ticket.status, st);
+                    return (
+                      <option key={st} value={st} disabled={!allowed}
+                        title={allowed ? undefined : ticketTransitionHint(ticket.status, st)}>
+                        {TICKET_STATUS_LABEL[st]}{st === ticket.status ? " (current)" : allowed ? "" : " — unavailable"}
+                      </option>
+                    );
+                  })}
                 </select>
               </Field>
               <Field label="Technician" htmlFor="tk-tech">
@@ -379,6 +436,64 @@ function TicketDialog({ ticket, onClose, onSaved, onDelete, onClose2, onRecordPa
             <Field label="Resolution summary (required to close)" htmlFor="tk-res">
               <textarea id="tk-res" rows={2} className={`${selectClass} h-auto py-2`} value={resolution} onChange={(e) => setResolution(e.target.value)} placeholder="What was done to resolve it…" />
             </Field>
+
+            {/* F3 — the pre-work assessment, permanently visible. */}
+            {ticket.assessedCost != null && (
+              <div className="rounded-xl border border-border p-4">
+                <p className="mb-2 text-caption font-medium uppercase tracking-wide text-muted">Assessment</p>
+                <dl className="space-y-1.5 text-body">
+                  <div className="flex justify-between gap-4"><dt className="text-muted">Estimated labour · materials</dt><dd className="text-foreground">{formatUGX(ticket.assessedLabour ?? 0)} · {formatUGX(ticket.assessedMaterials ?? 0)}</dd></div>
+                  <div className="flex justify-between gap-4"><dt className="text-muted">Estimated total</dt><dd className="font-medium text-foreground">{formatUGX(ticket.assessedCost)}</dd></div>
+                  {ticket.assessedAt && <div className="flex justify-between gap-4"><dt className="text-muted">Assessed</dt><dd className="text-foreground">{formatDate(ticket.assessedAt)}</dd></div>}
+                  {ticket.assessmentNotes && <div className="gap-4"><dt className="text-muted">Notes</dt><dd className="mt-0.5 text-foreground">{ticket.assessmentNotes}</dd></div>}
+                </dl>
+                {ticket.chargeTo && (
+                  <div className="mt-3 border-t border-border pt-3">
+                    <div className="flex flex-wrap items-center justify-between gap-2">
+                      <span className="text-caption text-muted">Routed to</span>
+                      <span className="flex items-center gap-1.5">
+                        <LiabilityBadge liability={ticket.chargeTo} />
+                        {ticket.routingOverridden && <Badge className="border-accent/40 bg-surface-active text-foreground">Override</Badge>}
+                      </span>
+                    </div>
+                    <p className="mt-1 text-caption text-muted">{ticket.chargeToReason}</p>
+                    {ticket.routingOverrideReason && (
+                      <p className="mt-1 text-caption text-muted"><span className="text-foreground">Override:</span> {ticket.routingOverrideReason}</p>
+                    )}
+                  </div>
+                )}
+                {ticket.status === "awaiting_owner_approval" && (
+                  <div className="mt-3 rounded-lg border border-accent/40 bg-surface-hover p-3">
+                    <p className="text-caption font-medium text-foreground">
+                      Awaiting owner approval — {waitingLabel(ticket)}
+                      {hoursAwaiting(ticket) >= 48 ? " · needs chasing" : ""}
+                    </p>
+                    <p className="mt-0.5 text-caption text-muted">
+                      Waiting on {ownerNameForProperty(ticket.propertyId)}.
+                    </p>
+                    <Button size="sm" variant="outline" className="mt-2"
+                      onClick={async () => {
+                        try { await sendApprovalReminder(ticket.id, "Admin"); toast.success("Reminder sent to the owner"); onSaved(); }
+                        catch { toast.error("Couldn’t send the reminder"); }
+                      }}>
+                      Send Reminder
+                    </Button>
+                  </div>
+                )}
+                {ticket.ownerApprovalStatus === "declined" && ticket.ownerDeclineReason && (
+                  <p className="mt-3 rounded-lg bg-surface-hover p-3 text-caption text-muted">
+                    <span className="text-foreground">Owner declined:</span> {ticket.ownerDeclineReason}
+                  </p>
+                )}
+              </div>
+            )}
+
+            {/* F3 — the single action that moves this ticket forward. */}
+            {(ticket.status === "assigned" || ticket.status === "assessed") && (
+              <Button className="w-full" onClick={() => (ticket.status === "assigned" ? onAssess(ticket) : onRoute(ticket))}>
+                {ticket.status === "assigned" ? "Record Assessment" : "Route Charge — who pays?"}
+              </Button>
+            )}
 
             {/* E4 — who paid, and where the money went. Permanently visible so the
                 rationale stays auditable long after the ticket was closed. */}

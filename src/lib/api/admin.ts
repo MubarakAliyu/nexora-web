@@ -819,6 +819,11 @@ export function propertyOptions(scope?: Scope): { id: string; name: string }[] {
 export function propertyName(id: string): string {
   return db.properties.find((p) => p.id === id)?.name ?? "—";
 }
+/** The owner behind a property — used where an approval is waiting on someone. */
+export function ownerNameFor(propertyId: string): string {
+  const ownerId = db.properties.find((p) => p.id === propertyId)?.ownerId;
+  return db.owners.find((o) => o.id === ownerId)?.name ?? "the owner";
+}
 export function tenantOptions(scope?: Scope): { id: string; name: string }[] {
   const ids = scopedPropertyIds(scope);
   return (ids ? db.tenants.filter((t) => ids.has(t.propertyId)) : db.tenants).map((t) => ({ id: t.id, name: t.name }));
