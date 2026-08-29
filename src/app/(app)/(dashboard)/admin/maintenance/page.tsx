@@ -506,6 +506,18 @@ function TicketDialog({ ticket, onClose, onSaved, onDelete, onClose2, onRecordPa
                 <dl className="space-y-1.5 text-body">
                   <div className="flex justify-between gap-4"><dt className="text-muted">Labour · materials</dt><dd className="text-foreground">{formatUGX(ticket.labourCost ?? 0)} · {formatUGX(ticket.materialsCost ?? 0)}</dd></div>
                   <div className="flex justify-between gap-4"><dt className="text-muted">Total</dt><dd className="font-medium text-foreground">{formatUGX(ticket.cost ?? 0)}</dd></div>
+                  {ticket.assessedCost != null && ticket.costVariance != null && (
+                    <div className="flex justify-between gap-4">
+                      <dt className="text-muted">Assessed vs actual</dt>
+                      <dd className="text-foreground">
+                        {formatUGX(ticket.assessedCost)} → {formatUGX(ticket.actualCost ?? ticket.cost ?? 0)}
+                        <span className="ml-1 text-muted">({ticket.costVariance >= 0 ? "+" : "−"}{formatUGX(Math.abs(ticket.costVariance))})</span>
+                      </dd>
+                    </div>
+                  )}
+                  {ticket.liabilityChangeReason && (
+                    <div className="gap-4"><dt className="text-muted">Payer changed at closure</dt><dd className="mt-0.5 text-foreground">{ticket.liabilityChangeReason}</dd></div>
+                  )}
                   <div className="gap-4"><dt className="text-muted">Reason</dt><dd className="mt-0.5 text-foreground">{ticket.liabilityReason}</dd></div>
                 </dl>
 

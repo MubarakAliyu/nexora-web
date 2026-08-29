@@ -40,6 +40,12 @@ export interface CloseWithLiabilityInput {
   liabilityReason: string;
   /** Only used when liability is 'tenant'. */
   invoiceDueDate?: string;
+  /**
+   * F3 — required when closure liability differs from what was routed after
+   * assessment. The actual cause can turn out different from the estimate, but
+   * the change has to be explained rather than silently applied.
+   */
+  liabilityChangeReason?: string;
 }
 
 /**
@@ -66,6 +72,14 @@ export async function closeTicketWithLiability(
   t.liabilityReason = input.liabilityReason;
   t.closedAt = db.NOW_ISO;
   t.updatedAt = db.NOW_ISO;
+
+  /* F3 — actual vs assessed. Keeping both, and the gap between them, is what lets
+     anyone later ask whether the estimate the owner approved was realistic. */
+  t.actualCost = total;
+  if (t.assessedCost != null) t.costVariance = total - t.assessedCost;
+  if (t.chargeTo && t.chargeTo !== input.liability) {
+    t.liabilityChangeReason = input.liabilityChangeReason?.trim() || null;
+  }
 
   const property = pName(t.propertyId);
   const unit = uLabel(t.unitId);

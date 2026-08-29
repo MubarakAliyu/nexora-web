@@ -53,6 +53,8 @@ export function CloseTicketDialog({
   const [materials, setMaterials] = React.useState(0);
   const [liability, setLiability] = React.useState<TicketLiability | "">("");
   const [reason, setReason] = React.useState("");
+  /* F3 — changing the payer at closure has to be justified. */
+  const [changeReason, setChangeReason] = React.useState("");
   const [due, setDue] = React.useState(plusDays(14));
   const [busy, setBusy] = React.useState(false);
 
@@ -62,13 +64,27 @@ export function CloseTicketDialog({
     const total = ticket.cost ?? 0;
     setLabour(ticket.labourCost ?? Math.round(total * 0.6));
     setMaterials(ticket.materialsCost ?? total - Math.round(total * 0.6));
-    setLiability(ticket.liability ?? "");
-    setReason(ticket.liabilityReason ?? "");
+    // Pre-fill from the routing decision — editable, because the actual cause may
+    // differ from what the assessment suggested.
+    setLiability(ticket.liability ?? ticket.chargeTo ?? "");
+    setReason(ticket.liabilityReason ?? ticket.chargeToReason ?? "");
+    setChangeReason("");
     setDue(plusDays(14));
   }, [ticket, initialResolution]);
 
   const total = (Number(labour) || 0) + (Number(materials) || 0);
-  const canSubmit = !!liability && reason.trim().length >= 5 && resolution.trim().length >= 5;
+  const assessed = ticket?.assessedCost ?? null;
+  const variance = assessed != null ? total - assessed : null;
+  const changedFromRouting = !!ticket?.chargeTo && !!liability && liability !== ticket.chargeTo;
+  /* Over-run on work the owner signed off for a specific figure is the case worth
+     flagging — they approved an amount, not a blank cheque. */
+  const overApproved =
+    ticket?.ownerApprovalStatus === "approved" && assessed != null && variance != null && variance > assessed * 0.1;
+  const canSubmit =
+    !!liability &&
+    reason.trim().length >= 5 &&
+    resolution.trim().length >= 5 &&
+    (!changedFromRouting || changeReason.trim().length >= 5);
 
   const submit = async () => {
     if (!ticket || !canSubmit) return;
@@ -81,6 +97,7 @@ export function CloseTicketDialog({
         liability: liability as TicketLiability,
         liabilityReason: reason.trim(),
         invoiceDueDate: liability === "tenant" ? due : undefined,
+        liabilityChangeReason: changedFromRouting ? changeReason.trim() : undefined,
       });
       if (liability === "owner") {
         toast.success(`Ticket closed — ${formatUGX(total)} recorded as owner expense`);
@@ -118,10 +135,27 @@ export function CloseTicketDialog({
                 </Field>
               </div>
 
-              <div className="flex items-center justify-between rounded-xl border border-primary/30 bg-primary/5 p-4">
-                <span className="text-body font-medium text-foreground">Total cost</span>
-                <span className="font-heading text-h3 font-semibold text-primary">{formatUGX(total)}</span>
+              <div className="rounded-xl border border-primary/30 bg-primary/5 p-4">
+                <div className="flex items-center justify-between">
+                  <span className="text-body font-medium text-foreground">Actual total</span>
+                  <span className="font-heading text-h3 font-semibold text-primary">{formatUGX(total)}</span>
+                </div>
+                {assessed != null && (
+                  <p className="mt-1.5 text-caption text-muted">
+                    Assessed {formatUGX(assessed)}, actual {formatUGX(total)} — variance{" "}
+                    <span className="font-medium text-foreground">
+                      {variance! >= 0 ? "+" : "−"}{formatUGX(Math.abs(variance!))}
+                    </span>
+                  </p>
+                )}
               </div>
+
+              {overApproved && (
+                <p className="rounded-lg border border-accent/40 bg-surface-active px-3.5 py-2.5 text-caption text-foreground motion-safe:animate-in motion-safe:fade-in">
+                  Actual cost exceeds the approved estimate by {formatUGX(variance!)}. Consider whether
+                  additional owner approval is needed.
+                </p>
+              )}
 
               {/* Liability — the decision that routes the money */}
               <div className="rounded-xl border border-border p-4">
@@ -161,6 +195,23 @@ export function CloseTicketDialog({
                     <p className="mt-1 text-caption text-muted">Explain why this party is responsible. This is recorded in the audit trail.</p>
                   </Field>
                 </div>
+
+                {changedFromRouting && (
+                  <div className="mt-4 motion-safe:animate-in motion-safe:fade-in">
+                    <Field
+                      label="Why is this different from the routed payer?"
+                      htmlFor="cl-change"
+                      error={changeReason.trim().length >= 5 ? undefined : "Required"}
+                    >
+                      <Textarea id="cl-change" rows={2} value={changeReason}
+                        onChange={(e) => setChangeReason(e.target.value)}
+                        placeholder={`Routed to ${ticket.chargeTo}, closing as ${liability} — explain why`} />
+                      <p className="mt-1 text-caption text-muted">
+                        The payer was decided after assessment. Changing it now is recorded in the audit trail.
+                      </p>
+                    </Field>
+                  </div>
+                )}
 
                 {liability === "tenant" && (
                   <div className="mt-4 motion-safe:animate-in motion-safe:fade-in">
