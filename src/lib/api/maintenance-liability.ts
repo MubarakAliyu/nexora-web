@@ -226,16 +226,26 @@ export async function payMaintenanceCharge(
   const invoice = db.invoices.find((i) => i.id === t.invoiceId);
   if (invoice) { invoice.paid = input.amount; invoice.status = "paid"; }
 
+  /* F3 — payment is the gate that releases the work. Without this the ticket sat
+     in awaiting_tenant_payment forever and nobody was told they could start. */
+  const releasedForWork = t.status === "awaiting_tenant_payment";
+  if (releasedForWork) t.status = "scheduled";
+
   const tenant = tName(t.tenantId);
   recordMutation({
     entityType: "ticket", entityId: ticketId, entityName: t.ref, action: "updated",
-    summary: `Maintenance charge paid — ${t.ref}, ${money(input.amount)} via ${input.method} (${input.reference})`,
+    summary: `Maintenance charge paid — ${t.ref}, ${money(input.amount)} via ${input.method} (${input.reference})${releasedForWork ? " — work may now proceed" : ""}`,
     after: { paidAmount: input.amount, method: input.method, reference: input.reference },
     notify: { type: "payment", title: "Maintenance payment received", body: `Maintenance payment received — ${tenant}, ${money(input.amount)}, ticket ${t.ref}` },
   });
   pushNotify("payment", "Payment confirmed",
     `Your maintenance payment of ${money(input.amount)} for ${t.title} was received. Reference ${input.reference}.`,
     "ticket", ticketId);
+  if (releasedForWork) {
+    // Admin and the assigned technician both need to know work is unblocked.
+    pushNotify("maintenance", "Payment received — work may proceed",
+      `Payment received — work may proceed on ${t.ref}, ${uLabel(t.unitId)}.`, "ticket", ticketId);
+  }
   return t;
 }
 
