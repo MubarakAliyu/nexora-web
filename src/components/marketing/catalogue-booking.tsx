@@ -65,7 +65,9 @@ export function CatalogueBooking({ slug }: { slug: string }) {
           detailsTitle: "Service details",
           propertyFields: false,
           // Single option — the service type is already chosen by the URL.
-          categories: [{ label: type.name, icon: "Sparkles", blurb: type.description ?? "Book this service online." }],
+          // Reference the resolved type by its own slug — same explicit contract
+          // the legacy routes now use.
+          categories: [{ serviceTypeRef: type.slug, label: type.name, icon: "sparkles", blurb: type.description ?? "Book this service online." }],
         }}
       />
     </>

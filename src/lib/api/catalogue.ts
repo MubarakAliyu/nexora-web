@@ -98,6 +98,20 @@ export function serviceTypeBySlug(slug: string): ServiceType | undefined {
   return db.serviceTypes.find((t) => t.slug === slug);
 }
 
+/**
+ * Resolve the service type a booking form should price against.
+ *
+ * Resolution is by SLUG (a stable identifier that survives renames) or by explicit
+ * id — never by display name, and with NO fallback to "the first active type".
+ * An unresolvable reference returns undefined so the caller can show the
+ * service-unavailable state rather than quietly pricing against the wrong service.
+ */
+export function resolveBookingServiceType(ref?: string | null): ServiceType | undefined {
+  if (!ref) return undefined;
+  const found = db.serviceTypes.find((t) => t.id === ref) ?? db.serviceTypes.find((t) => t.slug === ref);
+  return found?.active ? found : undefined;
+}
+
 /** True when a service type has at least one active item the customer could pick. */
 export function hasBookableItems(serviceTypeId: string): boolean {
   const tree = catalogueTree(serviceTypeId, true);
@@ -150,7 +164,10 @@ export async function updateServiceType(id: string, patch: Partial<ServiceTypeIn
   const st = db.serviceTypes.find((t) => t.id === id);
   if (!st) throw new Error("Service type not found");
   const before = { name: st.name, active: st.active, pricesConfirmed: st.pricesConfirmed };
-  if (patch.name !== undefined) { st.name = patch.name.trim(); st.slug = slugify(patch.name); }
+  /* NOTE: the slug is deliberately NOT regenerated on rename. It is an identifier
+     that public booking routes resolve against — renaming "Cleaning" to "Home
+     Cleaning" must not silently break /book/cleaning or repoint it elsewhere. */
+  if (patch.name !== undefined) st.name = patch.name.trim();
   if (patch.description !== undefined) st.description = patch.description?.trim() || null;
   if (patch.icon !== undefined) st.icon = patch.icon;
   if (patch.active !== undefined) st.active = patch.active;

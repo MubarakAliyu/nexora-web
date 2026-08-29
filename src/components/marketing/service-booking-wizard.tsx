@@ -17,7 +17,7 @@ import { cn } from "@/lib/utils";
 import { createServiceBooking, type ServiceBookingKind } from "@/lib/api/rentals";
 import { CatalogueStep, validateSelection, type CatalogueSelection } from "@/components/marketing/catalogue-step";
 import { QuotationStep } from "@/components/marketing/quotation-step";
-import { serviceTypesSync, catalogueTree, acceptQuotation, hasBookableItems } from "@/lib/api/catalogue";
+import { resolveBookingServiceType, catalogueTree, acceptQuotation, hasBookableItems } from "@/lib/api/catalogue";
 
 /* ------------------------------------------------------------- config */
 
@@ -27,6 +27,14 @@ export interface WizardCategory {
   blurb: string;
   /** Placeholder for the per-category details field (lifestyle). */
   detailsHint?: string;
+  /**
+   * F2.0 — the catalogue service type this marketing category is priced from,
+   * referenced by SLUG (a stable identifier) or id. Explicit, never inferred from
+   * the label: matching on a display name silently mis-prices the moment an admin
+   * renames anything. A category with no reference, or one that does not resolve
+   * to an ACTIVE type, shows the service-unavailable state instead of a price.
+   */
+  serviceTypeRef?: string;
 }
 
 export interface WizardConfig {
@@ -78,20 +86,15 @@ export function ServiceBookingWizard({ config }: { config: WizardConfig }) {
   const [quoteTotal, setQuoteTotal] = React.useState("");
 
   /**
-   * Resolve the chosen wizard category to a configured service type BY NAME.
-   * This is a lookup, not a hardcoded mapping — a service type the admin creates
-   * tomorrow resolves the same way with no code change. Falls back to the first
-   * active type so a form always has something to price.
+   * F2.0 — resolve strictly by the category's explicit catalogue reference.
+   * No name matching and no "first active type" fallback: an unresolved reference
+   * must surface as "this service is being updated", never as a price taken from
+   * whichever service happened to sort first.
    */
-  const serviceTypeId = React.useMemo(() => {
-    const types = serviceTypesSync(true);
-    if (types.length === 0) return "";
-    const label = (category?.label ?? "").toLowerCase();
-    const exact = types.find((t) => t.name.toLowerCase() === label);
-    if (exact) return exact.id;
-    const partial = types.find((t) => label.includes(t.name.toLowerCase()) || t.name.toLowerCase().includes(label));
-    return (partial ?? types[0]).id;
-  }, [category]);
+  const serviceTypeId = React.useMemo(
+    () => resolveBookingServiceType(category?.serviceTypeRef)?.id ?? "",
+    [category],
+  );
 
   const today = React.useMemo(() => { const d = new Date(); d.setHours(0, 0, 0, 0); return d; }, []);
 

@@ -15,9 +15,13 @@ const config: WizardConfig = {
   kind: "lifestyle",
   detailsTitle: "Service details",
   propertyFields: false,
+  /* F2.0 — explicit catalogue references by slug. "Gardening & Lawn" and
+     "Janitorial" have no catalogue type yet, so they deliberately carry no ref and
+     show the service-unavailable state rather than borrowing another service's
+     prices. Give them a catalogue entry in admin and they light up. */
   categories: [
-    { label: "Laundry", icon: "sparkles", blurb: "Wash, dry-clean, fold & iron — pickup & delivery.", detailsHint: "Roughly how many items or kilograms? Any dry-clean-only pieces?" },
-    { label: "Mobile Car Wash", icon: "vehicle", blurb: "Private or fleet, interior & exterior, at your bay.", detailsHint: "Vehicle type and count — e.g. 1 SUV, interior + exterior." },
+    { serviceTypeRef: "laundry", label: "Laundry", icon: "sparkles", blurb: "Wash, dry-clean, fold & iron — pickup & delivery.", detailsHint: "Roughly how many items or kilograms? Any dry-clean-only pieces?" },
+    { serviceTypeRef: "mobile-car-wash", label: "Mobile Car Wash", icon: "vehicle", blurb: "Private or fleet, interior & exterior, at your bay.", detailsHint: "Vehicle type and count — e.g. 1 SUV, interior + exterior." },
     { label: "Gardening & Lawn", icon: "home", blurb: "Landscaping and grounds kept sharp.", detailsHint: "Approximate garden/lawn size and what needs doing." },
     { label: "Janitorial", icon: "cog", blurb: "Ongoing janitorial care for homes and workspaces.", detailsHint: "The space, frequency you have in mind, and any specifics." },
   ],

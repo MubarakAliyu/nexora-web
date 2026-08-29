@@ -15,14 +15,17 @@ const config: WizardConfig = {
   kind: "cleaning",
   detailsTitle: "Property details",
   propertyFields: true,
+  /* F2.0 — every cleaning sub-service is priced from the one "cleaning" catalogue
+     type, referenced explicitly by slug. Slugs are stable across renames; display
+     names are not, which is why nothing here matches on the label. */
   categories: [
-    { label: "Residential Cleaning", icon: "home", blurb: "Homes and serviced apartments, spotless." },
-    { label: "Commercial Cleaning", icon: "building", blurb: "Offices, retail and workspaces." },
-    { label: "Deep Cleaning", icon: "sparkles", blurb: "Kitchen, bathroom, carpet, mattress, upholstery." },
-    { label: "Move-In/Move-Out", icon: "tools", blurb: "Turnover cleaning that gets units ready." },
-    { label: "Event Cleaning", icon: "award", blurb: "Pre- and post-event venue cleaning." },
-    { label: "Facility Cleaning", icon: "cog", blurb: "Common areas and building facilities." },
-    { label: "Scheduled Programme", icon: "chart", blurb: "Daily, weekly, monthly or contract plans." },
+    { label: "Residential Cleaning", icon: "home", blurb: "Homes and serviced apartments, spotless.", serviceTypeRef: "cleaning" },
+    { serviceTypeRef: "cleaning", label: "Commercial Cleaning", icon: "building", blurb: "Offices, retail and workspaces." },
+    { serviceTypeRef: "cleaning", label: "Deep Cleaning", icon: "sparkles", blurb: "Kitchen, bathroom, carpet, mattress, upholstery." },
+    { serviceTypeRef: "cleaning", label: "Move-In/Move-Out", icon: "tools", blurb: "Turnover cleaning that gets units ready." },
+    { serviceTypeRef: "cleaning", label: "Event Cleaning", icon: "award", blurb: "Pre- and post-event venue cleaning." },
+    { serviceTypeRef: "cleaning", label: "Facility Cleaning", icon: "cog", blurb: "Common areas and building facilities." },
+    { serviceTypeRef: "cleaning", label: "Scheduled Programme", icon: "chart", blurb: "Daily, weekly, monthly or contract plans." },
   ],
 };
 
