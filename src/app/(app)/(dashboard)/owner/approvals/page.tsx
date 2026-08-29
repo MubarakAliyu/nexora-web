@@ -20,6 +20,7 @@ import { useSession } from "@/lib/stores/session";
 import { useLive } from "@/lib/stores/live";
 import { formatUGX, formatDate } from "@/lib/format";
 import { propertyName, unitLabel } from "@/lib/api/admin";
+import { resolveStaff } from "@/lib/api/admin-mutations";
 import {
   ticketsAwaitingOwnerApproval, approveMaintenance, declineMaintenance, waitingLabel, hoursAwaiting,
 } from "@/lib/api/maintenance-routing";
@@ -195,7 +196,8 @@ export default function OwnerApprovalsPage() {
               </div>
 
               <div className="mt-3 flex flex-wrap items-center gap-3 text-caption text-muted">
-                {t.assessedBy && <span className="inline-flex items-center gap-1.5"><UserCircle size={14} /> Assessed by {t.assessedBy}</span>}
+                {/* assessedBy is a staff id (F3 stores the reference, not the label). */}
+                {t.assessedBy && <span className="inline-flex items-center gap-1.5"><UserCircle size={14} /> Assessed by {resolveStaff(t.assessedBy)?.name ?? t.assessedBy}</span>}
                 {t.assessedAt && <span>{formatDate(t.assessedAt)}</span>}
                 <span className={cn("inline-flex items-center gap-1.5", hoursAwaiting(t) >= 48 && "font-medium text-primary")}>
                   <Clock size={14} /> Awaiting your decision — {waitingLabel(t)}
