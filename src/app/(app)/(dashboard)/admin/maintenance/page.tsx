@@ -30,7 +30,7 @@ import {
 import { cn } from "@/lib/utils";
 import { CloseTicketDialog } from "@/components/admin/close-ticket-dialog";
 import { LiabilityBadge } from "@/components/admin/liability-badge";
-import { payMaintenanceCharge, getMaintenanceSummary, LIABILITY_LABEL } from "@/lib/api/maintenance-liability";
+import { payMaintenanceCharge, getMaintenanceSummary, LIABILITY_LABEL, billedToTenant } from "@/lib/api/maintenance-liability";
 import { maintenanceInvoicePdf } from "@/lib/pdf/builders";
 import { downloadPdf } from "@/lib/pdf/download";
 import { StatCard } from "@/components/ui/stat-card";
@@ -170,7 +170,7 @@ export default function MaintenancePage() {
   );
 
   const tickets = (data ?? []).filter(
-    (t) => (liability === "all" || t.liability === liability) && (payment === "all" || t.paymentStatus === payment),
+    (t) => (liability === "all" || (t.liability ?? t.chargeTo) === liability) && (payment === "all" || t.paymentStatus === payment),
   );
   const summary = React.useMemo(() => getMaintenanceSummary(), [data]); // eslint-disable-line react-hooks/exhaustive-deps
 
@@ -497,11 +497,11 @@ function TicketDialog({ ticket, onClose, onSaved, onDelete, onClose2, onRecordPa
 
             {/* E4 — who paid, and where the money went. Permanently visible so the
                 rationale stays auditable long after the ticket was closed. */}
-            {ticket.liability && (
+            {(ticket.liability || ticket.chargeTo) && (
               <div className="rounded-xl border border-border p-4">
                 <div className="mb-2 flex items-center justify-between">
                   <p className="text-caption font-medium uppercase tracking-wide text-muted">Cost liability</p>
-                  <LiabilityBadge liability={ticket.liability} />
+                  <LiabilityBadge liability={ticket.liability ?? ticket.chargeTo} />
                 </div>
                 <dl className="space-y-1.5 text-body">
                   <div className="flex justify-between gap-4"><dt className="text-muted">Labour · materials</dt><dd className="text-foreground">{formatUGX(ticket.labourCost ?? 0)} · {formatUGX(ticket.materialsCost ?? 0)}</dd></div>
@@ -521,7 +521,7 @@ function TicketDialog({ ticket, onClose, onSaved, onDelete, onClose2, onRecordPa
                   <div className="gap-4"><dt className="text-muted">Reason</dt><dd className="mt-0.5 text-foreground">{ticket.liabilityReason}</dd></div>
                 </dl>
 
-                {ticket.liability === "tenant" && ticket.invoiceNumber ? (
+                {billedToTenant(ticket) && ticket.invoiceNumber ? (
                   <div className="mt-3 rounded-lg bg-surface-hover p-3">
                     <div className="mb-1.5 flex items-center justify-between">
                       <span className="font-medium text-foreground">{ticket.invoiceNumber}</span>
