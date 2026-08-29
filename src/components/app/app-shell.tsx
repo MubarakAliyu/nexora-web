@@ -38,6 +38,7 @@ import {
 import { NotificationCenter } from "./notification-center";
 import { ThemeToggle } from "./theme-toggle";
 import { navForRole } from "./nav-config";
+import { ticketsAwaitingOwnerApproval } from "@/lib/api/maintenance-routing";
 import { useSession } from "@/lib/stores/session";
 import { useUI } from "@/lib/stores/ui";
 import { useTheme } from "@/lib/stores/theme";
@@ -122,7 +123,10 @@ export function AppShell({ children }: { children: React.ReactNode }) {
   const profileHref = user.role === "owner" ? "/owner/profile" : "/profile";
   const settingsHref = user.role === "owner" ? "/owner/settings" : "/settings";
 
-  const nav = navForRole(user.role);
+  // F3 — owners see a count of repairs waiting on their decision.
+  const ownerApprovals =
+    user.role === "owner" && user.ownerId ? ticketsAwaitingOwnerApproval(user.ownerId).length : 0;
+  const nav = navForRole(user.role, { ownerApprovals });
   const segs = pathname.split("/").filter(Boolean);
   const crumbs: Crumb[] = segs.map((seg, i) => ({
     label: i === 0 ? "Dashboard" : titleCase(seg),

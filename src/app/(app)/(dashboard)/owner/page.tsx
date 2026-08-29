@@ -2,7 +2,7 @@
 
 import * as React from "react";
 import Link from "next/link";
-import { Building, Home, ChartLineUp, Cash, Receipt, AngleRight, CalendarMonth, ArrowUp, ArrowDown, CheckCircle } from "flowbite-react-icons/outline";
+import { Building, Home, ChartLineUp, Cash, Receipt, AngleRight, CalendarMonth, ArrowUp, ArrowDown, CheckCircle, ClipboardCheck, ArrowRight } from "flowbite-react-icons/outline";
 import { PageHeader } from "@/components/app/page-header";
 import { OwnerPropertyCard } from "@/components/app/owner-property-card";
 import { StatusBadge } from "@/components/app/status";
@@ -16,6 +16,7 @@ import { EmptyState } from "@/components/ui/empty-state";
 import { Button } from "@/components/ui/button";
 import { useAsync, debugErrorFlag } from "@/lib/use-async";
 import { useSession } from "@/lib/stores/session";
+import { ticketsAwaitingOwnerApproval } from "@/lib/api/maintenance-routing";
 import { fromNow, formatDate, formatUGX } from "@/lib/format";
 import {
   getDashboardStats, getRevenueSeries, getOccupancySeries, getOwnerActivity, getOwnerSnapshot, listProperties, NOW_ISO, type Scope,
@@ -30,6 +31,7 @@ function MoneyStat({ value }: { value: number }) {
 export default function OwnerDashboardPage() {
   const user = useSession((s) => s.user);
   const ownerId = user?.ownerId;
+  const pendingApprovals = React.useMemo(() => (ownerId ? ticketsAwaitingOwnerApproval(ownerId) : []), [ownerId]);
   const scope: Scope = React.useMemo(() => ({ ownerId, forceError: debugErrorFlag() }), [ownerId]);
 
   const stats = useAsync(() => getDashboardStats(scope), [scope]);
@@ -64,6 +66,26 @@ export default function OwnerDashboardPage() {
           <StatCard label="Outstanding" value={<MoneyStat value={stats.data.outstanding} />} icon={<Receipt size={22} />} hint="across portfolio" />
         </div>
       ) : null}
+
+      {/* F3 — repairs blocked on this owner's decision. Placed above the fold
+          because work does not proceed until they act. */}
+      {pendingApprovals.length > 0 && (
+        <Card className="mb-6 flex flex-col items-start justify-between gap-4 border-l-4 border-accent p-6 sm:flex-row sm:items-center">
+          <div className="flex items-start gap-3">
+            <span className="flex h-11 w-11 shrink-0 items-center justify-center rounded-md bg-surface-active text-primary">
+              <ClipboardCheck size={22} />
+            </span>
+            <div>
+              <p className="text-caption font-medium uppercase tracking-wide text-muted">Action needed</p>
+              <p className="mt-1 font-heading text-h3 font-semibold text-foreground">
+                You have {pendingApprovals.length} maintenance approval{pendingApprovals.length === 1 ? "" : "s"} awaiting your decision
+              </p>
+              <p className="mt-0.5 text-caption text-muted">Work cannot be scheduled until you approve or decline.</p>
+            </div>
+          </div>
+          <Button asChild className="gap-2"><Link href="/owner/approvals">Review approvals <ArrowRight size={16} /></Link></Button>
+        </Card>
+      )}
 
       {/* Units occupancy + settlement */}
       <div className="grid gap-4 lg:grid-cols-2">

@@ -19,6 +19,7 @@ import {
   FileDoc,
   ChartPie,
   Tag,
+  ClipboardCheck,
 } from "flowbite-react-icons/outline";
 import type { SidebarItem } from "@/components/ui/sidebar";
 import type { Role } from "@/lib/roles";
@@ -27,11 +28,12 @@ const sz = 20;
 
 /** Nav items per role. Some routes are built in later batches (9–11) — the
  *  shell and navigation exist now; those pages arrive with their batch. */
-export function navForRole(role: Role): SidebarItem[] {
+export function navForRole(role: Role, counts?: { ownerApprovals?: number }): SidebarItem[] {
   if (role === "owner") {
     return [
       { label: "Dashboard", href: "/owner", icon: <Grid size={sz} /> },
       { label: "My Properties", href: "/owner/properties", icon: <Building size={sz} /> },
+      { label: "Approvals", href: "/owner/approvals", icon: <ClipboardCheck size={sz} />, badge: counts?.ownerApprovals },
       { label: "Financials", href: "/owner/financials", icon: <Cash size={sz} /> },
       { label: "My Agreement", href: "/owner/agreement", icon: <FileDoc size={sz} /> },
       { label: "Reports", href: "/owner/reports", icon: <FileLines size={sz} /> },

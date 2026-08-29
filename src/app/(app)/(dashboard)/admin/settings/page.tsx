@@ -20,6 +20,8 @@ import { saveSettingsSection } from "@/lib/api/admin";
 import { RolesTab } from "@/components/admin/settings/roles-tab";
 import { AuditTab } from "@/components/admin/settings/audit-tab";
 import { SESSION_TIMEOUT_MINUTES, SESSION_WARNING_MINUTES } from "@/components/app/session-timeout";
+import { getOwnerApprovalThreshold, setOwnerApprovalThreshold } from "@/lib/api/maintenance-routing";
+import { useSession } from "@/lib/stores/session";
 import { SecurityTab } from "@/components/admin/settings/security-tab";
 import { IntegrationsTab } from "@/components/admin/settings/integrations-tab";
 
@@ -80,8 +82,11 @@ function CompanyTab() {
 /* ------------------------------------------------------- global */
 
 function GlobalTab() {
+  const sessionUser = useSession((st) => st.user);
+  const isSuperAdmin = sessionUser?.role === "super_admin";
+  const actorName = sessionUser?.name ?? "Admin";
   const [busy, setBusy] = React.useState(false);
-  const [state, setState] = React.useState({ currency: "UGX", timezone: "Africa/Kampala", dateFormat: "DD MMM YYYY", grace: "5", dueDay: "1", urgentSla: "4", highSla: "24", sessionTimeout: String(SESSION_TIMEOUT_MINUTES) });
+  const [state, setState] = React.useState({ currency: "UGX", timezone: "Africa/Kampala", dateFormat: "DD MMM YYYY", grace: "5", dueDay: "1", urgentSla: "4", highSla: "24", sessionTimeout: String(SESSION_TIMEOUT_MINUTES), approvalThreshold: String(getOwnerApprovalThreshold()) });
   const set = (k: string, v: string) => setState((s) => ({ ...s, [k]: v }));
   const save = async () => { setBusy(true); await saveSettingsSection("global", "Updated global settings"); toast.success("Global settings saved"); setBusy(false); };
   return (
@@ -93,6 +98,29 @@ function GlobalTab() {
             <Field label="Currency" htmlFor="g-cur"><select id="g-cur" className={selectClass} value={state.currency} onChange={(e) => set("currency", e.target.value)}><option value="UGX">UGX</option><option value="USD">USD</option><option value="KES">KES</option></select></Field>
             <Field label="Timezone" htmlFor="g-tz"><select id="g-tz" className={selectClass} value={state.timezone} onChange={(e) => set("timezone", e.target.value)}><option>Africa/Kampala</option><option>Africa/Nairobi</option><option>UTC</option></select></Field>
             <Field label="Date format" htmlFor="g-df"><select id="g-df" className={selectClass} value={state.dateFormat} onChange={(e) => set("dateFormat", e.target.value)}><option>DD MMM YYYY</option><option>MM/DD/YYYY</option><option>YYYY-MM-DD</option></select></Field>
+          </div>
+        </div>
+        <div>
+          <h3 className="mb-3 font-heading text-h3 font-semibold text-foreground">Maintenance</h3>
+          <div className="grid gap-4 sm:grid-cols-2">
+            <Field label="Owner approval threshold (UGX)" htmlFor="g-thresh">
+              <Input id="g-thresh" type="number" min={0} step={50000} value={state.approvalThreshold}
+                disabled={!isSuperAdmin}
+                title={isSuperAdmin ? undefined : "Only a Super Admin may change the approval threshold"}
+                onChange={(e) => set("approvalThreshold", e.target.value)}
+                onBlur={async (e) => {
+                  const next = Number(e.target.value);
+                  if (!isSuperAdmin || !Number.isFinite(next) || next === getOwnerApprovalThreshold()) return;
+                  await setOwnerApprovalThreshold(next, actorName);
+                  toast.success("Approval threshold updated", {
+                    description: `Owner approval now required above UGX ${next.toLocaleString("en-UG")}.`,
+                  });
+                }} />
+              <p className="mt-1 text-caption text-muted">
+                Owner-liable maintenance above this amount needs the owner&rsquo;s approval before work
+                proceeds. <span className="text-foreground">Threshold pending stakeholder confirmation.</span>
+              </p>
+            </Field>
           </div>
         </div>
         <div>

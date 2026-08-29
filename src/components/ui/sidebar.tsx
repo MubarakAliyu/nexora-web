@@ -11,6 +11,8 @@ export interface SidebarItem {
   href?: string;
   icon?: React.ReactNode;
   children?: SidebarItem[];
+  /** Count pill on the right of the item — omit or 0 to hide it. */
+  badge?: number;
 }
 
 interface SidebarProps {
@@ -112,6 +114,11 @@ function SidebarNode({
     >
       {item.icon && <span className={cn("shrink-0", itemActive && "text-primary")}>{item.icon}</span>}
       {!collapsed && <NavLabel className="flex-1">{item.label}</NavLabel>}
+      {!collapsed && !!item.badge && (
+        <span className="ml-auto flex h-5 min-w-5 shrink-0 items-center justify-center rounded-full bg-primary px-1.5 text-[10px] font-semibold text-primary-foreground">
+          {item.badge > 9 ? "9+" : item.badge}
+        </span>
+      )}
     </Link>
   );
 
