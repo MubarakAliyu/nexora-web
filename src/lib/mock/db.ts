@@ -1164,6 +1164,118 @@ export function findUser(email: string, password: string): MockUser | undefined 
 }
 
 /* ==================================================================
+ * F3 SEED — pre-work assessment, payer routing and owner approval.
+ *
+ * Gives the new flow a worked example in every state without disturbing E4's
+ * closed tickets, whose three financial branches are still what the settlement
+ * figures are verified against. Picks OPEN/ASSIGNED tickets only.
+ * ================================================================== */
+{
+  const F3_THRESHOLD = 500_000; // mirrors DEFAULT_OWNER_APPROVAL_THRESHOLD
+  const hoursAgo = (h: number) => iso(NOW.getTime() - h * 3_600_000);
+  const untouched = tickets.filter((t) => t.status === "open" || t.status === "assigned");
+
+  const assess = (t: MaintenanceTicket, labour: number, materials: number, notes: string, by: string) => {
+    t.assessedLabour = labour;
+    t.assessedMaterials = materials;
+    t.assessedCost = labour + materials;
+    t.assessedBy = by;
+    t.assessedAt = hoursAgo(72);
+    t.assessmentNotes = notes;
+    t.status = "assessed";
+  };
+
+  // 1 — awaiting owner approval, above threshold, waiting long enough to trip the 48h flag
+  const a = untouched[0];
+  if (a) {
+    assess(a, 420_000, 380_000, "Rising damp behind the kitchen units; plaster and membrane need replacing.", "stf_maint");
+    a.chargeTo = "owner";
+    a.chargeToReason = "Structural damp — building fabric, not tenant-caused.";
+    a.chargeToDecidedBy = "Aisha Nakato";
+    a.chargeToDecidedAt = hoursAgo(60);
+    a.requiresOwnerApproval = true;
+    a.ownerApprovalStatus = "awaiting";
+    a.ownerApprovalRequestedAt = hoursAgo(60);
+    a.status = "awaiting_owner_approval";
+  }
+
+  // 2 — approved and already in progress
+  const b = untouched[1];
+  if (b) {
+    assess(b, 300_000, 250_000, "Roof flashing corroded along the north edge; water tracking into the ceiling void.", "stf_maint");
+    b.chargeTo = "owner";
+    b.chargeToReason = "Roof fabric — owner responsibility under the agreement.";
+    b.chargeToDecidedBy = "Aisha Nakato";
+    b.chargeToDecidedAt = hoursAgo(120);
+    b.requiresOwnerApproval = true;
+    b.ownerApprovalStatus = "approved";
+    b.ownerApprovedAt = hoursAgo(96);
+    b.status = "in_progress";
+  }
+
+  // 3 — owner declined, closed without proceeding
+  const c = untouched[2];
+  if (c) {
+    assess(c, 500_000, 400_000, "Full window replacement recommended; frames are warped but still functional.", "stf_maint");
+    c.chargeTo = "owner";
+    c.chargeToReason = "Ageing frames — building fabric.";
+    c.chargeToDecidedBy = "Aisha Nakato";
+    c.chargeToDecidedAt = hoursAgo(200);
+    c.requiresOwnerApproval = true;
+    c.ownerApprovalStatus = "declined";
+    c.ownerDeclineReason = "Deferring to the next financial year; the frames still close and lock.";
+    c.ownerApprovedAt = hoursAgo(180);
+    c.status = "closed";
+    c.closedAt = hoursAgo(180);
+    c.resolution = "Not proceeding - declined by owner.";
+  }
+
+  // 4 — routed to the tenant, invoice raised, work waiting on payment
+  const d = untouched[3];
+  if (d) {
+    assess(d, 90_000, 60_000, "Shower mixer cracked by over-tightening; replacement cartridge and mixer required.", "stf_maint");
+    d.chargeTo = "tenant";
+    d.chargeToReason = "Damage from misuse — over-tightened until the body cracked.";
+    d.chargeToDecidedBy = "Aisha Nakato";
+    d.chargeToDecidedAt = hoursAgo(30);
+    d.requiresOwnerApproval = false;
+    d.ownerApprovalStatus = "not_required";
+    d.invoiceNumber = `INV-${d.ref}`;
+    d.invoiceAmount = d.assessedCost ?? 0;
+    d.invoiceGeneratedAt = hoursAgo(30);
+    d.invoiceDueDate = iso(NOW.getTime() + 14 * DAY);
+    d.paymentStatus = "awaiting_payment";
+    d.status = "awaiting_tenant_payment";
+  }
+
+  // 5 — Nexora absorbed, scheduled, below threshold
+  const e = untouched[4];
+  if (e) {
+    assess(e, 80_000, 40_000, "Communal entry light failed; replacing the fitting as a goodwill repair.", "stf_maint");
+    e.chargeTo = "nexora";
+    e.chargeToReason = "Communal area covered under the management agreement.";
+    e.chargeToDecidedBy = "Aisha Nakato";
+    e.chargeToDecidedAt = hoursAgo(20);
+    e.requiresOwnerApproval = false;
+    e.ownerApprovalStatus = "not_required";
+    e.status = "scheduled";
+  }
+
+  // 6 — owner-liable but BELOW the threshold, so scheduled without asking
+  const f = untouched[5];
+  if (f) {
+    assess(f, 120_000, 90_000, "Worn door closer on the main entrance; replacing like for like.", "stf_maint");
+    f.chargeTo = "owner";
+    f.chargeToReason = "Normal wear on communal hardware.";
+    f.chargeToDecidedBy = "Aisha Nakato";
+    f.chargeToDecidedAt = hoursAgo(18);
+    f.requiresOwnerApproval = (f.assessedCost ?? 0) >= F3_THRESHOLD;
+    f.ownerApprovalStatus = "not_required";
+    f.status = "scheduled";
+  }
+}
+
+/* ==================================================================
  * SERVICE CATALOGUE SEED (F1)
  *
  * The STRUCTURE here is real — it mirrors what was discussed on 27 Aug. The

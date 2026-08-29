@@ -366,7 +366,37 @@ export interface Expense {
 
 /* ------------------------------------------------------- maintenance */
 
-export type TicketStatus = "open" | "assigned" | "in_progress" | "completed" | "closed";
+/**
+ * Maintenance lifecycle (F3).
+ *
+ * E4 asked "who pays?" at CLOSURE. The 27 Aug meeting established that is too
+ * late: the payer decision moves to after assessment, before work, and high-cost
+ * owner-liable repairs gain an approval gate. E4's three financial branches at
+ * closure are unchanged — only the timing of the decision moved.
+ *
+ *   open -> assigned -> assessed -> [routing decision] ->
+ *     awaiting_owner_approval -> owner_approved -> scheduled -> in_progress -> completed -> closed
+ *                             \-> owner_declined -> closed (not proceeding)
+ *     awaiting_tenant_payment -> scheduled -> ...
+ *     (nexora)                -> scheduled -> ...
+ */
+export type TicketStatus =
+  | "open"
+  | "assigned"
+  | "assessed"
+  | "awaiting_owner_approval"
+  | "owner_approved"
+  | "owner_declined"
+  | "awaiting_tenant_payment"
+  | "scheduled"
+  | "in_progress"
+  | "completed"
+  | "closed";
+
+/** Who the cost is routed to, decided after assessment and before work. */
+export type ChargeTo = "tenant" | "owner" | "nexora";
+
+export type OwnerApprovalStatus = "not_required" | "awaiting" | "approved" | "declined";
 export type TicketPriority = "low" | "medium" | "high" | "urgent";
 export type TicketCategory =
   | "plumbing"
@@ -422,6 +452,43 @@ export interface MaintenanceTicket {
   /** Expense raised when liability is 'owner' (property) or 'nexora' (operational). */
   expenseId?: string;
   closedAt?: string;
+
+  /* ================================================================
+   * F3 — pre-work assessment, payer routing and the owner approval gate.
+   * Every E4 field above is preserved; these sit alongside them.
+   * ================================================================ */
+
+  /** Estimate recorded BEFORE work, distinct from E4's actual cost at closure. */
+  assessedCost?: number | null;
+  assessedLabour?: number | null;
+  assessedMaterials?: number | null;
+  assessedBy?: string | null;
+  assessedAt?: string | null;
+  assessmentNotes?: string | null;
+  assessmentPhotos?: string[] | null;
+
+  /** The payer decision. `liability` (E4) is still what closure records. */
+  chargeTo?: ChargeTo | null;
+  chargeToReason?: string | null;
+  chargeToDecidedBy?: string | null;
+  chargeToDecidedAt?: string | null;
+  /** True when the manager routed against the system's suggestion. */
+  routingOverridden?: boolean;
+  routingOverrideReason?: string | null;
+
+  /** Owner approval gate, for owner-liable work above the threshold. */
+  requiresOwnerApproval?: boolean;
+  ownerApprovalStatus?: OwnerApprovalStatus | null;
+  ownerApprovalRequestedAt?: string | null;
+  ownerApprovedBy?: string | null;
+  ownerApprovedAt?: string | null;
+  ownerDeclineReason?: string | null;
+
+  /** Actual vs assessed. Captured at closure so the gap is visible, not lost. */
+  actualCost?: number | null;
+  costVariance?: number | null;
+  /** Set when closure liability differs from what was routed. */
+  liabilityChangeReason?: string | null;
 }
 
 /** Who bears a maintenance cost. */
