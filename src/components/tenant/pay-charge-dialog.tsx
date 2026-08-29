@@ -1,13 +1,14 @@
 "use client";
 
 import * as React from "react";
-import { CheckCircle, MobilePhone, CreditCardPlus, Landmark, Download, Tools } from "flowbite-react-icons/outline";
+import { CheckCircle, MobilePhone, CreditCardPlus, Landmark, Download, Tools, Clock, ExclamationCircle } from "flowbite-react-icons/outline";
 import { Button } from "@/components/ui/button";
 import {
   Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription,
 } from "@/components/ui/dialog";
 import { toast } from "@/components/ui/sonner";
 import { cn } from "@/lib/utils";
+import { selectClass } from "@/components/forms/field";
 import { formatUGX, formatDate } from "@/lib/format";
 import { downloadPdf } from "@/lib/pdf/download";
 import { receiptPdf, maintenanceInvoicePdf } from "@/lib/pdf/builders";
@@ -21,7 +22,20 @@ const METHODS: { id: PaymentMethod; label: string; hint: string; Icon: React.Com
   { id: "bank", label: "Bank Transfer", hint: "Direct deposit", Icon: Landmark },
 ];
 
-type Step = "method" | "processing" | "confirmed";
+type Step = "method" | "processing" | "confirmed" | "pending" | "failed" | "cancelled" | "verify";
+
+/**
+ * F2.2 — which outcome to simulate. A real gateway decides this; the picker exists
+ * so every state the backend can report is reachable in the demo without setup.
+ * Remove the picker (not the states) when the provider is wired in.
+ */
+const OUTCOMES: { value: Exclude<Step, "method" | "processing" | "confirmed">| "successful"; label: string }[] = [
+  { value: "successful", label: "Successful" },
+  { value: "pending", label: "Pending confirmation" },
+  { value: "verify", label: "Requires verification" },
+  { value: "failed", label: "Failed" },
+  { value: "cancelled", label: "Cancelled" },
+];
 
 /**
  * The tenant payment flow — method → processing → confirmation — shared by rent
@@ -40,10 +54,12 @@ export function PayChargeDialog({ invoice, ticket, onOpenChange, onDone }: {
   const [method, setMethod] = React.useState<PaymentMethod>("mobile_money");
   const [payment, setPayment] = React.useState<Payment | null>(null);
   const [maintPaid, setMaintPaid] = React.useState<MaintenanceTicket | null>(null);
+  const [outcome, setOutcome] = React.useState<string>("successful");
+  const [checking, setChecking] = React.useState(false);
 
   const open = !!invoice || !!ticket;
   React.useEffect(() => {
-    if (open) { setStep("method"); setMethod("mobile_money"); setPayment(null); setMaintPaid(null); }
+    if (open) { setStep("method"); setMethod("mobile_money"); setPayment(null); setMaintPaid(null); setOutcome("successful"); }
   }, [open, invoice, ticket]);
 
   const due = invoice ? invoice.amount - invoice.paid : ticket ? (ticket.invoiceAmount ?? ticket.cost ?? 0) : 0;
@@ -54,6 +70,17 @@ export function PayChargeDialog({ invoice, ticket, onOpenChange, onDone }: {
 
   const pay = async () => {
     setStep("processing");
+    // Only a confirmed payment settles anything. The other four states deliberately
+    // leave the invoice/charge open — money we have not confirmed is not money.
+    if (outcome !== "successful") {
+      await new Promise((r) => setTimeout(r, 900));
+      setStep(outcome as Step);
+      if (outcome === "failed") toast.error("Payment failed", { description: "The payment was not completed." });
+      if (outcome === "cancelled") toast.info("Payment cancelled", { description: "Nothing has been charged." });
+      if (outcome === "pending") toast.info("Payment pending", { description: "Awaiting confirmation from the provider." });
+      if (outcome === "verify") toast.info("Payment received", { description: "Awaiting verification." });
+      return;
+    }
     try {
       if (ticket) {
         const reference = `MPY-${Date.now().toString().slice(-8)}`;
@@ -114,6 +141,16 @@ export function PayChargeDialog({ invoice, ticket, onOpenChange, onDone }: {
                 </button>
               ))}
             </div>
+            {/* Demo-only outcome picker — the provider decides this in production. */}
+            <div className="mt-4 rounded-xl border border-dashed border-border p-3">
+              <label htmlFor="pay-outcome" className="text-caption font-medium uppercase tracking-wide text-muted">
+                Simulate provider outcome
+              </label>
+              <select id="pay-outcome" className={`${selectClass} mt-2`} value={outcome}
+                onChange={(e) => setOutcome(e.target.value)}>
+                {OUTCOMES.map((o) => <option key={o.value} value={o.value}>{o.label}</option>)}
+              </select>
+            </div>
             <Button className="mt-5 w-full" onClick={pay}>Pay {formatUGX(due)}</Button>
             <p className="mt-2 text-center text-caption text-muted">Simulated payment — no real charge is made.</p>
           </>
@@ -124,6 +161,75 @@ export function PayChargeDialog({ invoice, ticket, onOpenChange, onDone }: {
             <span className="h-12 w-12 animate-spin rounded-full border-4 border-surface-active border-t-primary" />
             <p className="mt-5 font-heading text-h3 font-semibold text-foreground">Redirecting to gateway…</p>
             <p className="mt-1 text-body text-muted">Securely processing your payment.</p>
+          </div>
+        )}
+
+        {/* PENDING — initiated, not confirmed. The invoice stays unpaid. */}
+        {step === "pending" && (
+          <div className="flex flex-col items-center py-8 text-center">
+            <span className="flex h-16 w-16 items-center justify-center rounded-full bg-surface-active">
+              <Clock size={32} className="text-primary" />
+            </span>
+            <h3 className="mt-5 font-heading text-h2 font-semibold text-foreground">Payment pending</h3>
+            <p className="mt-2 max-w-sm text-body text-muted">
+              Awaiting confirmation from payment provider. Your invoice stays open until it is confirmed.
+            </p>
+            <div className="mt-5 flex w-full max-w-sm gap-3">
+              <Button variant="outline" className="flex-1" loading={checking}
+                onClick={async () => { setChecking(true); await new Promise((r) => setTimeout(r, 900)); setChecking(false); toast.info("Still pending", { description: "No update from the provider yet." }); }}>
+                Check status
+              </Button>
+              <Button className="flex-1" onClick={() => onOpenChange(false)}>Done</Button>
+            </div>
+          </div>
+        )}
+
+        {/* REQUIRES VERIFICATION — money reported, not yet confirmed by us. */}
+        {step === "verify" && (
+          <div className="flex flex-col items-center py-8 text-center">
+            <span className="flex h-16 w-16 items-center justify-center rounded-full bg-surface-active">
+              <ExclamationCircle size={32} className="text-primary" />
+            </span>
+            <h3 className="mt-5 font-heading text-h2 font-semibold text-foreground">Payment received — awaiting verification</h3>
+            <p className="mt-2 max-w-sm text-body text-muted">
+              Our team will confirm this payment shortly. Your invoice remains unpaid until it is verified,
+              and you’ll be notified as soon as that happens.
+            </p>
+            <Button className="mt-5 w-full max-w-sm" onClick={() => onOpenChange(false)}>Done</Button>
+          </div>
+        )}
+
+        {/* FAILED — offer the retry prominently. */}
+        {step === "failed" && (
+          <div className="flex flex-col items-center py-8 text-center">
+            <span className="flex h-16 w-16 items-center justify-center rounded-full bg-primary/10">
+              <ExclamationCircle size={32} className="text-primary" />
+            </span>
+            <h3 className="mt-5 font-heading text-h2 font-semibold text-foreground">Payment failed</h3>
+            <p className="mt-2 max-w-sm text-body text-muted">
+              The payment was not completed and nothing has been charged.
+            </p>
+            <div className="mt-5 flex w-full max-w-sm gap-3">
+              <Button variant="outline" className="flex-1" onClick={() => onOpenChange(false)}>Close</Button>
+              <Button className="flex-1" onClick={() => setStep("method")}>Try again</Button>
+            </div>
+          </div>
+        )}
+
+        {/* CANCELLED — neutral, with a way back. */}
+        {step === "cancelled" && (
+          <div className="flex flex-col items-center py-8 text-center">
+            <span className="flex h-16 w-16 items-center justify-center rounded-full bg-surface-hover">
+              <Clock size={32} className="text-muted" />
+            </span>
+            <h3 className="mt-5 font-heading text-h2 font-semibold text-foreground">Payment cancelled</h3>
+            <p className="mt-2 max-w-sm text-body text-muted">
+              You cancelled this payment. Nothing has been charged and your invoice is unchanged.
+            </p>
+            <div className="mt-5 flex w-full max-w-sm gap-3">
+              <Button variant="outline" className="flex-1" onClick={() => onOpenChange(false)}>Close</Button>
+              <Button className="flex-1" onClick={() => setStep("method")}>Return to payment</Button>
+            </div>
           </div>
         )}
 

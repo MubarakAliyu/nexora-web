@@ -48,6 +48,7 @@ import type {
   CatalogueItem,
   Quotation,
   AdditionalCharge,
+  PaymentState,
   TicketCategory,
   TicketPriority,
   TicketStatus,
@@ -1184,6 +1185,46 @@ export const catalogueItems: CatalogueItem[] = [];
 export const quotations: Quotation[] = [];
 /** F2 — additional work charges, linked to but never modifying their booking. */
 export const additionalCharges: AdditionalCharge[] = [];
+
+/* ------------------------------------------------------------------------
+ * F2.2 — payment states.
+ *
+ * Existing seeded payments carry only the coarse completed/pending status, so
+ * they read as `successful`/`pending`. Here we give a handful an explicit state
+ * each, so all five are demonstrable on a fresh load without any setup — in
+ * particular `requires_verification`, which is what fills the admin queue.
+ * ---------------------------------------------------------------------- */
+{
+  const completed = payments.filter((p) => p.status === "completed");
+  const assign = (p: Payment | undefined, state: PaymentState, extra: Partial<Payment> = {}) => {
+    if (!p) return;
+    p.state = state;
+    p.status = state === "successful" ? "completed" : state === "failed" || state === "cancelled" ? "failed" : "pending";
+    p.providerReference = `PSP-${rint(100000, 999999)}`;
+    p.providerStatus = state.toUpperCase();
+    p.stateChangedAt = p.date;
+    p.currency = "UGX";
+    Object.assign(p, extra);
+    // Anything not confirmed must leave its invoice open.
+    if (state !== "successful") {
+      const inv = invoices.find((i) => i.id === p.invoiceId);
+      if (inv && inv.status === "paid") { inv.status = "pending"; inv.paid = 0; }
+    }
+  };
+  assign(completed[0], "requires_verification");
+  assign(completed[1], "requires_verification");
+  assign(completed[2], "pending");
+  assign(completed[3], "failed", { failureReason: "Insufficient funds on the mobile money account." });
+  assign(completed[4], "cancelled");
+  // Everything else is a plain confirmed payment.
+  payments.filter((p) => !p.state).forEach((p) => {
+    p.state = p.status === "completed" ? "successful" : "pending";
+    p.currency = "UGX";
+    p.providerReference = `PSP-${rint(100000, 999999)}`;
+    p.providerStatus = (p.state as string).toUpperCase();
+    p.stateChangedAt = p.date;
+  });
+}
 
 function seedType(name: string, icon: string, description: string, bookingRoute: string | null, sortOrder: number) {
   const st: ServiceType = {

@@ -10,6 +10,14 @@ import { StatusBadge } from "@/components/app/status";
 import { RowActions } from "@/components/app/row-actions";
 import { DeleteConfirmation } from "@/components/app/delete-confirmation";
 import { Card } from "@/components/ui/card";
+import { Badge } from "@/components/ui/badge";
+import { Textarea } from "@/components/ui/textarea";
+import { CheckCircle, ExclamationCircle } from "flowbite-react-icons/outline";
+import {
+  paymentState, verifyPayment, rejectPayment,
+  PAYMENT_STATE_LABEL, PAYMENT_STATE_STYLE,
+} from "@/lib/api/payment-states";
+import type { PaymentState } from "@/lib/mock/types";
 import { StatCard } from "@/components/ui/stat-card";
 import { DataTable, type Column } from "@/components/ui/data-table";
 import { Input } from "@/components/ui/input";
@@ -189,7 +197,28 @@ function InvoicesTab() {
 function PaymentsTab() {
   const scope: Scope = React.useMemo(() => ({ forceError: debugErrorFlag() }), []);
   const { data, loading, error, reload } = useAsync(() => listPayments(scope), [scope]);
-  const total = (data ?? []).reduce((s, p) => s + p.amount, 0);
+  /* F2.2 — payment state filter + the manual verification queue. Only `successful`
+     settles an invoice, so anything sitting in `requires_verification` is money we
+     have been told about but have not confirmed. */
+  const [stateFilter, setStateFilter] = React.useState<"all" | PaymentState>("all");
+  const [verifying, setVerifying] = React.useState<Payment | null>(null);
+  const [rejecting, setRejecting] = React.useState<Payment | null>(null);
+  const [busy, setBusy] = React.useState(false);
+
+  const all = data ?? [];
+  const rows = stateFilter === "all" ? all : all.filter((p) => paymentState(p) === stateFilter);
+  const total = rows.reduce((s, p) => s + p.amount, 0);
+  const queueCount = all.filter((p) => paymentState(p) === "requires_verification").length;
+
+  const doVerify = async (p: Payment) => {
+    setBusy(true);
+    try {
+      await verifyPayment(p.id);
+      toast.success("Payment verified", { description: `${p.reference} — invoice marked paid.` });
+      setVerifying(null); reload();
+    } catch { toast.error("Couldn’t verify the payment"); }
+    finally { setBusy(false); }
+  };
   const columns: Column<Payment>[] = [
     { key: "date", header: "Date", sortable: true, render: (p) => formatDate(p.date) },
     { key: "tenantId", header: "Tenant", sortValue: (p) => tenantName(p.tenantId), render: (p) => tenantName(p.tenantId) },
@@ -197,10 +226,35 @@ function PaymentsTab() {
     { key: "amount", header: "Amount", sortable: true, align: "right", render: (p) => formatUGX(p.amount) },
     { key: "method", header: "Method", render: (p) => <span className="capitalize">{p.method.replace("_", " ")}</span> },
     { key: "reference", header: "Reference", render: (p) => <span className="text-muted">{p.reference}</span> },
-    { key: "status", header: "Status", render: (p) => <StatusBadge status={p.status} /> },
+    {
+      key: "state", header: "Payment state", sortable: true,
+      sortValue: (p) => paymentState(p),
+      render: (p) => {
+        const st = paymentState(p);
+        return (
+          <span>
+            <Badge className={PAYMENT_STATE_STYLE[st]}>{PAYMENT_STATE_LABEL[st]}</Badge>
+            {p.failureReason && <span className="mt-0.5 block text-caption text-muted">{p.failureReason}</span>}
+          </span>
+        );
+      },
+    },
     {
       key: "actions", header: "", align: "right",
-      render: (p) => <RowActions actions={[{ label: "Receipt PDF", icon: <FileLines size={16} />, onClick: () => { const { payload, filename } = receiptPdf(p); downloadPdf(payload, filename); } }]} />,
+      render: (p) => {
+        const st = paymentState(p);
+        return (
+          <RowActions actions={[
+            ...(st === "requires_verification"
+              ? [
+                  { label: "Verify payment", icon: <CheckCircle size={16} />, onClick: () => setVerifying(p) },
+                  { label: "Reject payment", onClick: () => setRejecting(p), danger: true },
+                ]
+              : []),
+            { label: "Receipt PDF", icon: <FileLines size={16} />, onClick: () => { const { payload, filename } = receiptPdf(p); downloadPdf(payload, filename); }, separatorBefore: st === "requires_verification" },
+          ]} />
+        );
+      },
     },
   ];
   return (
@@ -218,11 +272,115 @@ function PaymentsTab() {
           { header: "Method", accessor: (p) => p.method },
           { header: "Reference", accessor: (p) => p.reference },
           { header: "Status", accessor: (p) => p.status },
+          { header: "Payment state", accessor: (p) => paymentState(p) },
+          { header: "Provider reference", accessor: (p) => p.providerReference ?? "" },
         ]} />
       </Card>
-      <DataTable columns={columns} data={data ?? []} getRowId={(p) => p.id} loading={loading} error={error} onRetry={reload}
+
+      {queueCount > 0 && (
+        <Card className="mb-4 flex flex-wrap items-center justify-between gap-3 border-l-4 border-accent p-4">
+          <div className="flex items-start gap-3">
+            <ExclamationCircle size={20} className="mt-0.5 shrink-0 text-primary" />
+            <div>
+              <p className="text-body font-medium text-foreground">
+                {queueCount} payment{queueCount === 1 ? "" : "s"} awaiting verification
+              </p>
+              <p className="mt-0.5 text-caption text-muted">
+                Their invoices stay unpaid until someone confirms the money arrived.
+              </p>
+            </div>
+          </div>
+          <Button variant="outline" size="sm" onClick={() => setStateFilter("requires_verification")}>
+            Review queue
+          </Button>
+        </Card>
+      )}
+
+      <div className="mb-4 flex flex-col gap-3 sm:flex-row sm:justify-end">
+        <select className={`${selectClass} sm:w-56`} value={stateFilter}
+          onChange={(e) => setStateFilter(e.target.value as typeof stateFilter)} aria-label="Filter by payment state">
+          <option value="all">All payment states</option>
+          {(Object.keys(PAYMENT_STATE_LABEL) as PaymentState[]).map((st) => (
+            <option key={st} value={st}>{PAYMENT_STATE_LABEL[st]}</option>
+          ))}
+        </select>
+      </div>
+
+      <DataTable columns={columns} data={rows} getRowId={(p) => p.id} loading={loading} error={error} onRetry={reload}
         emptyTitle="No payments" emptyDescription="Received payments will appear here." pageSize={10} />
+
+      {/* Verify */}
+      <Dialog open={!!verifying} onOpenChange={(o) => !o && setVerifying(null)}>
+        <DialogContent>
+          {verifying && (
+            <>
+              <DialogHeader>
+                <DialogTitle>Verify payment</DialogTitle>
+                <DialogDescription>{verifying.reference} · {tenantName(verifying.tenantId)}</DialogDescription>
+              </DialogHeader>
+              <div className="space-y-1.5 rounded-xl border border-border p-4 text-body">
+                <div className="flex justify-between"><span className="text-muted">Amount</span><span className="font-medium text-foreground">{formatUGXFull(verifying.amount)}</span></div>
+                <div className="flex justify-between"><span className="text-muted">Method</span><span className="capitalize text-foreground">{verifying.method.replace("_", " ")}</span></div>
+                {verifying.providerReference && <div className="flex justify-between"><span className="text-muted">Provider ref</span><span className="font-mono text-foreground">{verifying.providerReference}</span></div>}
+              </div>
+              <p className="text-caption text-muted">
+                Confirming marks the linked invoice paid and notifies the customer.
+              </p>
+              <DialogFooter>
+                <DialogClose asChild><Button variant="outline">Cancel</Button></DialogClose>
+                <Button loading={busy} onClick={() => doVerify(verifying)}>Confirm payment received</Button>
+              </DialogFooter>
+            </>
+          )}
+        </DialogContent>
+      </Dialog>
+
+      <RejectPaymentDialog payment={rejecting} onOpenChange={(o) => !o && setRejecting(null)} onDone={reload} />
     </div>
+  );
+}
+
+/** Rejecting leaves the invoice unpaid — that is the point. */
+function RejectPaymentDialog({ payment, onOpenChange, onDone }: {
+  payment: Payment | null; onOpenChange: (o: boolean) => void; onDone: () => void;
+}) {
+  const [reason, setReason] = React.useState("");
+  const [busy, setBusy] = React.useState(false);
+  React.useEffect(() => { if (payment) setReason(""); }, [payment]);
+
+  const submit = async () => {
+    if (!payment || reason.trim().length < 5) return;
+    setBusy(true);
+    try {
+      await rejectPayment(payment.id, reason.trim());
+      toast.success("Payment rejected", { description: "The invoice remains unpaid." });
+      onOpenChange(false); onDone();
+    } catch { toast.error("Couldn’t reject the payment"); }
+    finally { setBusy(false); }
+  };
+
+  return (
+    <Dialog open={!!payment} onOpenChange={onOpenChange}>
+      <DialogContent>
+        {payment && (
+          <>
+            <DialogHeader>
+              <DialogTitle>Reject payment</DialogTitle>
+              <DialogDescription>{payment.reference}</DialogDescription>
+            </DialogHeader>
+            <Field label="Reason" htmlFor="rp-reason" error={reason.trim().length >= 5 ? undefined : "Required"}>
+              <Textarea id="rp-reason" rows={3} value={reason} onChange={(e) => setReason(e.target.value)}
+                placeholder="e.g. No matching transaction found at the provider" />
+              <p className="mt-1 text-caption text-muted">The customer is notified and the invoice stays unpaid.</p>
+            </Field>
+            <DialogFooter>
+              <DialogClose asChild><Button variant="outline">Cancel</Button></DialogClose>
+              <Button loading={busy} disabled={reason.trim().length < 5} onClick={submit}>Reject payment</Button>
+            </DialogFooter>
+          </>
+        )}
+      </DialogContent>
+    </Dialog>
   );
 }
 
