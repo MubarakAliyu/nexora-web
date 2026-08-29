@@ -14,9 +14,30 @@ import { cn } from "@/lib/utils";
 import { formatDate } from "@/lib/format";
 import {
   chargesForBooking, acceptAdditionalCharge, declineAdditionalCharge,
-  payAdditionalCharge, CHARGE_STATUS_LABEL,
+  payAdditionalCharge, CHARGE_STATUS_LABEL, RESPONSE_METHOD_LABEL,
 } from "@/lib/api/additional-charges";
-import type { AdditionalCharge, AdditionalChargeStatus } from "@/lib/mock/types";
+import { useSession } from "@/lib/stores/session";
+import type { AdditionalCharge, AdditionalChargeStatus, CustomerResponseMethod } from "@/lib/mock/types";
+
+const RESPONSE_METHODS = Object.keys(RESPONSE_METHOD_LABEL) as CustomerResponseMethod[];
+
+/** Shared "how did they reply" field - required on both accept and decline. */
+function ResponseMethodField({ value, onChange }: {
+  value: CustomerResponseMethod; onChange: (v: CustomerResponseMethod) => void;
+}) {
+  return (
+    <Field label="How did the customer respond?" htmlFor="rm-method">
+      <select id="rm-method" className={selectClass} value={value}
+        onChange={(e) => onChange(e.target.value as CustomerResponseMethod)}>
+        {RESPONSE_METHODS.map((m) => <option key={m} value={m}>{RESPONSE_METHOD_LABEL[m]}</option>)}
+      </select>
+      <p className="mt-1 text-caption text-muted">
+        Recorded in the audit trail with your name and the time, since service customers
+        have no portal to confirm in themselves.
+      </p>
+    </Field>
+  );
+}
 
 const fmt = (n: number, c = "UGX") => `${c} ${Math.round(n).toLocaleString("en-UG")}`;
 
@@ -35,15 +56,17 @@ const STATUS_STYLE: Record<AdditionalChargeStatus, string> = {
 function DeclineDialog({ charge, onOpenChange, onDone }: {
   charge: AdditionalCharge | null; onOpenChange: (o: boolean) => void; onDone: () => void;
 }) {
+  const actor = useSession((s) => s.user?.name ?? "Admin");
   const [reason, setReason] = React.useState("");
+  const [method, setMethod] = React.useState<CustomerResponseMethod>("phone");
   const [busy, setBusy] = React.useState(false);
-  React.useEffect(() => { if (charge) setReason(""); }, [charge]);
+  React.useEffect(() => { if (charge) { setReason(""); setMethod("phone"); } }, [charge]);
 
   const submit = async () => {
     if (!charge || reason.trim().length < 5) return;
     setBusy(true);
     try {
-      await declineAdditionalCharge(charge.id, reason.trim());
+      await declineAdditionalCharge(charge.id, reason.trim(), { method, recordedBy: actor });
       toast.success("Additional charge declined", { description: "The original scope continues unchanged." });
       onOpenChange(false); onDone();
     } catch { toast.error("Couldn’t decline the charge"); }
@@ -59,6 +82,7 @@ function DeclineDialog({ charge, onOpenChange, onDone }: {
               <DialogTitle>Decline additional charge</DialogTitle>
               <DialogDescription>{charge.reference} · {fmt(charge.amount, charge.currency)}</DialogDescription>
             </DialogHeader>
+            <ResponseMethodField value={method} onChange={setMethod} />
             <Field label="Reason for declining" htmlFor="dc-reason"
               error={reason.trim().length >= 5 ? undefined : "Required"}>
               <Textarea id="dc-reason" rows={3} value={reason} onChange={(e) => setReason(e.target.value)}
@@ -140,25 +164,59 @@ function ChargePaymentDialog({ charge, onOpenChange, onDone }: {
 
 /* -------------------------------------------------------------------- panel */
 
+/** Records an acceptance that actually arrived by phone/email/WhatsApp/in person. */
+function AcceptDialog({ charge, onOpenChange, onDone }: {
+  charge: AdditionalCharge | null; onOpenChange: (o: boolean) => void; onDone: () => void;
+}) {
+  const actor = useSession((s) => s.user?.name ?? "Admin");
+  const [method, setMethod] = React.useState<CustomerResponseMethod>("phone");
+  const [busy, setBusy] = React.useState(false);
+  React.useEffect(() => { if (charge) setMethod("phone"); }, [charge]);
+
+  const submit = async () => {
+    if (!charge) return;
+    setBusy(true);
+    try {
+      const updated = await acceptAdditionalCharge(charge.id, { method, recordedBy: actor });
+      toast.success("Additional charge accepted", { description: `Invoice INV-${updated.reference} issued.` });
+      onOpenChange(false); onDone();
+    } catch { toast.error("Couldn’t accept the charge"); }
+    finally { setBusy(false); }
+  };
+
+  return (
+    <Dialog open={!!charge} onOpenChange={onOpenChange}>
+      <DialogContent>
+        {charge && (
+          <>
+            <DialogHeader>
+              <DialogTitle>Record customer acceptance</DialogTitle>
+              <DialogDescription>{charge.reference} · {fmt(charge.amount, charge.currency)}</DialogDescription>
+            </DialogHeader>
+            <ResponseMethodField value={method} onChange={setMethod} />
+            <p className="text-caption text-muted">
+              An invoice will be issued and the charge moves to awaiting payment.
+            </p>
+            <DialogFooter>
+              <DialogClose asChild><Button variant="outline">Cancel</Button></DialogClose>
+              <Button onClick={submit} loading={busy}>Record acceptance</Button>
+            </DialogFooter>
+          </>
+        )}
+      </DialogContent>
+    </Dialog>
+  );
+}
+
 export function AdditionalChargesPanel({ bookingId, onChanged }: {
   bookingId: string; onChanged: () => void;
 }) {
+  const [accepting, setAccepting] = React.useState<AdditionalCharge | null>(null);
   const [declining, setDeclining] = React.useState<AdditionalCharge | null>(null);
   const [paying, setPaying] = React.useState<AdditionalCharge | null>(null);
-  const [busyId, setBusyId] = React.useState<string | null>(null);
 
   const charges = chargesForBooking(bookingId);
   if (charges.length === 0) return null;
-
-  const accept = async (c: AdditionalCharge) => {
-    setBusyId(c.id);
-    try {
-      const updated = await acceptAdditionalCharge(c.id);
-      toast.success("Additional charge accepted", { description: `Invoice INV-${updated.reference} issued.` });
-      onChanged();
-    } catch { toast.error("Couldn’t accept the charge"); }
-    finally { setBusyId(null); }
-  };
 
   return (
     <div className="rounded-xl border border-border p-4">
@@ -200,7 +258,9 @@ export function AdditionalChargesPanel({ bookingId, onChanged }: {
 
             <p className="mt-2 text-caption text-muted">
               Raised by {c.raisedBy} · {formatDate(c.raisedAt)}
-              {c.customerRespondedAt ? ` · customer responded ${formatDate(c.customerRespondedAt)}` : ""}
+              {c.customerRespondedAt
+                ? ` · customer responded ${formatDate(c.customerRespondedAt)}${c.responseMethod ? ` via ${RESPONSE_METHOD_LABEL[c.responseMethod]}` : ""}${c.responseRecordedBy ? `, recorded by ${c.responseRecordedBy}` : ""}`
+                : ""}
               {c.paidAt ? ` · paid ${formatDate(c.paidAt)}` : ""}
             </p>
             {c.declineReason && (
@@ -213,11 +273,13 @@ export function AdditionalChargesPanel({ bookingId, onChanged }: {
                 the admin records the response after contacting them. */}
             {c.status === "sent_to_customer" && (
               <div className="mt-3">
+                {/* Service customers have no portal, so the reply arrives offline.
+                    Saying so plainly beats a button that implies the customer clicked it. */}
                 <p className="mb-2 text-caption text-muted">
-                  Customer was notified. Record their response:
+                  Customer contacted offline - record their response below.
                 </p>
                 <div className="flex flex-wrap gap-2">
-                  <Button size="sm" loading={busyId === c.id} onClick={() => accept(c)}>Customer accepted</Button>
+                  <Button size="sm" onClick={() => setAccepting(c)}>Customer accepted</Button>
                   <Button size="sm" variant="outline" onClick={() => setDeclining(c)}>Customer declined</Button>
                 </div>
               </div>
@@ -231,6 +293,7 @@ export function AdditionalChargesPanel({ bookingId, onChanged }: {
         ))}
       </div>
 
+      <AcceptDialog charge={accepting} onOpenChange={(o) => !o && setAccepting(null)} onDone={onChanged} />
       <DeclineDialog charge={declining} onOpenChange={(o) => !o && setDeclining(null)} onDone={onChanged} />
       <ChargePaymentDialog charge={paying} onOpenChange={(o) => !o && setPaying(null)} onDone={onChanged} />
     </div>

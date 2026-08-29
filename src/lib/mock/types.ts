@@ -824,6 +824,9 @@ export interface Quotation {
  * them as its own record with its own approval and payment.
  * ================================================================== */
 
+/** How an offline customer response reached us. */
+export type CustomerResponseMethod = "phone" | "email" | "whatsapp" | "in_person";
+
 export type AdditionalChargeStatus =
   | "proposed"
   | "sent_to_customer"
@@ -861,6 +864,14 @@ export interface AdditionalCharge {
   raisedAt: string;
   status: AdditionalChargeStatus;
   customerRespondedAt: string | null;
+  /**
+   * HOW the customer replied. Service customers from the marketing site have no
+   * account yet, so their accept/decline is recorded by an admin after contacting
+   * them — this makes that offline step a documented business process rather than
+   * an invisible gap. Remove the requirement once customer accounts exist.
+   */
+  responseMethod: CustomerResponseMethod | null;
+  responseRecordedBy: string | null;
   declineReason: string | null;
   invoiceId: string | null;
   paidAt: string | null;

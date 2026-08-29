@@ -57,6 +57,20 @@ export function PayChargeDialog({ invoice, ticket, onOpenChange, onDone }: {
   const [outcome, setOutcome] = React.useState<string>("successful");
   const [checking, setChecking] = React.useState(false);
 
+  /**
+   * The outcome picker is a TEST control, not a customer-facing one. It stays out
+   * of a normal walkthrough and is opened deliberately, either by the build flag
+   * or by adding ?devPayment=1 to the URL — the latter so a deployed demo can be
+   * put into test mode without a rebuild. Checked after mount so SSR and the first
+   * client render agree.
+   */
+  const [devMode, setDevMode] = React.useState(false);
+  React.useEffect(() => {
+    const byFlag = process.env.NEXT_PUBLIC_DEV_PAYMENTS === "1";
+    const byQuery = new URLSearchParams(window.location.search).get("devPayment") === "1";
+    setDevMode(byFlag || byQuery);
+  }, []);
+
   const open = !!invoice || !!ticket;
   React.useEffect(() => {
     if (open) { setStep("method"); setMethod("mobile_money"); setPayment(null); setMaintPaid(null); setOutcome("successful"); }
@@ -141,7 +155,8 @@ export function PayChargeDialog({ invoice, ticket, onOpenChange, onDone }: {
                 </button>
               ))}
             </div>
-            {/* Demo-only outcome picker — the provider decides this in production. */}
+            {/* Test-only outcome picker — hidden unless explicitly enabled. */}
+            {devMode && (
             <div className="mt-4 rounded-xl border border-dashed border-border p-3">
               <label htmlFor="pay-outcome" className="text-caption font-medium uppercase tracking-wide text-muted">
                 Simulate provider outcome
@@ -151,6 +166,7 @@ export function PayChargeDialog({ invoice, ticket, onOpenChange, onDone }: {
                 {OUTCOMES.map((o) => <option key={o.value} value={o.value}>{o.label}</option>)}
               </select>
             </div>
+            )}
             <Button className="mt-5 w-full" onClick={pay}>Pay {formatUGX(due)}</Button>
             <p className="mt-2 text-center text-caption text-muted">Simulated payment — no real charge is made.</p>
           </>

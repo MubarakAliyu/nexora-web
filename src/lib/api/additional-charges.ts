@@ -14,8 +14,15 @@ import { recordMutation } from "@/lib/api/actions";
 import { pushNotify } from "@/lib/api/admin-mutations";
 import type {
   AdditionalCharge, AdditionalChargeLine, AdditionalChargeStatus,
-  CatalogueCurrency, Invoice,
+  CatalogueCurrency, Invoice, CustomerResponseMethod,
 } from "@/lib/mock/types";
+
+export const RESPONSE_METHOD_LABEL: Record<CustomerResponseMethod, string> = {
+  phone: "Phone call",
+  email: "Email",
+  whatsapp: "WhatsApp",
+  in_person: "In person",
+};
 
 const mDelay = (ms = 420) => new Promise((r) => setTimeout(r, ms));
 const money = (n: number, c: CatalogueCurrency = "UGX") =>
@@ -106,6 +113,8 @@ export async function raiseAdditionalCharge(input: RaiseChargeInput): Promise<Ad
     raisedAt: db.NOW_ISO,
     status: "sent_to_customer",
     customerRespondedAt: null,
+    responseMethod: null,
+    responseRecordedBy: null,
     declineReason: null,
     invoiceId: null,
     paidAt: null,
@@ -134,7 +143,12 @@ export async function raiseAdditionalCharge(input: RaiseChargeInput): Promise<Ad
 
 /* --------------------------------------------------------- customer response */
 
-export async function acceptAdditionalCharge(id: string): Promise<AdditionalCharge> {
+export interface CustomerResponseInput {
+  method: CustomerResponseMethod;
+  recordedBy: string;
+}
+
+export async function acceptAdditionalCharge(id: string, response: CustomerResponseInput): Promise<AdditionalCharge> {
   await mDelay();
   const charge = db.additionalCharges.find((c) => c.id === id);
   if (!charge) throw new Error("Charge not found");
@@ -142,6 +156,8 @@ export async function acceptAdditionalCharge(id: string): Promise<AdditionalChar
 
   charge.status = "awaiting_payment";
   charge.customerRespondedAt = db.NOW_ISO;
+  charge.responseMethod = response.method;
+  charge.responseRecordedBy = response.recordedBy;
 
   // Invoice numbered from the charge reference so the money traces straight back.
   const invoice: Invoice = {
@@ -164,9 +180,11 @@ export async function acceptAdditionalCharge(id: string): Promise<AdditionalChar
 
   recordMutation({
     entityType: "additional_charge", entityId: id, entityName: charge.reference, action: "updated",
-    summary: `Additional charge ${charge.reference} accepted by ${booking?.name ?? "customer"} — invoice ${invoice.number} for ${money(charge.amount)}`,
+    // The audit records HOW the customer replied, since they have no account to
+    // click Accept in — this is the evidence that the approval actually happened.
+    summary: `Additional charge ${charge.reference} accepted by ${booking?.name ?? "customer"} via ${RESPONSE_METHOD_LABEL[response.method]}, recorded by ${response.recordedBy} — invoice ${invoice.number} for ${money(charge.amount)}`,
     before: { status: "sent_to_customer" },
-    after: { status: charge.status, invoiceNumber: invoice.number },
+    after: { status: charge.status, invoiceNumber: invoice.number, responseMethod: response.method, responseRecordedBy: response.recordedBy },
     notify: {
       type: "payment",
       title: "Additional charge accepted",
@@ -176,7 +194,7 @@ export async function acceptAdditionalCharge(id: string): Promise<AdditionalChar
   return charge;
 }
 
-export async function declineAdditionalCharge(id: string, reason: string): Promise<AdditionalCharge> {
+export async function declineAdditionalCharge(id: string, reason: string, response: CustomerResponseInput): Promise<AdditionalCharge> {
   await mDelay();
   const charge = db.additionalCharges.find((c) => c.id === id);
   if (!charge) throw new Error("Charge not found");
@@ -185,13 +203,15 @@ export async function declineAdditionalCharge(id: string, reason: string): Promi
   charge.status = "declined";
   charge.declineReason = reason.trim();
   charge.customerRespondedAt = db.NOW_ISO;
+  charge.responseMethod = response.method;
+  charge.responseRecordedBy = response.recordedBy;
   // The original booking is untouched — work continues at the ORIGINAL scope.
 
   recordMutation({
     entityType: "additional_charge", entityId: id, entityName: charge.reference, action: "updated",
-    summary: `Additional charge ${charge.reference} declined — ${charge.declineReason}. Original scope continues unchanged.`,
+    summary: `Additional charge ${charge.reference} declined via ${RESPONSE_METHOD_LABEL[response.method]}, recorded by ${response.recordedBy} — ${charge.declineReason}. Original scope continues unchanged.`,
     before: { status: "sent_to_customer" },
-    after: { status: "declined", declineReason: charge.declineReason },
+    after: { status: "declined", declineReason: charge.declineReason, responseMethod: response.method, responseRecordedBy: response.recordedBy },
     notify: {
       type: "system",
       title: "Additional charge declined",
