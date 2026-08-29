@@ -28,6 +28,9 @@ import {
   ConfirmCompletionDialog, CancelBookingDialog, AssessmentPanel,
 } from "@/components/admin/service-workflow-dialogs";
 import { QuotationPanel } from "@/components/admin/quotation-panel";
+import { AdditionalChargesPanel } from "@/components/admin/additional-charges-panel";
+import { RaiseChargeDialog } from "@/components/admin/raise-charge-dialog";
+import { hasAdditionalCharges, agreedAdditionalTotal } from "@/lib/api/additional-charges";
 import { quotationForBooking } from "@/lib/api/catalogue";
 import { downloadPdf } from "@/lib/pdf/download";
 import { serviceInvoicePdf } from "@/lib/pdf/builders";
@@ -50,6 +53,7 @@ function DetailDialog({ id, onOpenChange, onDone, onWorkflow, refreshKey }: {
   const [busy, setBusy] = React.useState(false);
   const [assignee, setAssignee] = React.useState("");
   const [pendingStatus, setPendingStatus] = React.useState<ServiceBookingStatus>("new");
+  const [raising, setRaising] = React.useState<ServiceBooking | null>(null);
 
   React.useEffect(() => { if (data?.assignee) setAssignee(data.assignee); }, [data?.assignee]);
   React.useEffect(() => { if (data?.status) setPendingStatus(data.status); }, [data?.status]);
@@ -151,6 +155,37 @@ function DetailDialog({ id, onOpenChange, onDone, onWorkflow, refreshKey }: {
               </div>
               <AssessmentPanel booking={data} />
               <QuotationPanel bookingId={data.id} />
+              <AdditionalChargesPanel bookingId={data.id} onChanged={reload} />
+              {(() => {
+                /* Original Quote + Additional Charges = Total Value — the number the
+                   PM actually needs when a job grew mid-flight. */
+                const q = quotationForBooking(data.id);
+                const extra = agreedAdditionalTotal(data.id);
+                if (extra <= 0) return null;
+                // Catalogue-priced bookings have a quotation; assessment-priced ones
+                // (E3) carry their agreed figure on the booking itself. Both need the
+                // original-plus-extras breakdown.
+                const base = q?.total ?? data.invoiceAmount ?? data.assessedAmount ?? 0;
+                const currency = q?.currency ?? "UGX";
+                const money = (n: number) => `${currency} ${Math.round(n).toLocaleString("en-UG")}`;
+                return (
+                  <div className="rounded-xl border border-primary/30 bg-primary/5 p-4">
+                    <dl className="space-y-1.5 text-body">
+                      <div className="flex justify-between"><dt className="text-muted">Original quote</dt><dd className="text-foreground">{money(base)}</dd></div>
+                      <div className="flex justify-between"><dt className="text-muted">Additional charges</dt><dd className="text-foreground">+ {money(extra)}</dd></div>
+                      <div className="flex justify-between border-t border-primary/30 pt-1.5">
+                        <dt className="font-medium text-foreground">Total value</dt>
+                        <dd className="font-heading text-h3 font-semibold text-primary">{money(base + extra)}</dd>
+                      </div>
+                    </dl>
+                  </div>
+                );
+              })()}
+              {data.status === "in_progress" && (
+                <Button variant="outline" className="w-full" onClick={() => setRaising(data)}>
+                  Raise Additional Charge
+                </Button>
+              )}
 
               {/* Contextual primary action — drives the money workflow */}
               {(() => {
@@ -212,6 +247,8 @@ function DetailDialog({ id, onOpenChange, onDone, onWorkflow, refreshKey }: {
             </div>
           </>
         )}
+        <RaiseChargeDialog booking={raising} onOpenChange={(o) => !o && setRaising(null)}
+          onDone={() => { setRaising(null); reload(); onDone(); }} />
         <DialogFooter><DialogClose asChild><Button variant="outline">Close</Button></DialogClose></DialogFooter>
       </DialogContent>
     </Dialog>
@@ -265,13 +302,18 @@ export default function ServiceBookingsPage() {
       sortValue: (s) => s.quoteTotal ?? 0,
       render: (s) => {
         const q = quotationForBooking(s.id);
-        if (!q) return <span className="text-caption text-muted">—</span>;
-        const flagged = q.lines.some((l) => l.excludedFromTotal);
+        const flagged = !!q?.lines.some((l) => l.excludedFromTotal);
+        const extra = hasAdditionalCharges(s.id);
+        if (!q && !extra) return <span className="text-caption text-muted">—</span>;
         return (
-          <span className="inline-flex items-center justify-end gap-1.5">
-            <span className="tabular-nums font-medium text-foreground">{formatUGX(q.total)}</span>
+          <span className="inline-flex flex-wrap items-center justify-end gap-1.5">
+            {q
+              ? <span className="tabular-nums font-medium text-foreground">{formatUGX(q.total)}</span>
+              : <span className="text-caption text-muted">—</span>}
             {/* Items needing a separate quote are the ones an admin must chase. */}
             {flagged && <Badge className="border-accent/40 bg-surface-active text-foreground">Quote</Badge>}
+            {/* F2 — this booking grew after it was agreed. */}
+            {extra && <Badge className="border-primary/30 bg-primary/10 text-primary">+ Extra</Badge>}
           </span>
         );
       },

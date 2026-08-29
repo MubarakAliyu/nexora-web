@@ -324,6 +324,23 @@ export interface Payment {
   method: PaymentMethod;
   reference: string;
   status: PaymentStatus;
+
+  /* ---- F2.2: provider-facing payment state. `status` stays the coarse
+     completed/pending/failed the rest of the app already reads; `state` carries
+     the full five-state model the UI represents. ---- */
+  state?: PaymentState;
+  /** Gateway reference, distinct from our own `reference`. */
+  providerReference?: string;
+  /** Raw provider status string, for support to quote back. */
+  providerStatus?: string;
+  stateChangedAt?: string;
+  /** Why a payment failed, where the provider tells us. */
+  failureReason?: string;
+  currency?: CatalogueCurrency;
+  /** What this payment settles, beyond a rent invoice. */
+  serviceBookingId?: string;
+  maintenanceTicketId?: string;
+  additionalChargeId?: string;
 }
 
 export type ExpenseCategory =
@@ -797,3 +814,69 @@ export interface Quotation {
   acceptedAt: string;
   status: QuotationStatus;
 }
+
+/* ==================================================================
+ * ADDITIONAL WORK (F2)
+ *
+ * When a worker finds work beyond the agreed scope it is charged SEPARATELY —
+ * explicitly not hourly billing, which was considered and rejected. The original
+ * booking and its accepted quotation are never modified; the extra work hangs off
+ * them as its own record with its own approval and payment.
+ * ================================================================== */
+
+export type AdditionalChargeStatus =
+  | "proposed"
+  | "sent_to_customer"
+  | "accepted"
+  | "declined"
+  | "awaiting_payment"
+  | "paid"
+  | "cancelled";
+
+export interface AdditionalChargeLine {
+  itemId: string;
+  name: string;
+  unit: string;
+  quantity: number;
+  unitPrice: number;
+  lineTotal: number;
+}
+
+export interface AdditionalCharge {
+  id: string;
+  /** Derived from the booking, e.g. NX-SV-562735-AC1. */
+  reference: string;
+  /** The ORIGINAL booking. Never modified by anything here. */
+  bookingId: string;
+  description: string;
+  justification: string;
+  /** Catalogue-priced lines, where the extra work exists in the catalogue. */
+  items: AdditionalChargeLine[] | null;
+  /** For genuinely non-standard work with no catalogue entry. */
+  customAmount: number | null;
+  customDescription: string | null;
+  amount: number;
+  currency: CatalogueCurrency;
+  raisedBy: string;
+  raisedAt: string;
+  status: AdditionalChargeStatus;
+  customerRespondedAt: string | null;
+  declineReason: string | null;
+  invoiceId: string | null;
+  paidAt: string | null;
+}
+
+/* ==================================================================
+ * PAYMENT STATES (F2.2)
+ *
+ * The frontend REPRESENTS provider states. The backend owns initialization,
+ * verification, webhook handling and reconciliation — this is deliberately a
+ * display/state model, not a payment implementation.
+ * ================================================================== */
+
+export type PaymentState =
+  | "pending"
+  | "successful"
+  | "failed"
+  | "cancelled"
+  | "requires_verification";

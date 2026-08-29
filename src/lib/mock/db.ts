@@ -47,6 +47,7 @@ import type {
   ServiceCategory,
   CatalogueItem,
   Quotation,
+  AdditionalCharge,
   TicketCategory,
   TicketPriority,
   TicketStatus,
@@ -1181,6 +1182,8 @@ export const serviceCategories: ServiceCategory[] = [];
 export const catalogueItems: CatalogueItem[] = [];
 /** Accepted quotations (price-snapshotted). Empty until a customer accepts one. */
 export const quotations: Quotation[] = [];
+/** F2 — additional work charges, linked to but never modifying their booking. */
+export const additionalCharges: AdditionalCharge[] = [];
 
 function seedType(name: string, icon: string, description: string, bookingRoute: string | null, sortOrder: number) {
   const st: ServiceType = {

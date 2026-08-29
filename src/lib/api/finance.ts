@@ -12,6 +12,7 @@ import {
 import { hasSettlementForPeriod, defaultSettlementPeriod } from "@/lib/api/settlement";
 import { serviceRevenueCollected } from "@/lib/api/service-lifecycle";
 import { maintenanceRevenueCollected } from "@/lib/api/maintenance-liability";
+import { additionalChargeRevenue } from "@/lib/api/additional-charges";
 import type { ContractType } from "@/lib/mock/types";
 
 const mDelay = (ms = 400) => new Promise((r) => setTimeout(r, ms));
@@ -43,7 +44,7 @@ export async function getFinancialKpis(scope?: { forceError?: boolean }): Promis
   await mDelay();
   if (scope?.forceError) throw new Error("Failed to load financials.");
   const rentRevenue = db.payments.filter((p) => p.status === "completed").reduce((s, p) => s + p.amount, 0);
-  const serviceRevenue = serviceRevenueCollected();
+  const serviceRevenue = serviceRevenueCollected() + additionalChargeRevenue();
   let totalSettlements = 0, pendingPayouts = 0, nexoraEarnings = 0;
   for (const owner of db.owners) {
     const a = getAgreementForOwner(owner.id);
@@ -161,6 +162,20 @@ function allTransactions(): FinanceTxRow[] {
       reference: t.paymentReference ?? t.invoiceNumber ?? t.ref,
       entity: { label: t.ref, href: `/admin/maintenance?ticket=${t.id}` },
       propertyId: t.propertyId,
+    });
+  });
+
+  // F2: additional work paid for on top of an agreed booking. Revenue only once
+  // collected, and always traceable back to the parent booking.
+  db.additionalCharges.forEach((c) => {
+    if (c.status !== "paid") return;
+    const booking = db.serviceBookings.find((b) => b.id === c.bookingId);
+    rows.push({
+      id: `tx_${c.id}`, date: c.paidAt ?? c.raisedAt, kind: "Service Payment",
+      description: `Additional work — ${c.description}${booking ? ` (${booking.reference})` : ""}`,
+      amount: c.amount, direction: "in", status: "completed",
+      reference: c.reference,
+      entity: booking ? { label: booking.reference, href: `/admin/service-bookings?booking=${booking.id}` } : undefined,
     });
   });
 
