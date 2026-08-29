@@ -630,6 +630,66 @@ Invoice PDF now itemises from the snapshot.
 
 **Gate:** lint + `tsc --noEmit` clean · `npm run build` **warning-free, 86 static pages**.
 
+## Execution Batch F2 ✅ COMPLETE — Booking Routes, Additional Work, Payment States, Session Timeout
+
+**F2.0 — retired name-matched booking routes** (the risk flagged at the end of F1)
+The wizard matched a marketing category label to a service type BY NAME and fell back to
+the first active type on mismatch. Each `WizardCategory` now carries an explicit
+`serviceTypeRef`; `resolveBookingServiceType()` accepts only a slug or id, requires the type
+to be ACTIVE, and has **no fallback**. Slugs are now immutable across renames — they are
+identifiers public routes resolve against, not labels.
+
+| Route | Resolves by |
+|---|---|
+| `/book/cleaning` | all 7 marketing categories → slug `cleaning` |
+| `/book/lifestyle` | Laundry → `laundry`, Mobile Car Wash → `mobile-car-wash`; **Gardening & Lawn** and **Janitorial** deliberately carry no ref (no catalogue type yet) and show the empty state |
+| `/book/[slug]` | the resolved type's own slug |
+
+**F2.1 — additional work.** New `AdditionalCharge` entity linked to a booking but never
+modifying it. Explicitly not hourly billing. Raise dialog offers catalogue items (reusing
+the SAME generic selector as the public form) and/or a custom amount. Accept issues an
+invoice numbered from the charge reference; decline requires a reason and notifies admin +
+worker; payment notifies the worker they may proceed and writes a traceable service-revenue
+transaction. Booking detail shows Original Quote + Additional Charges = Total Value, and the
+table gains a "+ Extra" badge.
+
+**F2.2 — five payment states.** `pending | successful | failed | cancelled |
+requires_verification`, with the rule that **only `successful` settles an invoice**. Payment
+records store providerReference, providerStatus, stateChangedAt, currency, failureReason and
+what they settle. The tenant flow keeps its multi-step structure and gains four result
+screens. Admin gets a state column, filter, verification-queue banner, and Verify / Reject.
+
+**F2.3 — session inactivity.** 30-minute threshold, 2-minute warning, both configurable in
+one place and surfaced in Settings → Global. Countdown is a `setInterval` text update, not a
+state-driven animation. Modal is not dismissible by click-outside or Escape. Mounted in the
+app shell only, so the marketing site never runs it.
+
+### Verification — all 14 items
+
+| # | Check | Result |
+|---|---|---|
+| 1 | Routes resolve by ID/slug | Renamed **Cleaning → "Home & Office Cleaning"**; slug stayed `/cleaning` and `/book/cleaning` still priced correctly ✅ |
+| 2 | Unresolvable route | "Gardening & Lawn" showed **"This service is being updated."** rather than borrowing another service's prices ✅ |
+| 3 | Catalogue-item charge | **NX-SV-721732-AC1** raised (Kitchen ×1 = 25,000 + 15,000 custom = **UGX 40,000**) → accepted → invoice **INV-NX-SV-721732-AC1** → paid ref **MM-AC-884210** → transaction in Financial Overview linked to the parent booking ✅ |
+| 4 | Custom amount | Same charge combined both paths — 25,000 catalogue + 15,000 custom ✅ |
+| 5 | Decline path | Requires a reason; notifies admin + worker; original booking untouched ✅ |
+| 6 | Totals | **Original quote UGX 800,000 + Additional charges UGX 40,000 = Total value UGX 840,000** ✅ |
+| 7 | Five payment states | Filter counts: pending 1 · successful 10 · failed 1 · cancelled 1 · requires_verification 2 ✅ |
+| 8 | Verification queue | Banner "2 payments awaiting verification"; Verify → *"NX788235 — invoice marked paid"*; Reject with reason → *"The invoice remains unpaid."* ✅ |
+| 9 | Session warning | At a 15s test threshold: *"Your session will expire in 00:01 due to inactivity."* with live countdown; expiry → `/login` with *"Your session expired due to inactivity."* ✅ |
+| 10 | Not on marketing | 20s idle on `/` at a 15s threshold produced no warning ✅ |
+| 11 | Persistence | New records survive hard reload (see the version-bump note below) ✅ |
+| 12 | **F1 regression — price snapshot** | Booked **NX-SV-870564** at Bedroom 20,000 → repriced Bedroom to **47,000** → quotation still shows **UGX 20,000** ✅ |
+| 13 | Dark mode + 375px | Dialog 326px inside 375, no page overflow, steppers computed **44×44** ✅ |
+| 14 | Greps | lucide **0** · wallet **0** · raw red/green/blue in new files **0** ✅ |
+
+**Issue found and fixed during verification:** the payment-state seed was added without
+bumping `SCHEMA_VERSION`, so a persisted f2 snapshot hid the new states entirely — the
+filter returned zero rows for four of the five. Bumped to `f2b-2026-08-27`. **Any seed
+change needs a version bump**; that is the rule this broke.
+
+**Gate:** lint + `tsc --noEmit` clean · `npm run build` **warning-free, 86 static pages**.
+
 ## 🏁 PROJECT COMPLETE — final summary
 
 Nexora Property Management frontend is **complete** (mock-data). Single Next.js 15 app;
