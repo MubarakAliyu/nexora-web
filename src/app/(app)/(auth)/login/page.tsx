@@ -34,6 +34,17 @@ export default function LoginPage() {
   const router = useRouter();
   const setPending = useSession((s) => s.setPending);
   const [authError, setAuthError] = React.useState<string | null>(null);
+  /* F2.3 — the inactivity watchdog leaves a flag before redirecting here, so the
+     user is told why they were signed out rather than just finding a login page. */
+  const [expired, setExpired] = React.useState(false);
+  React.useEffect(() => {
+    try {
+      if (sessionStorage.getItem("nexora-session-expired")) {
+        setExpired(true);
+        sessionStorage.removeItem("nexora-session-expired");
+      }
+    } catch { /* private mode */ }
+  }, []);
   const {
     register,
     handleSubmit,
@@ -74,6 +85,11 @@ export default function LoginPage() {
       <p className="mt-2 text-body text-muted">Welcome back to the Nexora platform.</p>
 
       <form onSubmit={handleSubmit(onSubmit)} noValidate className="mt-8 space-y-4">
+        {expired && !authError && (
+          <div role="status" className="rounded-md border border-accent/40 bg-surface-hover px-3.5 py-2.5 text-body text-foreground">
+            Your session expired due to inactivity. Please sign in again.
+          </div>
+        )}
         {authError && (
           <div role="alert" className="rounded-md border border-primary/40 bg-primary/5 px-3.5 py-2.5 text-body text-foreground">
             {authError}

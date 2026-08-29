@@ -19,6 +19,7 @@ import { toast } from "@/components/ui/sonner";
 import { saveSettingsSection } from "@/lib/api/admin";
 import { RolesTab } from "@/components/admin/settings/roles-tab";
 import { AuditTab } from "@/components/admin/settings/audit-tab";
+import { SESSION_TIMEOUT_MINUTES, SESSION_WARNING_MINUTES } from "@/components/app/session-timeout";
 import { SecurityTab } from "@/components/admin/settings/security-tab";
 import { IntegrationsTab } from "@/components/admin/settings/integrations-tab";
 
@@ -80,7 +81,7 @@ function CompanyTab() {
 
 function GlobalTab() {
   const [busy, setBusy] = React.useState(false);
-  const [state, setState] = React.useState({ currency: "UGX", timezone: "Africa/Kampala", dateFormat: "DD MMM YYYY", grace: "5", dueDay: "1", urgentSla: "4", highSla: "24" });
+  const [state, setState] = React.useState({ currency: "UGX", timezone: "Africa/Kampala", dateFormat: "DD MMM YYYY", grace: "5", dueDay: "1", urgentSla: "4", highSla: "24", sessionTimeout: String(SESSION_TIMEOUT_MINUTES) });
   const set = (k: string, v: string) => setState((s) => ({ ...s, [k]: v }));
   const save = async () => { setBusy(true); await saveSettingsSection("global", "Updated global settings"); toast.success("Global settings saved"); setBusy(false); };
   return (
@@ -92,6 +93,23 @@ function GlobalTab() {
             <Field label="Currency" htmlFor="g-cur"><select id="g-cur" className={selectClass} value={state.currency} onChange={(e) => set("currency", e.target.value)}><option value="UGX">UGX</option><option value="USD">USD</option><option value="KES">KES</option></select></Field>
             <Field label="Timezone" htmlFor="g-tz"><select id="g-tz" className={selectClass} value={state.timezone} onChange={(e) => set("timezone", e.target.value)}><option>Africa/Kampala</option><option>Africa/Nairobi</option><option>UTC</option></select></Field>
             <Field label="Date format" htmlFor="g-df"><select id="g-df" className={selectClass} value={state.dateFormat} onChange={(e) => set("dateFormat", e.target.value)}><option>DD MMM YYYY</option><option>MM/DD/YYYY</option><option>YYYY-MM-DD</option></select></Field>
+          </div>
+        </div>
+        <div>
+          <h3 className="mb-3 font-heading text-h3 font-semibold text-foreground">Security</h3>
+          <div className="grid gap-4 sm:grid-cols-2">
+            <Field label="Session timeout (minutes)" htmlFor="g-session">
+              <select id="g-session" className={selectClass} value={state.sessionTimeout}
+                onChange={(e) => set("sessionTimeout", e.target.value)}>
+                <option value="15">15</option>
+                <option value="30">30</option>
+                <option value="60">60</option>
+              </select>
+              <p className="mt-1 text-caption text-muted">
+                Users are warned {SESSION_WARNING_MINUTES} minutes before expiry. The backend will
+                enforce actual session validity once integrated; duration pending stakeholder confirmation.
+              </p>
+            </Field>
           </div>
         </div>
         <div>

@@ -42,6 +42,7 @@ import { useSession } from "@/lib/stores/session";
 import { useUI } from "@/lib/stores/ui";
 import { useTheme } from "@/lib/stores/theme";
 import { useNotifications } from "@/lib/stores/notifications";
+import { SessionTimeout } from "@/components/app/session-timeout";
 import { portalForRole, roleLabels } from "@/lib/roles";
 import type { NotificationAudience } from "@/lib/api/notifications";
 import { cn } from "@/lib/utils";
@@ -148,6 +149,8 @@ export function AppShell({ children }: { children: React.ReactNode }) {
 
   return (
     <div className="flex min-h-screen bg-surface-sunken">
+      {/* Authenticated routes only — the marketing site never mounts this. */}
+      <SessionTimeout />
       {/* Desktop sidebar */}
       <div className="hidden lg:block">
         <Sidebar
