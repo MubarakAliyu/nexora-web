@@ -290,11 +290,19 @@ export function getMaintenanceSummary(from?: string, to?: string): MaintenanceSu
     if (to && d > to) return false;
     return true;
   };
-  const rows = db.tickets.filter((t) => t.liability && t.cost && (!from && !to ? true : inRange(t.closedAt ?? t.updatedAt)));
-  const sum = (l: TicketLiability) => rows.filter((t) => t.liability === l).reduce((s, t) => s + (t.cost ?? 0), 0);
-  const count = (l: TicketLiability) => rows.filter((t) => t.liability === l).length;
+  /* F3 — a ticket routed but not yet closed is a committed cost: it has a payer
+     (`chargeTo`) and an estimate (`assessedCost`) even though `liability` and `cost`
+     only arrive at closure. Counting only closed tickets made the awaiting-payment
+     figure impossible to reach. */
+  const payer = (t: MaintenanceTicket) => t.liability ?? t.chargeTo ?? null;
+  const amountOf = (t: MaintenanceTicket) => t.cost ?? t.assessedCost ?? 0;
+  const rows = db.tickets.filter(
+    (t) => payer(t) && amountOf(t) > 0 && (!from && !to ? true : inRange(t.closedAt ?? t.updatedAt)),
+  );
+  const sum = (l: TicketLiability) => rows.filter((t) => payer(t) === l).reduce((s, t) => s + amountOf(t), 0);
+  const count = (l: TicketLiability) => rows.filter((t) => payer(t) === l).length;
   return {
-    totalCost: rows.reduce((s, t) => s + (t.cost ?? 0), 0),
+    totalCost: rows.reduce((s, t) => s + amountOf(t), 0),
     owner: { amount: sum("owner"), count: count("owner") },
     tenant: {
       amount: sum("tenant"),

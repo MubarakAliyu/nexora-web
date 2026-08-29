@@ -135,9 +135,9 @@ function TicketCard({ t, onClick }: { t: MaintenanceTicket; onClick: () => void 
         </p>
       )}
       {/* Closed cards carry the outcome the PM asked for: who paid, and whether they have. */}
-      {t.liability && (
+      {(t.liability || t.chargeTo) && (
         <div className="mt-2 flex flex-wrap items-center gap-1.5 border-t border-border pt-2">
-          <LiabilityBadge liability={t.liability} />
+          <LiabilityBadge liability={t.liability ?? t.chargeTo} />
           <span className="text-caption text-muted">{formatUGX(t.cost ?? 0)}</span>
           {t.paymentStatus === "awaiting_payment" && <span className="text-caption font-medium text-primary">· Awaiting payment</span>}
         </div>
@@ -209,7 +209,7 @@ export default function MaintenancePage() {
     },
     { key: "assignee", header: "Technician", render: (t) => t.assignee ?? <span className="text-muted">Unassigned</span> },
     { key: "cost", header: "Cost", align: "right", render: (t) => (t.cost ? formatUGX(t.cost) : "—") },
-    { key: "liability", header: "Liability", sortable: true, sortValue: (t) => t.liability ?? "", render: (t) => <LiabilityBadge liability={t.liability} /> },
+    { key: "liability", header: "Liability", sortable: true, sortValue: (t) => t.liability ?? t.chargeTo ?? "", render: (t) => <LiabilityBadge liability={t.liability ?? t.chargeTo} /> },
     {
       key: "paymentStatus", header: "Payment", sortable: true, sortValue: (t) => t.paymentStatus ?? "",
       render: (t) =>
@@ -280,7 +280,7 @@ export default function MaintenancePage() {
               { header: "Status", accessor: (t) => t.status },
               { header: "Assignee", accessor: (t) => t.assignee ?? "" },
               { header: "Cost", accessor: (t) => t.cost ?? "" },
-              { header: "Liability", accessor: (t) => (t.liability ? LIABILITY_LABEL[t.liability] : "") },
+              { header: "Liability", accessor: (t) => { const p = t.liability ?? t.chargeTo; return p ? LIABILITY_LABEL[p] : ""; } },
               { header: "Liability reason", accessor: (t) => t.liabilityReason ?? "" },
               { header: "Invoice", accessor: (t) => t.invoiceNumber ?? "" },
               { header: "Payment status", accessor: (t) => t.paymentStatus ?? "" },

@@ -11,7 +11,7 @@ import {
 } from "@/lib/api/agreements";
 import { hasSettlementForPeriod, defaultSettlementPeriod } from "@/lib/api/settlement";
 import { serviceRevenueCollected } from "@/lib/api/service-lifecycle";
-import { maintenanceRevenueCollected } from "@/lib/api/maintenance-liability";
+import { maintenanceRevenueCollected, billedToTenant } from "@/lib/api/maintenance-liability";
 import { additionalChargeRevenue } from "@/lib/api/additional-charges";
 import type { ContractType } from "@/lib/mock/types";
 
@@ -153,7 +153,9 @@ function allTransactions(): FinanceTxRow[] {
   // E4: maintenance charges the tenant actually paid. Only settled charges appear —
   // an unpaid invoice is a receivable, not revenue.
   db.tickets.forEach((t) => {
-    if (t.liability !== "tenant" || t.paymentStatus !== "paid") return;
+    // F3 — a ticket routed to the tenant and PAID is collected revenue even before
+    // it closes, when only `chargeTo` is set. Reading `liability` alone hid real money.
+    if (!billedToTenant(t) || t.paymentStatus !== "paid") return;
     const tenant = db.tenants.find((x) => x.id === t.tenantId);
     rows.push({
       id: `tx_${t.id}`, date: t.paidAt ?? t.closedAt ?? t.updatedAt, kind: "Maintenance Revenue",
