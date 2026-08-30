@@ -46,7 +46,12 @@ export default function RootLayout({
   children: React.ReactNode;
 }>) {
   return (
-    <html lang="en">
+    // suppressHydrationWarning: the blocking script below deliberately adds
+    // class="dark" to <html> before React hydrates, so the client tree differs
+    // from the server tree BY DESIGN. Without it React logs a hydration mismatch
+    // on every dashboard page load in dark mode. It covers this element's own
+    // attributes only, not the tree inside it.
+    <html lang="en" suppressHydrationWarning>
       <head>
         {/* Apply the persisted theme before paint on dashboard routes only, so a
             hard reload doesn't flash light→dark (marketing stays light-only). */}
