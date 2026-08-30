@@ -47,12 +47,41 @@ const STEPS: { key: string; label: string }[] = [
   { key: "in_progress", label: "In progress" },
   { key: "completed", label: "Completed" },
 ];
-const ORDER: Record<string, number> = { open: 0, assigned: 1, in_progress: 2, completed: 3, closed: 3 };
+/**
+ * F3 added statuses between "assigned" and work actually starting — assessment,
+ * owner approval, tenant payment. None of them mean a technician has begun, so they
+ * all rest on "Assigned to technician". Without them here they fell through to the
+ * `?? 0` default and an assessed ticket still read "Submitted" to the tenant.
+ */
+const ORDER: Record<string, number> = {
+  open: 0,
+  assigned: 1, assessed: 1, awaiting_owner_approval: 1,
+  awaiting_tenant_payment: 1, owner_approved: 1, scheduled: 1,
+  in_progress: 2, completed: 3, closed: 3,
+};
+
+/**
+ * A repair that was declined never happened. It reaches the tenant as `closed`,
+ * which shared a slot with `completed` — so the tenant was shown "In progress: Done"
+ * and "Completed" for work nobody ever did. It gets its own ending, worded without
+ * saying why: the owner's reason is between Nexora and the owner.
+ */
+const NOT_PROCEEDING_STEPS: { key: string; label: string }[] = [
+  { key: "open", label: "Submitted" },
+  { key: "assigned", label: "Assigned to technician" },
+  { key: "assessed", label: "Assessed" },
+  { key: "not_proceeding", label: "Not proceeding at present" },
+];
+
+const isNotProceeding = (t: MaintenanceTicket) =>
+  t.status === "owner_declined" || (t.status === "closed" && t.ownerApprovalStatus === "declined");
 
 function TicketDetailDialog({ ticket, onOpenChange, onPay }: {
   ticket: MaintenanceTicket | null; onOpenChange: (o: boolean) => void; onPay: (t: MaintenanceTicket) => void;
 }) {
-  const current = ticket ? ORDER[ticket.status] ?? 0 : 0;
+  const stalled = !!ticket && isNotProceeding(ticket);
+  const steps = stalled ? NOT_PROCEEDING_STEPS : STEPS;
+  const current = ticket ? (stalled ? steps.length - 1 : ORDER[ticket.status] ?? 0) : 0;
   return (
     <Dialog open={!!ticket} onOpenChange={onOpenChange}>
       <DialogContent className="max-h-[90vh] overflow-y-auto">
@@ -72,7 +101,7 @@ function TicketDetailDialog({ ticket, onOpenChange, onPay }: {
             <div>
               <p className="mb-3 text-caption font-medium uppercase tracking-wide text-muted">Status timeline</p>
               <Timeline>
-                {STEPS.map((s, i) => (
+                {steps.map((s, i) => (
                   <TimelineItem key={s.key} title={s.label} icon={i <= current ? <CheckCircle size={11} /> : <Clock size={11} />}
                     time={i === current ? fromNow(ticket.updatedAt, NOW_ISO) : ""}>
                     <span className={cn("text-caption", i <= current ? "text-primary" : "text-muted")}>{i < current ? "Done" : i === current ? "Current" : "Pending"}</span>
