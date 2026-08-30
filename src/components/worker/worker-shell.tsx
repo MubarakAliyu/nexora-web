@@ -75,13 +75,17 @@ export function WorkerShell({ children }: { children: React.ReactNode }) {
     return () => el.classList.remove("dark");
   }, [theme]);
 
-  React.useEffect(() => { setAudience("worker"); }, [setAudience]);
-
   const member = React.useMemo(
     () => staffForUser(user?.id, user?.staffId),
     // eslint-disable-next-line react-hooks/exhaustive-deps
     [user?.id, user?.staffId, revision, mounted],
   );
+
+  /* Scope the bell to THIS worker, not every worker — see AppNotification's
+     recipientStaffId. */
+  React.useEffect(() => {
+    setAudience("worker", member?.id ?? null);
+  }, [setAudience, member?.id]);
 
   if (!mounted || !user || user.role !== ROLE_SERVICE_WORKER) return null;
 

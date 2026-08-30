@@ -288,7 +288,7 @@ export async function payMaintenanceCharge(
   if (releasedForWork) {
     // Admin and the assigned technician both need to know work is unblocked.
     pushNotify("maintenance", "Payment received — work may proceed",
-      `Payment received — work may proceed on ${t.ref}, ${uLabel(t.unitId)}.`, "ticket", ticketId, "updated", ["admin", "worker"]);
+      `Payment received — work may proceed on ${t.ref}, ${uLabel(t.unitId)}.`, "ticket", ticketId, "updated", ["admin", "worker"], t.assigneeId);
   }
   return t;
 }

@@ -137,7 +137,7 @@ export async function grantPortalAccess(
   pushNotify(
     "system", "Welcome to Nexora",
     `Your Nexora worker account is ready. Sign in with ${email} using the temporary password you were given, then set your own.`,
-    "staff", staffId, "created", ["worker"],
+    "staff", staffId, "created", ["worker"], staffId,
   );
   return { tempPassword, email, member };
 }

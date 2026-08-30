@@ -18,7 +18,12 @@ export interface RecordInput {
   summary: string;
   before?: Record<string, unknown>;
   after?: Record<string, unknown>;
-  notify?: { type: NotificationType; title: string; body: string; audiences?: NotificationAudience[] } | false;
+  notify?: {
+    type: NotificationType; title: string; body: string;
+    audiences?: NotificationAudience[];
+    /** Narrow to ONE person within the audience (see AppNotification). */
+    recipientStaffId?: string;
+  } | false;
 }
 
 export function recordMutation(input: RecordInput): void {

@@ -26,8 +26,10 @@ export function pushNotify(
   action = "updated",
   /** Restrict who may see it. Omit for the usual "everyone" behaviour. */
   audiences?: NotificationAudience[],
+  /** Narrow to ONE person within that audience (worker job notifications). */
+  recipientStaffId?: string,
 ) {
-  useNotifications.getState().pushSystem({ type, title, body, entityType, entityId, action, audiences });
+  useNotifications.getState().pushSystem({ type, title, body, entityType, entityId, action, audiences, recipientStaffId });
 }
 
 const money = (n: number) => `UGX ${Math.round(n).toLocaleString("en-UG")}`;
@@ -664,7 +666,7 @@ export async function updateStaff(
   });
   // D3 — notify the staff member when their account is deactivated.
   if (member.status === "suspended" && before.status !== "suspended") {
-    pushNotify("system", "Account deactivated", "Your Nexora account has been deactivated. Contact an administrator for access.", "staff", id, "updated", ["worker"]);
+    pushNotify("system", "Account deactivated", "Your Nexora account has been deactivated. Contact an administrator for access.", "staff", id, "updated", ["worker"], id);
   }
   return member;
 }
@@ -819,7 +821,7 @@ export async function cycleStaffAvailability(id: string): Promise<Staff> {
     notify: false,
   });
   // D3 — staff availability-changed notification.
-  pushNotify("system", "Availability changed", `Your availability was set to ${member.availability}.`, "staff", id, "updated", ["worker"]);
+  pushNotify("system", "Availability changed", `Your availability was set to ${member.availability}.`, "staff", id, "updated", ["worker"], id);
   return member;
 }
 

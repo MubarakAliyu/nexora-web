@@ -12,6 +12,8 @@ export interface SystemNotificationInput {
   body: string;
   /** Restrict who may see this. Undefined = everyone (the usual case). */
   audiences?: NotificationAudience[];
+  /** Narrows to one person within the audience (see AppNotification). */
+  recipientStaffId?: string;
   entityType?: string;
   entityId?: string;
   action?: string;
@@ -20,12 +22,14 @@ export interface SystemNotificationInput {
 
 interface NotificationsState {
   audience: NotificationAudience;
+  /** The signed-in person's Staff id, when the portal is per-person (worker). */
+  recipientStaffId: string | null;
   items: AppNotification[];
   /** Notifications raised at runtime by actions. Kept separately so they survive an
    *  audience switch (which re-clones the seeded feed) and can be persisted. */
   systemItems: AppNotification[];
   /** Point the bell + list at a portal's notifications (called by the shell). */
-  setAudience: (audience: NotificationAudience) => void;
+  setAudience: (audience: NotificationAudience, recipientStaffId?: string | null) => void;
   unreadCount: () => number;
   markRead: (id: string) => void;
   markAllRead: () => void;
@@ -40,9 +44,20 @@ let sysSeq = 0;
 const clone = (audience: NotificationAudience) =>
   notificationsByAudience[audience].map((n) => ({ ...n }));
 
-/** Runtime notifications visible to one audience. */
-const visibleTo = (list: AppNotification[], audience: NotificationAudience) =>
-  list.filter((n) => !n.audiences || n.audiences.includes(audience));
+/**
+ * Runtime notifications visible to one audience — and, where the notification
+ * names a recipient, only to that person.
+ */
+const visibleTo = (
+  list: AppNotification[],
+  audience: NotificationAudience,
+  recipientStaffId: string | null,
+) =>
+  list.filter((n) => {
+    if (n.audiences && !n.audiences.includes(audience)) return false;
+    if (n.recipientStaffId && n.recipientStaffId !== recipientStaffId) return false;
+    return true;
+  });
 
 const markIn = (list: AppNotification[], id: string) =>
   list.map((n) => (n.id === id ? { ...n, status: "read" as const, read_at: new Date().toISOString() } : n));
@@ -63,13 +78,18 @@ const markAllIn = (list: AppNotification[]) =>
  */
 export const useNotifications = create<NotificationsState>((set, get) => ({
   audience: "admin",
+  recipientStaffId: null,
   items: clone("admin"),
   systemItems: [],
-  setAudience: (audience) =>
+  setAudience: (audience, recipientStaffId = null) =>
     set((s) =>
-      s.audience === audience
+      s.audience === audience && s.recipientStaffId === recipientStaffId
         ? {}
-        : { audience, items: [...visibleTo(s.systemItems, audience), ...clone(audience)] },
+        : {
+            audience,
+            recipientStaffId,
+            items: [...visibleTo(s.systemItems, audience, recipientStaffId), ...clone(audience)],
+          },
     ),
   unreadCount: () => get().items.filter((n) => n.status !== "read").length,
   markRead: (id) =>
@@ -92,9 +112,12 @@ export const useNotifications = create<NotificationsState>((set, get) => ({
         action: n.action,
         actor: n.actor,
         audiences: n.audiences,
+        recipientStaffId: n.recipientStaffId,
       };
       // Only surface it in the live list if the current audience is allowed to see it.
-      const visible = !entry.audiences || entry.audiences.includes(s.audience);
+      const visible =
+        (!entry.audiences || entry.audiences.includes(s.audience))
+        && (!entry.recipientStaffId || entry.recipientStaffId === s.recipientStaffId);
       return {
         items: visible ? [entry, ...s.items] : s.items,
         systemItems: [entry, ...s.systemItems],
@@ -104,6 +127,6 @@ export const useNotifications = create<NotificationsState>((set, get) => ({
     set((s) => {
       if (systemItems.length === 0) return {};
       const seeded = s.items.filter((n) => !n.id.startsWith("sys_"));
-      return { systemItems, items: [...visibleTo(systemItems, s.audience), ...seeded] };
+      return { systemItems, items: [...visibleTo(systemItems, s.audience, s.recipientStaffId), ...seeded] };
     }),
 }));

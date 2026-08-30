@@ -1360,7 +1360,7 @@ export async function initiateMoveOut(id: string, input: { moveOutDate: string; 
   });
   pushNotify("lease", "Your move-out has been initiated", `Your move-out has been initiated. An inspection is scheduled for ${_dateOf(input.inspectionDate)}.`, "lease", id, "updated", ["tenant"]);
   // Directed at the assigned inspector, not the owner or the tenant.
-  pushNotify("maintenance", "Exit inspection assigned", `You've been assigned an exit inspection at ${unit?.label ?? "a unit"}, ${propName} on ${_dateOf(input.inspectionDate)}.`, "lease", id, "updated", ["worker"]);
+  pushNotify("maintenance", "Exit inspection assigned", `You've been assigned an exit inspection at ${unit?.label ?? "a unit"}, ${propName} on ${_dateOf(input.inspectionDate)}.`, "lease", id, "updated", ["worker"], lease.inspectorId);
   return lease;
 }
 

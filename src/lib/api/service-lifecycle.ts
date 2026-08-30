@@ -216,7 +216,7 @@ export async function recordServicePayment(id: string, input: ServicePaymentInpu
     "service-booking", id, "updated", ["tenant"]);
   if (full && sb.assignee) {
     pushNotify("system", "Payment confirmed — you may proceed",
-      `Payment confirmed for ${sb.reference} — you may proceed with the job.`, "service-booking", id, "updated", ["admin", "worker"]);
+      `Payment confirmed for ${sb.reference} — you may proceed with the job.`, "service-booking", id, "updated", ["admin", "worker"], sb.assigneeId);
   }
   return sb;
 }
@@ -234,7 +234,8 @@ export async function startServiceWork(id: string): Promise<ServiceBooking> {
     notify: { type: "system", title: "Work started", body: `${sb.category} for ${sb.name} is now in progress.` },
   });
   pushNotify("system", "Work has started", `Work has started on your ${sb.category.toLowerCase()}.`, "service-booking", id, "updated", ["tenant"]);
-  if (sb.assignee) pushNotify("system", "Job started", `${sb.reference} — ${sb.category} is now in progress.`, "service-booking", id, "updated", ["admin", "worker"]);
+  // Scoped to the assigned worker — other workers have no business seeing it.
+  if (sb.assignee) pushNotify("system", "Job started", `${sb.reference} — ${sb.category} is now in progress.`, "service-booking", id, "updated", ["admin", "worker"], sb.assigneeId);
   return sb;
 }
 
@@ -270,7 +271,7 @@ export async function confirmServiceCompletion(id: string, confirmedBy: string):
   });
   pushNotify("system", "Your service has been completed",
     `Your ${sb.category.toLowerCase()} has been completed. Thank you for choosing Nexora.`, "service-booking", id, "updated", ["tenant"]);
-  if (sb.assignee) pushNotify("system", "Job confirmed", `Job confirmed — ${sb.reference}.`, "service-booking", id, "updated", ["admin", "worker"]);
+  if (sb.assignee) pushNotify("system", "Job confirmed", `Job confirmed — ${sb.reference}.`, "service-booking", id, "updated", ["admin", "worker"], sb.assigneeId);
   return sb;
 }
 
@@ -287,7 +288,7 @@ export async function rejectServiceCompletion(id: string, reason: string): Promi
   });
   // Trim any trailing punctuation so the sentence doesn't end in a double period.
   const cleanReason = reason.trim().replace(/\.+$/, "");
-  if (sb.assignee) pushNotify("system", "Completion rejected", `Completion rejected — ${cleanReason}. Please review.`, "service-booking", id, "updated", ["admin", "worker"]);
+  if (sb.assignee) pushNotify("system", "Completion rejected", `Completion rejected — ${cleanReason}. Please review.`, "service-booking", id, "updated", ["admin", "worker"], sb.assigneeId);
   return sb;
 }
 

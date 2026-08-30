@@ -31,6 +31,15 @@ export interface AppNotification {
    * which is between Nexora and the owner and must never reach the tenant.
    */
   audiences?: NotificationAudience[];
+  /**
+   * Narrows a notification to ONE person within its audience.
+   *
+   * The "worker" audience is every service worker. A job notification is about
+   * one worker's job, so without this every worker's bell carried every other
+   * worker's references — the F4 analogue of the F3 audience leak. Undefined
+   * means "everyone in the audience", which is right for announcements.
+   */
+  recipientStaffId?: string;
   entityType?: string;
   entityId?: string;
   action?: string;

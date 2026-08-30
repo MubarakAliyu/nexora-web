@@ -230,6 +230,7 @@ export async function declineAdditionalCharge(id: string, reason: string, respon
       charge.bookingId,
       "updated",
       ["admin", "worker"],
+      booking.assigneeId,
     );
   }
   return charge;
@@ -290,6 +291,7 @@ export async function payAdditionalCharge(id: string, input: ChargePaymentInput)
       charge.bookingId,
       "updated",
       ["admin", "worker"],
+      booking.assigneeId,
     );
   }
   return charge;

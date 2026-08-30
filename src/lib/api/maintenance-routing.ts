@@ -470,7 +470,7 @@ export async function markTenantPaidAndSchedule(id: string): Promise<Maintenance
   });
   if (t.assignee) {
     pushNotify("maintenance", "Work may proceed",
-      `Payment received — work may proceed on ${t.ref}, ${uLabel(t.unitId)}.`, "ticket", id, "updated", ["admin", "worker"]);
+      `Payment received — work may proceed on ${t.ref}, ${uLabel(t.unitId)}.`, "ticket", id, "updated", ["admin", "worker"], t.assigneeId);
   }
   return t;
 }
