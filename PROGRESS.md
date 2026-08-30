@@ -690,36 +690,90 @@ change needs a version bump**; that is the rule this broke.
 
 **Gate:** lint + `tsc --noEmit` clean · `npm run build` **warning-free, 86 static pages**.
 
-## Execution Batch F3 — IN PROGRESS (features complete; verification 4/20 remaining items)
+## Execution Batch F3 — Maintenance Payer Routing & Owner Approval ✅ COMPLETE
 
-**RESUME HERE: verification items 6, 7, 8, 10, 13, 14, 15, 17, 18, 19, 20 + the build gate.**
-No unbuilt features. Three defects found and fixed during verification so far.
+**Gate:** lint + `tsc --noEmit` clean · `npm run build` **warning-free, 87 static pages**.
 
-**Verification results so far**
+The payer decision moved from CLOSURE (E4) to just after ASSESSMENT and before any work, with
+owner-liable work above a configurable threshold gated on the owner's approval. E4's three
+financial branches at closure are unchanged.
+
+**Verification — all 20 items**
+
 | # | Item | Result |
 |---|---|---|
-| 1 | Payment picker hidden by default | ✅ `devPickerVisible=false` in the tenant pay dialog |
+| 1 | Payment picker hidden by default | ✅ dual guard: `NEXT_PUBLIC_DEV_PAYMENTS=1` or `?devPayment=1` |
 | 2 | Non-tenant approval captures method + recorder | ✅ (F2 housekeeping) |
 | 3 | Assessment on an assigned ticket | ✅ TKT-0024 → `assessed`, "UGX 770K estimated" |
-| 4 | **Tenant routing end-to-end** | ✅ TKT-0027 created on Mubarak's A-407 → assessed **UGX 200,000** → routed to Tenant → invoice **INV-TKT-0027** → tenant paid **MPY-37403682**. Release verified separately on seeded **TKT-0013** → paid `MM-TKT13-5521` → status **`scheduled`** |
-| 5 | Owner above threshold → approve | ✅ TKT-0023, UGX 850K, badge → alert → card → approve |
+| 4 | Tenant routing end-to-end | ✅ assessed → routed → invoiced → paid → released to `scheduled` |
+| 5 | Owner above threshold → approve | ✅ badge → alert → card → approve |
+| 6 | **Privacy boundary** | ✅ after 2 fixes — decline reason and owner identity absent from every tenant surface |
+| 7 | Owner below threshold | ✅ UGX 300K → straight to `scheduled`, `not_required`, no invoice, owner *told* not asked, absent from /owner/approvals |
+| 8 | Nexora absorbed | ✅ → `scheduled`, no invoice, no approval record, tenant told "at no cost to you" |
 | 9 | Override gating | ✅ block appears, submit disabled until justified |
+| 10 | Threshold config | ✅ after a fix — toast + admin-scoped notification + audit; Property Manager blocked; new value changes suggestions and survives reload |
+| 11 | Suggestion never pre-selects | ✅ `preselected=0` at every routing dialog opened this session |
 | 12 | Waiting time + 48h flag | ✅ "Awaiting owner approval — 2 days" |
+| 13 | Closure variance | ✅ payer + reason pre-filled from routing; live "Assessed UGX 1.2M, actual UGX 1.4M — variance +UGX 166K"; over-run warning; change-reason required only when the payer differs |
+| 14 | **E4 financial regression** | ✅ all three branches exact — see below |
+| 15 | Transition gating | ✅ after a fix — `assessed→in_progress`, `awaiting_owner_approval→scheduled` and `awaiting_tenant_payment→scheduled` all blocked with hints |
 | 16 | Board columns | ✅ 8 columns, routing branches share one Awaiting column |
+| 17 | Persistence across hard reload | ✅ records + threshold survive; version `f3-2026-08-30`, no stale snapshot |
+| 18 | Cross-batch regression | ✅ 47/47 routes render clean; F1 price-snapshot re-proven |
+| 19 | Dark mode + 375px | ✅ after a fix — routing/assessment/closure modals, /owner/approvals, 8-column board; zero console errors |
+| 20 | Greps | ✅ 0 lucide, 0 non-Flowbite icon libs, six-token palette held, no raw colours in F3 files |
 
-**Defects found and fixed during verification**
-1. `f09448c` — **F3-routed tenant charges were invisible to the tenant.** Every tenant-facing
-   filter keyed off `liability` (set at closure) rather than `chargeTo` (set at routing), so a
-   live invoice the tenant had to pay before work could start appeared nowhere. Added a shared
-   `billedToTenant()` predicate accepting either.
-2. `467ae9a` — **Paying a routed charge did not release the work.** `payMaintenanceCharge`
-   recorded the money but left the ticket in `awaiting_tenant_payment`; nobody was told work
-   could start. Payment now advances to `scheduled` and notifies admin + technician.
-3. `b17ba0d` — **Admin panel had the same `liability`-only assumption**, hiding the invoice
-   panel, the Record Manual Payment action, the badge and the filter for routed tickets.
+**Item 14 — E4 financial regression, Salim Kato's settlement (exact figures)**
 
-These three share one root cause worth remembering: **F3 moved the payer decision earlier, so
-any code that asks "who pays?" must read `chargeTo` as well as `liability`.**
+Baseline: gross 113,650,000 · commission 17,047,500 · expenses 17,850,000 · **net 78,752,500**
+
+| Branch | Amount | Result |
+|--------|--------|--------|
+| Owner-liable (TKT-0028, approved by owner, closed) | 1,400,000 | expenses → 19,250,000, **net → 77,352,500** — down by *exactly* the actual cost |
+| Nexora-absorbed (TKT-0029, on Salim's own property) | 2,345,000 | expenses 19,250,000, **net 77,352,500** — *unmoved* |
+| Tenant-liable (TKT-0027, paid then closed) | 3,456,000 | settlement at pristine baseline; **Maintenance Revenue 0 → +UGX 3,456,000** ref MPY-82149228 |
+
+E4's structural guarantee holds: the Nexora expense still writes `propertyId: ""`.
+
+**Defects found and fixed during verification (10)**
+
+*The `liability` vs `chargeTo` family — F3 moved the payer decision earlier, and every READ
+path built against the old model silently filtered the new data out:*
+1. `f09448c` — F3-routed tenant charges invisible to the tenant.
+2. `467ae9a` — paying a routed charge did not release the work.
+3. `b17ba0d` — admin panel had the same assumption.
+4. `8943603` — sweep: Maintenance Revenue ledger, summary cards, board card / table / CSV.
+
+*The privacy family — the write path was right, the delivery was not:*
+5. `267202d` — the owner's decline reason reached the **tenant's** notification bell. Root cause
+   was documented store behaviour: runtime notifications ride along on every audience. Added an
+   `audiences` restriction + `visibleTo()` filter.
+6. `947bfe1` — F3's internal operational notifications ("sent to Salim Kato for approval",
+   "UGX 1,050,000 estimated") also reached the tenant. Every `recordMutation` notify in
+   maintenance-routing.ts is now audience-scoped.
+
+*Pre-F3 status set assumed elsewhere:*
+7. `4989447` — the tenant's timeline showed a **declined** repair as "In progress: Done /
+   Completed" — work nobody ever did.
+8. `eb63a47` — StatusBadge printed raw keys (`scheduled`) for all six statuses F3 added.
+
+*Gates and money:*
+9. `5bd77ac` — **closing a tenant-liable ticket billed the tenant a second time.** Two invoices
+   shared one number, the ticket pointed at the unpaid duplicate, and the money actually
+   collected vanished from the ledger. Closure now reconciles instead of re-issuing.
+10. `eb14ce3` — admin could start work on an unpaid charge via the status dropdown.
+11. `3fe97de` — the approval threshold lived in a module `let` and reverted on every page load,
+    so the batch's central gate was not actually configurable. Moved into persisted
+    `appSettings`; SCHEMA_VERSION → `f3-2026-08-30`.
+12. `58d4555` — hydration mismatch logged on every dashboard page in dark mode (pre-existing;
+    the theme script mutates `<html>` before hydration and needed `suppressHydrationWarning`).
+
+**Lesson to carry into F4 (worker assignment moves):** when a decision moves earlier in a
+lifecycle, the write path is the easy half. Every read path — filters, badges, exports,
+summaries, ledgers, timelines, label maps — was built against the old shape and will keep
+compiling while silently dropping the new data. Grep every consumer, not just the producer.
+
+Nothing was removed. All F3 features remain in place.
 
 ## 🏁 PROJECT COMPLETE — final summary
 
