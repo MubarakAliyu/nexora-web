@@ -59,6 +59,15 @@ const STATUS: Record<string, { label: string; tone: Tone }> = {
   assigned: { label: "Assigned", tone: "neutral" },
   in_progress: { label: "In progress", tone: "neutral" },
   closed: { label: "Closed", tone: "good" },
+  // F3 — the statuses added between assessment and work starting. Without them the
+  // fallback below printed the raw key, so a tenant looking at their own repair saw
+  // "awaiting_tenant_payment" where every other row read "Closed".
+  assessed: { label: "Assessed", tone: "neutral" },
+  awaiting_owner_approval: { label: "Awaiting owner approval", tone: "warn" },
+  owner_approved: { label: "Owner approved", tone: "good" },
+  owner_declined: { label: "Not proceeding", tone: "bad" },
+  awaiting_tenant_payment: { label: "Awaiting payment", tone: "bad" },
+  scheduled: { label: "Scheduled", tone: "neutral" },
   // tenants
   past: { label: "Past", tone: "warn" },
   // leads
