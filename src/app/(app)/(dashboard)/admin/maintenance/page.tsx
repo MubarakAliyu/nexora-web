@@ -2,7 +2,7 @@
 
 import * as React from "react";
 import Link from "next/link";
-import { Grid, ClipboardList, MapPin, UserCircle, Plus, PenNib, TrashBin, CheckCircle, FileLines, CashRegister, ChartMixed } from "flowbite-react-icons/outline";
+import { Grid, ClipboardList, MapPin, UserCircle, Plus, PenNib, TrashBin, CheckCircle, FileLines, CashRegister, ChartMixed, ExclamationCircle } from "flowbite-react-icons/outline";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
@@ -22,9 +22,10 @@ import {
 } from "@/components/ui/dialog";
 import { toast } from "@/components/ui/sonner";
 import { useAsync, debugErrorFlag } from "@/lib/use-async";
+import { assignmentOptions, assignmentLabel } from "@/lib/api/assignment";
 import { formatUGX, formatDate } from "@/lib/format";
 import {
-  listTickets, createTicket, updateTicket, deleteTicket, propertyName, unitLabel, tenantName, propertyOptions, unitOptions, maintenanceStaff, ownerNameFor,
+  listTickets, createTicket, updateTicket, deleteTicket, propertyName, unitLabel, tenantName, propertyOptions, unitOptions, ownerNameFor,
   type MaintenanceTicket, type TicketStatus, type TicketCategory, type TicketPriority, type Scope,
 } from "@/lib/api/admin";
 import { cn } from "@/lib/utils";
@@ -371,6 +372,15 @@ function TicketDialog({ ticket, onClose, onSaved, onDelete, onClose2, onRecordPa
   const [resolution, setResolution] = React.useState("");
   const [busy, setBusy] = React.useState<null | "save" | "close">(null);
 
+  /* F4.4 — scheduling awareness. The target moment is the ticket's own
+     updatedAt: for maintenance that is when the visit is pencilled in. */
+  const assignOptions = React.useMemo(
+    () => assignmentOptions({ departments: ["maintenance"], roles: ["maintenance_officer"] }, ticket?.updatedAt ?? null),
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    [ticket?.updatedAt, ticket?.id],
+  );
+  const selectedAssignOption = assignOptions.find((o) => o.name === assignee) ?? null;
+
   React.useEffect(() => {
     if (ticket) {
       setStatus(ticket.status);
@@ -426,8 +436,22 @@ function TicketDialog({ ticket, onClose, onSaved, onDelete, onClose2, onRecordPa
               <Field label="Technician" htmlFor="tk-tech">
                 <select id="tk-tech" className={selectClass} value={assignee} onChange={(e) => setAssignee(e.target.value)}>
                   <option value="">Unassigned</option>
-                  {maintenanceStaff().map((s) => <option key={s.id} value={s.name}>{s.label}</option>)}
+                  {assignOptions.map((s) => (
+                    <option key={s.id} value={s.name} title={s.warning || undefined}>
+                      {assignmentLabel(s)}{s.unavailable ? " · away" : ""}
+                    </option>
+                  ))}
                 </select>
+                {/* F4.4 — what the office could not see before: is this person free? */}
+                {selectedAssignOption?.warning && (
+                  <p
+                    key={`warn-${selectedAssignOption.id}`}
+                    className="mt-1.5 inline-flex items-start gap-1.5 text-caption font-medium text-primary motion-safe:animate-in motion-safe:fade-in"
+                  >
+                    <ExclamationCircle size={14} className="mt-0.5 shrink-0" />
+                    {selectedAssignOption.warning}
+                  </p>
+                )}
               </Field>
               <Field label="Cost (UGX)" htmlFor="tk-cost">
                 <Input id="tk-cost" type="number" value={cost} onChange={(e) => setCost(e.target.value)} placeholder="0" />

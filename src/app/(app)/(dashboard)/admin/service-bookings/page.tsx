@@ -1,7 +1,7 @@
 "use client";
 
 import * as React from "react";
-import { Search } from "flowbite-react-icons/outline";
+import { Search, ExclamationCircle } from "flowbite-react-icons/outline";
 import { PageHeader } from "@/components/app/page-header";
 import { ExportCsvButton } from "@/components/app/export-csv-button";
 import { StatusBadge } from "@/components/app/status";
@@ -19,7 +19,7 @@ import { formatDate, formatUGX } from "@/lib/format";
 import {
   listServiceBookings, getServiceBooking, updateServiceBookingStatus, assignServiceBooking,
 } from "@/lib/api/rentals";
-import { serviceStaffFor } from "@/lib/api/admin";
+import { serviceAssignmentOptions, assignmentLabel } from "@/lib/api/assignment";
 import {
   SERVICE_STATUS_LABEL, canTransition, transitionHint, startServiceWork, getServiceRevenueSummary,
 } from "@/lib/api/service-lifecycle";
@@ -100,11 +100,26 @@ function DetailDialog({ id, onOpenChange, onDone, onWorkflow, refreshKey }: {
     try { await updateServiceBookingStatus(id, status); toast.success("Status updated"); reload(); onDone(); }
     catch { toast.error("Couldn’t update"); } finally { setBusy(false); }
   };
-  const assign = async () => {
+  /* F4.4 — scheduling awareness on the assignment dropdown. */
+  const assignOptions = React.useMemo(
+    () => (data ? serviceAssignmentOptions(data.kind, data.category, data.date) : []),
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    [data?.id, data?.kind, data?.category, data?.date],
+  );
+  const selectedOption = assignOptions.find((o) => o.name === assignee) ?? null;
+  const [confirmOverride, setConfirmOverride] = React.useState(false);
+
+  const doAssign = async () => {
     if (!id || !assignee) return;
     setBusy(true);
     try { await assignServiceBooking(id, assignee); toast.success(`Assigned to ${assignee}`); reload(); onDone(); }
-    catch { toast.error("Couldn’t assign"); } finally { setBusy(false); }
+    catch { toast.error("Couldn’t assign"); } finally { setBusy(false); setConfirmOverride(false); }
+  };
+  /* An admin may always override a clash — the backend will ultimately own real
+     validation — but they have to say so deliberately. */
+  const assign = async () => {
+    if (selectedOption?.conflict) { setConfirmOverride(true); return; }
+    await doAssign();
   };
 
   return (
@@ -148,10 +163,23 @@ function DetailDialog({ id, onOpenChange, onDone, onWorkflow, refreshKey }: {
                 <div className="flex gap-2">
                   <select id="sb-assignee" className={selectClass} value={assignee} onChange={(e) => setAssignee(e.target.value)} aria-label="Assignee">
                     <option value="">Select…</option>
-                    {serviceStaffFor(data.kind, data.category).map((s) => <option key={s.id} value={s.name}>{s.label}</option>)}
+                    {assignOptions.map((s) => (
+                      <option key={s.id} value={s.name} title={s.warning || undefined}>
+                        {assignmentLabel(s)}{s.unavailable ? " · away" : ""}
+                      </option>
+                    ))}
                   </select>
                   <Button size="sm" variant="secondary" disabled={busy || !assignee} onClick={assign}>Assign</Button>
                 </div>
+                {selectedOption?.warning && (
+                  <p
+                    key={`sbwarn-${selectedOption.id}`}
+                    className="mt-1.5 inline-flex items-start gap-1.5 text-caption font-medium text-primary motion-safe:animate-in motion-safe:fade-in"
+                  >
+                    <ExclamationCircle size={14} className="mt-0.5 shrink-0" />
+                    {selectedOption.warning}
+                  </p>
+                )}
               </div>
               <AssessmentPanel booking={data} />
               <QuotationPanel bookingId={data.id} />
@@ -251,6 +279,30 @@ function DetailDialog({ id, onOpenChange, onDone, onWorkflow, refreshKey }: {
           onDone={() => { setRaising(null); reload(); onDone(); }} />
         <DialogFooter><DialogClose asChild><Button variant="outline">Close</Button></DialogClose></DialogFooter>
       </DialogContent>
+
+      {/* F4.4 — overriding a clash is allowed, but never by accident. */}
+      <Dialog open={confirmOverride} onOpenChange={setConfirmOverride}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Assign anyway?</DialogTitle>
+            <DialogDescription>{selectedOption?.warning}</DialogDescription>
+          </DialogHeader>
+          {selectedOption && selectedOption.jobsOnDate.length > 0 && (
+            <ul className="space-y-1 rounded-xl border border-border bg-surface-hover p-3 text-caption text-muted">
+              {selectedOption.jobsOnDate.map((j) => (
+                <li key={j.ref}>{j.time ? `${j.time} · ` : ""}{j.ref} — {j.title}</li>
+              ))}
+            </ul>
+          )}
+          <p className="text-caption text-muted">
+            Double-booking is sometimes the right call. This is a warning, not a block.
+          </p>
+          <DialogFooter>
+            <DialogClose asChild><Button variant="outline">Pick someone else</Button></DialogClose>
+            <Button loading={busy} onClick={doAssign}>Assign anyway</Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </Dialog>
   );
 }

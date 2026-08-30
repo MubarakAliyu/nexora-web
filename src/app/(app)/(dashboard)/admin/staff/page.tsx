@@ -15,6 +15,7 @@ import { useSession } from "@/lib/stores/session";
 import { DeleteConfirmation } from "@/components/app/delete-confirmation";
 import { AvailabilityBadge } from "@/components/admin/availability-badge";
 import { OperationalStaffDialog } from "@/components/admin/operational-staff-dialog";
+import { GrantPortalAccessDialog, RevokePortalAccessDialog } from "@/components/admin/grant-portal-access-dialog";
 import { DataTable, type Column } from "@/components/ui/data-table";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { Badge } from "@/components/ui/badge";
@@ -150,6 +151,9 @@ export default function StaffPage() {
   // Only system users have a login; operational staff have nothing to reset.
   const isSuperAdmin = useSession((st) => st.user?.role) === "super_admin";
   const [resetting, setResetting] = React.useState<Staff | null>(null);
+  // F4.1 — worker portal access is granted per operational staff member.
+  const [granting, setGranting] = React.useState<Staff | null>(null);
+  const [revoking, setRevoking] = React.useState<Staff | null>(null);
   const [q, setQ] = React.useState("");
   const [type, setType] = React.useState<"all" | "system_user" | "operational_staff">("all");
   const [dept, setDept] = React.useState("all");
@@ -234,6 +238,13 @@ export default function StaffPage() {
             : { label: "Deactivate", onClick: () => setDeactivating(s) },
           ...(isSuperAdmin && !isOps(s) && hasLoginAccount(s.id)
             ? [{ label: "Reset password", icon: <LockOpen size={16} />, onClick: () => setResetting(s), separatorBefore: true }]
+            : []),
+          /* F4.1 — only operational staff get a worker login, and only one. */
+          ...(isOps(s) && !s.hasPortalAccess
+            ? [{ label: "Grant portal access", icon: <LockOpen size={16} />, onClick: () => setGranting(s), separatorBefore: true }]
+            : []),
+          ...(isOps(s) && s.hasPortalAccess
+            ? [{ label: "Revoke portal access", icon: <LockOpen size={16} />, onClick: () => setRevoking(s), separatorBefore: true }]
             : []),
           { label: "Remove", icon: <TrashBin size={16} />, onClick: () => setRemoving(s), danger: true, separatorBefore: true },
         ]} />
@@ -351,6 +362,10 @@ export default function StaffPage() {
 
       <ResetPasswordDialog entityId={resetting?.id ?? ""} entityName={resetting?.name ?? ""}
         open={!!resetting} onOpenChange={(o) => !o && setResetting(null)} />
+      <GrantPortalAccessDialog member={granting} onOpenChange={(o) => !o && setGranting(null)}
+        onDone={reload} />
+      <RevokePortalAccessDialog member={revoking} onOpenChange={(o) => !o && setRevoking(null)}
+        onDone={reload} />
       <DeleteConfirmation
         open={!!removing}
         onOpenChange={(o) => !o && setRemoving(null)}

@@ -9,6 +9,7 @@ import { hasLoginAccount } from "@/lib/api/password-reset";
 import { useSession } from "@/lib/stores/session";
 import { StatusBadge } from "@/components/app/status";
 import { AvailabilityBadge } from "@/components/admin/availability-badge";
+import { WEEK_DAYS, DAY_LABEL, availabilityScheduleFor, WORKER_TYPE_LABEL } from "@/lib/api/worker";
 import { Card } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { StatCard } from "@/components/ui/stat-card";
@@ -145,12 +146,42 @@ export default function StaffDetailPage() {
                 </div>
               )}
             </dl>
-            {isOps && (
+            {isOps && !m.hasPortalAccess && (
               <p className="mt-5 rounded-lg border border-border bg-surface-hover p-3 text-caption text-muted">
-                Operational staff receive job assignments and do not have platform login access, so no role or permissions apply.
+                Operational staff receive job assignments. This member has no worker portal login —
+                grant access from the staff list to give them one.
+              </p>
+            )}
+            {isOps && m.hasPortalAccess && (
+              <p className="mt-5 rounded-lg border border-border bg-surface-hover p-3 text-caption text-muted">
+                Has a worker portal login ({m.email}) as a{" "}
+                {m.workerType ? WORKER_TYPE_LABEL[m.workerType].toLowerCase() : "worker"}.
               </p>
             )}
           </Card>
+
+          {/* F4.4 — the hours this worker keeps, so the office can see them at assignment. */}
+          {isOps && m.hasPortalAccess && (
+            <Card className="mt-4 p-6">
+              <h2 className="mb-1 font-heading text-h3 font-semibold text-foreground">Weekly availability</h2>
+              <p className="mb-3 text-caption text-muted">
+                Set by {m.name.split(" ")[0]} in the worker portal. Used when checking assignment clashes.
+              </p>
+              <ul className="divide-y divide-border">
+                {WEEK_DAYS.map((day) => {
+                  const row = availabilityScheduleFor(m).find((d) => d.day === day);
+                  return (
+                    <li key={day} className="flex items-center justify-between py-2 text-body">
+                      <span className="text-foreground">{DAY_LABEL[day]}</span>
+                      <span className={row?.available ? "text-foreground" : "text-muted"}>
+                        {row?.available ? `${row.start} – ${row.end}` : "Not available"}
+                      </span>
+                    </li>
+                  );
+                })}
+              </ul>
+            </Card>
+          )}
         </TabsContent>
 
         <TabsContent value="assignments">
