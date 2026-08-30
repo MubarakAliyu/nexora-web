@@ -1,6 +1,6 @@
 /**
  * Role model (per the Nexora PRD). Internal/staff roles all live in the /admin
- * portal; owners and tenants get their own portals.
+ * portal; owners, tenants and service workers get their own portals.
  */
 
 export type Role =
@@ -10,7 +10,8 @@ export type Role =
   | "maintenance_officer"
   | "finance_officer"
   | "owner"
-  | "tenant";
+  | "tenant"
+  | "service_worker";
 
 export const roleLabels: Record<Role, string> = {
   super_admin: "Super Admin",
@@ -20,6 +21,7 @@ export const roleLabels: Record<Role, string> = {
   finance_officer: "Finance Officer",
   owner: "Owner",
   tenant: "Tenant",
+  service_worker: "Service Worker",
 };
 
 export const adminRoles: Role[] = [
@@ -30,17 +32,30 @@ export const adminRoles: Role[] = [
   "finance_officer",
 ];
 
-export const allRoles: Role[] = [...adminRoles, "owner", "tenant"];
+/**
+ * F4 — the field-worker role. Named "Service Worker" rather than "Service
+ * Officer"; the 27 Aug minutes left the naming open and "Officer" collides with
+ * the internal *_officer admin roles above.
+ */
+export const ROLE_SERVICE_WORKER: Role = "service_worker";
 
-export type Portal = "/admin" | "/owner" | "/tenant";
+export const allRoles: Role[] = [...adminRoles, "owner", "tenant", ROLE_SERVICE_WORKER];
+
+export type Portal = "/admin" | "/owner" | "/tenant" | "/worker";
 
 export function portalForRole(role: Role): Portal {
   if (role === "owner") return "/owner";
   if (role === "tenant") return "/tenant";
+  if (role === ROLE_SERVICE_WORKER) return "/worker";
   return "/admin";
 }
 
-/** Roles that require 2FA on sign-in (internal/staff roles per the PRD). */
+/**
+ * Roles that require 2FA on sign-in (internal/staff roles per the PRD).
+ *
+ * Service workers count: they are staff, they see customer addresses and phone
+ * numbers, and the seed convention gives every staff login the same 2FA code.
+ */
 export function requires2fa(role: Role): boolean {
-  return adminRoles.includes(role);
+  return adminRoles.includes(role) || role === ROLE_SERVICE_WORKER;
 }

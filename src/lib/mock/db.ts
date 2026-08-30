@@ -42,6 +42,11 @@ import type {
   Staff,
   StaffAvailability,
   StaffDepartment,
+  WorkerType,
+  WorkerDayAvailability,
+  WeekDay,
+  WorkerEarning,
+  WorkerPayout,
   TicketLiability,
   ServiceType,
   ServiceCategory,
@@ -704,6 +709,55 @@ staff.push(
   })),
 );
 
+/* ------------------------------------------- F4: worker portal access ---
+   Portal logins are GRANTED to existing E2 operational staff — no duplicate
+   records are created. Three are seeded so the portal is demonstrable, matching
+   the existing convention (password 123456, 2FA 123456).
+
+   NOTE ON THE CLEANING SLOT: the batch brief named "Grace Namuli" for Cleaning,
+   but Grace Namuli is the FINANCE OFFICER system user (stf_finance,
+   finance@nexora.co.ug) — not E2 operational staff. Granting her a worker login
+   would either duplicate a staff record or give a system user a conflicting
+   second role, both of which the brief forbids. Sarah Nabirye, the E2 Senior
+   Cleaner, takes the cleaning slot instead. */
+const SEEDED_WORKER_LOGINS: { name: string; email: string; workerType: WorkerType }[] = [
+  { name: "Sarah Nabirye", email: "sarah.worker@nexora.co.ug", workerType: "employee" },
+  { name: "Fred Wanyama", email: "fred.worker@nexora.co.ug", workerType: "employee" },
+  { name: "Ronald Kayemba", email: "ronald.worker@nexora.co.ug", workerType: "contractor" },
+];
+
+/** Mon–Fri 08:00–17:00, weekend off — the default a newly-granted worker starts on. */
+export function defaultAvailabilitySchedule(): WorkerDayAvailability[] {
+  const days: WeekDay[] = ["mon", "tue", "wed", "thu", "fri", "sat", "sun"];
+  return days.map((day) => ({
+    day,
+    available: day !== "sat" && day !== "sun",
+    start: "08:00",
+    end: "17:00",
+  }));
+}
+
+const seededWorkerUsers: MockUser[] = [];
+for (const w of SEEDED_WORKER_LOGINS) {
+  const member = staff.find((s) => s.name === w.name && s.staffType === "operational_staff");
+  if (!member) continue;
+  const userId = `usr_${member.id}`;
+  member.email = w.email;
+  member.hasPortalAccess = true;
+  member.userId = userId;
+  member.workerType = w.workerType;
+  member.availabilitySchedule = defaultAvailabilitySchedule();
+  seededWorkerUsers.push({
+    id: userId,
+    name: member.name,
+    email: w.email,
+    password: "123456",
+    role: "service_worker",
+    staffId: member.id,
+    title: member.jobTitle ?? "Service Worker",
+  });
+}
+
 /* -------------------------------------------------------------- users */
 
 // A freshly-onboarded owner used to demo the forced-password-change gate.
@@ -717,6 +771,8 @@ export const users: MockUser[] = [
   { id: "stf_manager", name: "David Okello", email: "manager@nexora.co.ug", password: "123456", role: "property_manager", staffId: "stf_manager", title: "Property Manager" },
   { id: "stf_finance", name: "Grace Namuli", email: "finance@nexora.co.ug", password: "123456", role: "finance_officer", staffId: "stf_finance", title: "Finance Officer" },
   { id: "own_newowner", name: "Newton Byaruhanga", email: "newowner@test.com", password: "TempPass-1234", role: "owner", ownerId: "own_newowner", title: "Property Owner", requiresPasswordChange: true },
+  // F4 — service workers granted portal access above.
+  ...seededWorkerUsers,
 ];
 
 /** Append a user account (onboarding). Returns the created user. */
@@ -1298,6 +1354,57 @@ export const catalogueItems: CatalogueItem[] = [];
 export const quotations: Quotation[] = [];
 /** F2 — additional work charges, linked to but never modifying their booking. */
 export const additionalCharges: AdditionalCharge[] = [];
+
+/* ------------------------------------------------ F4: worker earnings ---
+   ⚠️ NOT A WALLET (see WorkerEarning in types.ts). A ledger of amounts earned
+   against completed jobs and amounts paid out against them — no spendable
+   balance. Seeded from service bookings already marked completed so the
+   Earnings screen has real history on first login. */
+export const workerEarnings: WorkerEarning[] = [];
+export const workerPayouts: WorkerPayout[] = [];
+
+{
+  const rate = 0.35; // worker share — placeholder pending stakeholder confirmation
+  let n = 0;
+  for (const sb of serviceBookings) {
+    if (sb.status !== "completed" && sb.status !== "confirmed") continue;
+    const member = staff.find((st) => (sb.assigneeId ? st.id === sb.assigneeId : st.name === sb.assignee) && st.staffType === "operational_staff");
+    if (!member?.hasPortalAccess) continue;
+    n += 1;
+    workerEarnings.push({
+      id: `wed_${n}`,
+      staffId: member.id,
+      sourceType: "service_booking",
+      sourceId: sb.id,
+      reference: sb.reference,
+      description: `${sb.category} — ${sb.name ?? "customer"}`,
+      amount: Math.round(((sb.amount ?? 0) * rate) / 1000) * 1000,
+      earnedAt: sb.date ?? NOW.toISOString(),
+      payoutId: null,
+    });
+  }
+  // One historical payout per worker so the payout history is not empty.
+  let p = 0;
+  for (const member of staff.filter((st) => st.hasPortalAccess)) {
+    const mine = workerEarnings.filter((e) => e.staffId === member.id);
+    if (mine.length < 2) continue;
+    p += 1;
+    const settled = mine.slice(0, Math.ceil(mine.length / 2));
+    const payout: WorkerPayout = {
+      id: `wpo_${p}`,
+      reference: `NX-PO-${1000 + p}`,
+      staffId: member.id,
+      amount: settled.reduce((sum, e) => sum + e.amount, 0),
+      status: "paid",
+      requestedAt: daysAgo(24),
+      processedAt: daysAgo(21),
+      methodNote: "Mobile Money",
+      rejectionReason: null,
+    };
+    workerPayouts.push(payout);
+    settled.forEach((e) => { e.payoutId = payout.id; });
+  }
+}
 
 /**
  * F3 — admin-configurable settings. A one-row collection, not a module `let`,

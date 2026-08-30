@@ -86,6 +86,8 @@ export function navForRole(role: Role, counts?: { ownerApprovals?: number }): Si
     finance_officer: ["dashboard", "finance", "financialOverview", "serviceCatalogue", "owners", "agreements", "analytics", "announcements"],
     owner: [],
     tenant: [],
+    // F4 — service workers have their own portal chrome; no admin nav at all.
+    service_worker: [],
   };
 
   return (keysByRole[role] ?? Object.keys(all)).map((k) => all[k]);

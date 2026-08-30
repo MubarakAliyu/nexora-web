@@ -409,6 +409,11 @@ export type TicketCategory =
   | "other";
 
 export interface MaintenanceTicket {
+  /* F4 — the assigned worker's own response (accept/decline), separate from the
+     ticket's operational status so the F3 routing lifecycle is untouched. */
+  workerResponse?: WorkerJobResponse;
+  workerRespondedAt?: string | null;
+  workerDeclineReason?: string | null;
   id: string;
   ref: string; // TKT-0001
   title: string;
@@ -572,6 +577,34 @@ export interface Staff {
   staffType?: StaffType;
   jobTitle?: string;
   address?: string;
+  /* ---- F4: service worker portal ---- */
+  /**
+   * Whether this operational staff member can log in to /worker. E2 created them
+   * as records only; portal access is granted per person by an admin, and can be
+   * revoked without deleting the staff record.
+   */
+  hasPortalAccess?: boolean;
+  /** The MockUser id backing their login, when access has been granted. */
+  userId?: string | null;
+  workerType?: WorkerType;
+  /** F4 — day-by-day availability the worker maintains themselves. */
+  availabilitySchedule?: WorkerDayAvailability[];
+}
+
+/**
+ * Employees are on payroll; contractors invoice and may request payouts. The
+ * distinction drives whether the Earnings screen offers "Request Payout".
+ */
+export type WorkerType = "employee" | "contractor";
+
+export type WeekDay = "mon" | "tue" | "wed" | "thu" | "fri" | "sat" | "sun";
+
+export interface WorkerDayAvailability {
+  day: WeekDay;
+  available: boolean;
+  /** 24h "HH:MM". Ignored when `available` is false. */
+  start: string;
+  end: string;
 }
 
 /* ------------------------------------------------------ announcements */
@@ -706,6 +739,10 @@ export interface ServiceBooking {
   /** Authoritative link to the Staff record; `assignee` is the display name. */
   assigneeId?: string;
   assignee?: string; // assigned staff/technician
+  /* ---- F4: the assigned worker's own response to the job ---- */
+  workerResponse?: WorkerJobResponse;
+  workerRespondedAt?: string | null;
+  workerDeclineReason?: string | null;
   createdAt: string; // ISO
   /* ---- transaction detail (E1 · R3). Pricing is assessment-based (see E3), so
      amount stays undefined until an assessment has been recorded. ---- */
@@ -968,4 +1005,60 @@ export type PaymentState =
 export interface AppSettings {
   /** Owner-liable maintenance above this needs the owner's approval first. */
   ownerApprovalThreshold: number;
+}
+
+/* ------------------------------------------------------ F4: worker pay */
+
+/**
+ * A worker's record of what a completed job earned them.
+ *
+ * ⚠️ THIS IS NOT A WALLET. The 27 Aug minutes were explicit: "Do not add a worker
+ * wallet unless separately approved." There is no balance that can be spent,
+ * transferred or topped up — only a ledger of amounts EARNED against completed
+ * jobs and amounts PAID out against them. Anything resembling a stored-value
+ * balance needs separate stakeholder approval first.
+ */
+export interface WorkerEarning {
+  id: string;
+  staffId: string;
+  /** The job this was earned on. */
+  sourceType: "service_booking" | "ticket";
+  sourceId: string;
+  reference: string;
+  description: string;
+  amount: number;
+  earnedAt: string;
+  /** Set once the amount has been included in a processed payout. */
+  payoutId: string | null;
+}
+
+export type PayoutStatus = "requested" | "approved" | "paid" | "rejected";
+
+export interface WorkerPayout {
+  id: string;
+  reference: string;
+  staffId: string;
+  amount: number;
+  status: PayoutStatus;
+  requestedAt: string;
+  processedAt: string | null;
+  /** Free-text note on how the worker wants to be paid. */
+  methodNote: string | null;
+  rejectionReason: string | null;
+}
+
+/* --------------------------------------------- F4: worker job lifecycle */
+
+/**
+ * A worker's response to being assigned a job. Kept separate from the booking's
+ * own status: the customer-facing lifecycle (E3/F1) is unchanged, this records
+ * only whether the assigned worker has taken the job on.
+ */
+export type WorkerJobResponse = "pending" | "accepted" | "declined";
+
+/** Fields F4 adds to anything a worker can be assigned (bookings and tickets). */
+export interface WorkerAssignable {
+  workerResponse?: WorkerJobResponse;
+  workerRespondedAt?: string | null;
+  workerDeclineReason?: string | null;
 }

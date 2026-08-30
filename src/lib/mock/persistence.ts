@@ -24,7 +24,7 @@
 import * as db from "@/lib/mock/db";
 
 /** Bump when seeded data changes shape/content so stale snapshots are discarded. */
-export const SCHEMA_VERSION = "f3-2026-08-30";
+export const SCHEMA_VERSION = "f4-2026-08-30";
 const DB_KEY = "nexora-mock-db";
 const NOTIF_KEY = "nexora-notifications";
 const AUDIT_KEY = "nexora-audit";
@@ -58,6 +58,8 @@ const COLLECTIONS = {
   quotations: db.quotations,
   additionalCharges: db.additionalCharges,
   appSettings: db.appSettings,
+  workerEarnings: db.workerEarnings,
+  workerPayouts: db.workerPayouts,
 } as const;
 
 type CollectionKey = keyof typeof COLLECTIONS;
