@@ -775,6 +775,94 @@ compiling while silently dropping the new data. Grep every consumer, not just th
 
 Nothing was removed. All F3 features remain in place.
 
+## Execution Batch F4 — Service Worker Dashboard ✅ COMPLETE
+
+**Gate:** lint + `tsc --noEmit` clean · `npm run build` **warning-free, 91 static pages**.
+
+The FOURTH PORTAL. E2 created operational staff as records without logins; the 27 Aug minutes
+asked for "a simple unified dashboard instead of depending entirely on phone calls from the
+office", covering cleaning, laundry, car wash and maintenance. Mobile-first, at `/worker`.
+
+**Naming assumption:** the minutes left "Service Officer vs Service Worker" open. Used
+**SERVICE WORKER** throughout — "Officer" collides with the internal `*_officer` admin roles.
+
+**Demo worker logins** (password `123456`, 2FA `123456`), all granted to EXISTING E2
+operational staff — no duplicate records:
+
+| Email | Staff | Department | Type |
+|---|---|---|---|
+| `sarah.worker@nexora.co.ug` | Sarah Nabirye | Cleaning | employee |
+| `fred.worker@nexora.co.ug` | Fred Wanyama | Maintenance | employee |
+| `ronald.worker@nexora.co.ug` | Ronald Kayemba | Car Wash | contractor |
+
+**DEVIATION:** the brief named "Grace Namuli" for Cleaning, but Grace Namuli is the FINANCE
+OFFICER system user (`stf_finance`). Granting her a worker login would duplicate a staff record
+or give a system user a conflicting second role — both forbidden by the same brief. Sarah
+Nabirye, the E2 Senior Cleaner, takes the slot.
+
+**Verification — all 18 items**
+
+| # | Item | Result |
+|---|---|---|
+| 1 | Owner notification voice | ✅ 20+ strings scoped and rewritten — see the housekeeping commit |
+| 2 | Threshold commits on Save | ✅ blur no longer writes; dirty hint; beforeunload + click guard |
+| 3 | Grant access → login → forced change → /worker | ✅ Alex Mugume, `TempPass-9924` |
+| 4 | Three demo logins | ✅ all three sign in and land on /worker |
+| 5 | Mobile-first | ✅ bottom tabs at 375px (68px targets), sidebar at lg+ |
+| 6 | Availability toggle | ✅ toast + admin-scoped notification + audit, actor = the worker |
+| 7 | Accept → start → complete | ✅ admin notified at each stage; manager confirmation still gates it |
+| 8 | Decline with reason | ✅ reason required, admin notified, assignment released, count 7 → 6 |
+| 9 | Worker raises additional charge | ✅ `NX-SV-721732-AC1` sent_to_customer; original booking untouched |
+| 10 | Earnings + payout | ✅ over-limit blocked; UGX 300K requested; balance 543K → 243K |
+| 11 | Availability schedule | ✅ saves with all three signals; visible to admin on the staff page |
+| 12 | Conflict warnings | ✅ "· 1 job that day · CLASH" + inline warning + "Assign anyway?" |
+| 13 | ★ Worker cannot reach other portals | ✅ /admin, /admin/financial-overview, /owner, /tenant all → /worker |
+| 14 | ★ F3-lesson sweep | ✅ one defect found and fixed — see below |
+| 15 | Zero regressions | ✅ 51/51 routes clean; F1 price snapshot re-proven |
+| 16 | Persistence + SCHEMA_VERSION | ✅ `f4-2026-08-30`, all worker data survives hard reload |
+| 17 | Dark mode + 375px | ✅ after one fix; zero console errors |
+| 18 | Greps | ✅ 0 lucide, 0 non-Flowbite icon libs, palette held, no raw colours |
+
+**Item 14 — the F3-lesson sweep**
+
+Every site reading `.assignee` / `.assigneeId` was classified. The WRITE path is safe by
+construction: `staffRef()` always persists both id and name, and `resolveStaff()` accepts
+either — so the many `if (sb.assignee)` gates and `decrementStaffJobs(name)` calls cannot miss
+a record. Display-only reads are correct either way. The reads that FILTER all accept both
+shapes: `isAssignedTo` (new), `staffDetail` assignments, `assignedTo`, `jobsOnDate`. Verified
+live — Fred Wanyama's jobs resolve through the display-name fallback, because E2-era seed rows
+carry a name and no id. An admin list never noticed; a worker's "my jobs" filter would have
+shown them nothing.
+
+**The defect it found** was the F4 analogue of F3's audience leak: `"worker"` is an AUDIENCE,
+but a job notification is about ONE worker's job. Every worker's bell carried every other
+worker's job references, categories and completion rejections. `AppNotification` gains
+`recipientStaffId`, and all twelve worker-directed notifications now name their recipient.
+
+**Defects found and fixed during F4 (9)**
+
+1. Owner notification voice — owners read tenant-worded copy about tickets they never raised.
+   `recordMutation`'s notify now defaults to `["admin"]` (internal operational records); every
+   paired `pushNotify` is audience-scoped and the owner-facing strings rewritten in the owner's
+   voice.
+2. Threshold committed on blur inside a Save-button card.
+3. "Next up" listed jobs months in the PAST — "not today and still open" is true of anything
+   overdue.
+4. Maintenance workers saw zero earnings — the seed only credited service bookings.
+5. Workers granted access LATER saw none of their completed work — the ledger was seeded once,
+   at module load, for pre-granted workers only. `grantPortalAccess` now backfills, idempotently.
+6. Every worker saw every other worker's job notifications (item 14, above).
+7. Assigning a maintenance ticket over a clash saved silently; the service path already
+   confirmed. Same dialog now on both.
+8. `/worker/jobs` tabs overflowed 375px by 39px — on the mobile-first portal.
+9. Cosmetic: "as a employee", and a double full stop in the decline audit summary.
+
+**Also hardened:** a PORTAL GUARD in AppShell/WorkerShell. Before F4 nothing stopped a
+signed-in user typing another portal's URL — the only guards were "are you signed in" and
+"must you change your password".
+
+Nothing was removed. All E2–F3 functionality remains in place.
+
 ## 🏁 PROJECT COMPLETE — final summary
 
 Nexora Property Management frontend is **complete** (mock-data). Single Next.js 15 app;
