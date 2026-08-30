@@ -380,6 +380,7 @@ function TicketDialog({ ticket, onClose, onSaved, onDelete, onClose2, onRecordPa
     [ticket?.updatedAt, ticket?.id],
   );
   const selectedAssignOption = assignOptions.find((o) => o.name === assignee) ?? null;
+  const [confirmClash, setConfirmClash] = React.useState(false);
 
   React.useEffect(() => {
     if (ticket) {
@@ -390,7 +391,7 @@ function TicketDialog({ ticket, onClose, onSaved, onDelete, onClose2, onRecordPa
     }
   }, [ticket]);
 
-  const save = async () => {
+  const doSave = async () => {
     if (!ticket) return;
     setBusy("save");
     try {
@@ -398,7 +399,14 @@ function TicketDialog({ ticket, onClose, onSaved, onDelete, onClose2, onRecordPa
       toast.success("Ticket updated", { description: `${ticket.ref} → ${status.replace("_", " ")}.` });
       onSaved(); onClose();
     } catch { toast.error("Couldn’t update ticket"); }
-    finally { setBusy(null); }
+    finally { setBusy(null); setConfirmClash(false); }
+  };
+  /* F4.4 — an admin may double-book, but has to mean it. Only prompts when the
+     assignee is CHANGING into a clash, not on every save of an existing one. */
+  const save = async () => {
+    const changingAssignee = !!assignee && assignee !== (ticket?.assignee ?? "");
+    if (changingAssignee && selectedAssignOption?.conflict) { setConfirmClash(true); return; }
+    await doSave();
   };
 
   return (
@@ -591,6 +599,30 @@ function TicketDialog({ ticket, onClose, onSaved, onDelete, onClose2, onRecordPa
           </>
         )}
       </DialogContent>
+      {/* F4.4 — overriding a clash is allowed, but never by accident. */}
+      <Dialog open={confirmClash} onOpenChange={setConfirmClash}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Assign anyway?</DialogTitle>
+            <DialogDescription>{selectedAssignOption?.warning}</DialogDescription>
+          </DialogHeader>
+          {selectedAssignOption && selectedAssignOption.jobsOnDate.length > 0 && (
+            <ul className="space-y-1 rounded-xl border border-border bg-surface-hover p-3 text-caption text-muted">
+              {selectedAssignOption.jobsOnDate.map((j) => (
+                <li key={j.ref}>{j.time ? `${j.time} · ` : ""}{j.ref} — {j.title}</li>
+              ))}
+            </ul>
+          )}
+          <p className="text-caption text-muted">
+            Double-booking is sometimes the right call. This is a warning, not a block.
+          </p>
+          <DialogFooter>
+            <DialogClose asChild><Button variant="outline">Pick someone else</Button></DialogClose>
+            <Button loading={busy === "save"} onClick={doSave}>Assign anyway</Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
     </Dialog>
   );
 }
