@@ -54,7 +54,13 @@ export const TICKET_TRANSITIONS: Record<TicketStatus, TicketStatus[]> = {
   awaiting_owner_approval: ["owner_approved", "owner_declined"],
   owner_approved: ["scheduled"],
   owner_declined: ["closed"],
-  awaiting_tenant_payment: ["scheduled", "closed"],
+  /* Not "scheduled": the tenant's payment is what releases the work, and this map
+     drives only the admin status dropdown. Every legitimate route to `scheduled`
+     (routing, owner approval, and payMaintenanceCharge — used by both the tenant's
+     own payment and the admin's manual-payment entry) sets the status directly, so
+     leaving it selectable here bought nothing except a way to start work on an
+     unpaid charge. */
+  awaiting_tenant_payment: ["closed"],
   scheduled: ["in_progress", "closed"],
   in_progress: ["completed", "closed"],
   completed: ["closed", "in_progress"],
