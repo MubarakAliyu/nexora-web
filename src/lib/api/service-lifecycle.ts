@@ -116,7 +116,7 @@ export async function recordAssessment(id: string, input: AssessmentInput): Prom
     before, after: { status: sb.status, assessedAmount: input.amount, scope: input.scope },
     notify: { type: "system", title: "Assessment completed", body: `${sb.category} for ${sb.name}, quoted ${money(input.amount)}` },
   });
-  pushNotify("system", "Your service has been assessed", `Your ${sb.category.toLowerCase()} has been assessed. An invoice will follow shortly.`, "service-booking", id);
+  pushNotify("system", "Your service has been assessed", `Your ${sb.category.toLowerCase()} has been assessed. An invoice will follow shortly.`, "service-booking", id, "updated", ["tenant"]);
   return sb;
 }
 
@@ -171,7 +171,7 @@ export async function generateServiceInvoice(id: string, input: ServiceInvoiceIn
   });
   pushNotify("payment", "Your invoice is ready",
     `Your invoice for ${sb.category.toLowerCase()} is ready — ${money(input.amount)}. Payment is required before work begins. Reference ${number}.`,
-    "service-booking", id);
+    "service-booking", id, "updated", ["tenant"]);
   return sb;
 }
 
@@ -213,10 +213,10 @@ export async function recordServicePayment(id: string, input: ServicePaymentInpu
   pushNotify("payment", "Payment received — thank you",
     full ? `Payment received — thank you. Your ${sb.category.toLowerCase()} will now be scheduled.`
          : `Part-payment of ${money(paid)} received. Balance outstanding: ${money(invoiceTotal - totalPaid)}.`,
-    "service-booking", id);
+    "service-booking", id, "updated", ["tenant"]);
   if (full && sb.assignee) {
     pushNotify("system", "Payment confirmed — you may proceed",
-      `Payment confirmed for ${sb.reference} — you may proceed with the job.`, "service-booking", id);
+      `Payment confirmed for ${sb.reference} — you may proceed with the job.`, "service-booking", id, "updated", ["admin", "worker"]);
   }
   return sb;
 }
@@ -233,8 +233,8 @@ export async function startServiceWork(id: string): Promise<ServiceBooking> {
     summary: `Work started on ${sb.reference}`, after: { status: "in_progress" },
     notify: { type: "system", title: "Work started", body: `${sb.category} for ${sb.name} is now in progress.` },
   });
-  pushNotify("system", "Work has started", `Work has started on your ${sb.category.toLowerCase()}.`, "service-booking", id);
-  if (sb.assignee) pushNotify("system", "Job started", `${sb.reference} — ${sb.category} is now in progress.`, "service-booking", id);
+  pushNotify("system", "Work has started", `Work has started on your ${sb.category.toLowerCase()}.`, "service-booking", id, "updated", ["tenant"]);
+  if (sb.assignee) pushNotify("system", "Job started", `${sb.reference} — ${sb.category} is now in progress.`, "service-booking", id, "updated", ["admin", "worker"]);
   return sb;
 }
 
@@ -269,8 +269,8 @@ export async function confirmServiceCompletion(id: string, confirmedBy: string):
     notify: { type: "system", title: "Job confirmed", body: `${sb.reference} — ${sb.category} confirmed complete.` },
   });
   pushNotify("system", "Your service has been completed",
-    `Your ${sb.category.toLowerCase()} has been completed. Thank you for choosing Nexora.`, "service-booking", id);
-  if (sb.assignee) pushNotify("system", "Job confirmed", `Job confirmed — ${sb.reference}.`, "service-booking", id);
+    `Your ${sb.category.toLowerCase()} has been completed. Thank you for choosing Nexora.`, "service-booking", id, "updated", ["tenant"]);
+  if (sb.assignee) pushNotify("system", "Job confirmed", `Job confirmed — ${sb.reference}.`, "service-booking", id, "updated", ["admin", "worker"]);
   return sb;
 }
 
@@ -287,7 +287,7 @@ export async function rejectServiceCompletion(id: string, reason: string): Promi
   });
   // Trim any trailing punctuation so the sentence doesn't end in a double period.
   const cleanReason = reason.trim().replace(/\.+$/, "");
-  if (sb.assignee) pushNotify("system", "Completion rejected", `Completion rejected — ${cleanReason}. Please review.`, "service-booking", id);
+  if (sb.assignee) pushNotify("system", "Completion rejected", `Completion rejected — ${cleanReason}. Please review.`, "service-booking", id, "updated", ["admin", "worker"]);
   return sb;
 }
 
@@ -304,7 +304,7 @@ export async function cancelServiceBooking(id: string, reason: string): Promise<
     before: { status: before }, after: { status: "cancelled", reason },
     notify: { type: "system", title: "Service booking cancelled", body: `${sb.reference} — ${reason}` },
   });
-  pushNotify("system", "Your booking was cancelled", `Your ${sb.category.toLowerCase()} booking was cancelled — ${reason}`, "service-booking", id);
+  pushNotify("system", "Your booking was cancelled", `Your ${sb.category.toLowerCase()} booking was cancelled — ${reason}`, "service-booking", id, "updated", ["tenant"]);
   return sb;
 }
 

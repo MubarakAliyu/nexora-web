@@ -1121,9 +1121,9 @@ export async function renewLease(id: string, months = 12): Promise<Lease> {
     summary: `Renewed lease for ${tenant?.name ?? "tenant"} by ${months} months`,
     notify: { type: "lease", title: "Lease renewed", body: `${tenant?.name ?? "A tenant"}'s lease was renewed for ${months} months.` },
   });
-  // C6 — notify tenant + owner.
-  pushNotify("lease", "Your lease has been renewed!", `Your lease has been renewed. New end date: ${_dateOf(lease.end)}. Updated rent: ${_money(lease.rent)}.`, "lease", id, "renewed");
-  pushNotify("lease", "Lease renewed", `Lease renewed at ${unitLabel(lease.unitId)}, ${propName}. Tenant: ${tenant?.name ?? "tenant"}. New end date: ${_dateOf(lease.end)}.`, "lease", id, "renewed");
+  // C6 — tenant + owner, each scoped so neither reads the other's copy.
+  pushNotify("lease", "Your lease has been renewed!", `Your lease has been renewed. New end date: ${_dateOf(lease.end)}. Updated rent: ${_money(lease.rent)}.`, "lease", id, "renewed", ["tenant"]);
+  pushNotify("lease", "Lease renewed", `The tenancy at ${unitLabel(lease.unitId)}, ${propName} was renewed to ${_dateOf(lease.end)} at ${_money(lease.rent)}. Occupancy is secured.`, "lease", id, "renewed", ["owner"]);
   return lease;
 }
 
@@ -1139,7 +1139,7 @@ export async function sendRenewalReminder(id: string): Promise<Lease> {
     summary: `Sent renewal reminder to ${tenant?.name ?? "tenant"} (${Math.max(0, view.daysToExpiry)} days to expiry)`,
     notify: false,
   });
-  pushNotify("lease", "Your lease is expiring soon", `Your lease at ${unitLabel(lease.unitId)} expires in ${Math.max(0, view.daysToExpiry)} days. Contact Nexora about renewal.`, "lease", id, "updated");
+  pushNotify("lease", "Your lease is expiring soon", `Your lease at ${unitLabel(lease.unitId)} expires in ${Math.max(0, view.daysToExpiry)} days. Contact Nexora about renewal.`, "lease", id, "updated", ["tenant"]);
   return lease;
 }
 
@@ -1160,7 +1160,7 @@ export async function requestLeaseRenewal(id: string, input: { preferredEnd: str
     after: { status: "renewal_requested", preferredEnd: input.preferredEnd },
     notify: { type: "lease", title: "Renewal requested", body: `Tenant ${tenant?.name ?? "a tenant"} has requested lease renewal for ${unitLabel(lease.unitId)}, ${propName}. Preferred new end date: ${_dateOf(input.preferredEnd)}.${input.notes ? ` Notes: ${input.notes}` : ""}` },
   });
-  pushNotify("lease", "Renewal request submitted", "Your renewal request has been submitted. Nexora will review and contact you.", "lease", id, "updated");
+  pushNotify("lease", "Renewal request submitted", "Your renewal request has been submitted. Nexora will review and contact you.", "lease", id, "updated", ["tenant"]);
   return lease;
 }
 
@@ -1247,9 +1247,9 @@ export async function terminateLease(id: string, deposit?: DepositOutcomeInput):
     after: { status: "terminated", depositStatus: status, refund: lease.depositRefundAmount, deduction, reason: d.reason },
     notify: { type: "lease", title: "Lease terminated", body: `${tenant?.name ?? "A tenant"}'s lease was terminated. Deposit: ${outcomeText}.` },
   });
-  // C2/C5 — notify tenant + owner with deposit details.
-  pushNotify("lease", "Your lease has been terminated", `Your lease at ${unit?.label ?? "your unit"} has been terminated. Security deposit status: ${outcomeText}.${detail}`, "lease", id, "terminated");
-  pushNotify("lease", "Lease terminated", `Lease terminated at ${unit?.label ?? "a unit"}, ${propName}. Deposit: ${outcomeText}.`, "lease", id, "terminated");
+  // C2/C5 — tenant + owner, each in its own voice.
+  pushNotify("lease", "Your lease has been terminated", `Your lease at ${unit?.label ?? "your unit"} has been terminated. Security deposit status: ${outcomeText}.${detail}`, "lease", id, "terminated", ["tenant"]);
+  pushNotify("lease", "Tenancy ended", `The tenancy at ${unit?.label ?? "a unit"}, ${propName} has ended. Deposit: ${outcomeText}. Nexora is preparing the unit for re-letting.`, "lease", id, "terminated", ["owner"]);
   return lease;
 }
 
@@ -1329,9 +1329,9 @@ export async function settleMoveOut(id: string, input: MoveOutSettlementInput): 
     after: { moveOutDate: input.moveOutDate, depositStatus: status, refund, additionalOwed, damages: input.totalDamage, outstandingRent: input.outstandingRent },
     notify: { type: "lease", title: "Move-out processed", body: `${tenant?.name ?? "A tenant"} moved out of ${unit?.label ?? "a unit"}. Deposit: ${outcomeText}.` },
   });
-  pushNotify("lease", "Your move-out has been processed", `Your move-out from ${unit?.label ?? "your unit"} has been processed. Deposit outcome: ${outcomeText}.${refundText}`, "lease", id, "terminated");
-  pushNotify("lease", "Tenant moved out", `Tenant ${tenant?.name ?? "a tenant"} has moved out of ${unit?.label ?? "a unit"}, ${propName}. Unit is now vacant. Deposit: ${outcomeText}.`, "lease", id, "terminated");
-  pushNotify("maintenance", "Inspection completed", `Inspection for ${unit?.label ?? "a unit"} has been completed and processed.`, "lease", id, "updated");
+  pushNotify("lease", "Your move-out has been processed", `Your move-out from ${unit?.label ?? "your unit"} has been processed. Deposit outcome: ${outcomeText}.${refundText}`, "lease", id, "terminated", ["tenant"]);
+  pushNotify("lease", "Unit now vacant", `${unit?.label ?? "A unit"} at ${propName} is now vacant following a move-out. Deposit: ${outcomeText}. Nexora is preparing it for re-letting.`, "lease", id, "terminated", ["owner"]);
+  pushNotify("maintenance", "Inspection completed", `Inspection for ${unit?.label ?? "a unit"} has been completed and processed.`, "lease", id, "updated", ["admin"]);
 
   return { lease, depositStatus: status, refund, additionalOwed };
 }
@@ -1358,8 +1358,9 @@ export async function initiateMoveOut(id: string, input: { moveOutDate: string; 
     after: { moveOutDate: input.moveOutDate, inspectionDate: input.inspectionDate, inspectorId: lease.inspectorId, inspector: lease.inspector },
     notify: { type: "lease", title: "Move-out initiated", body: `Move-out started for ${tenant?.name ?? "a tenant"} at ${unit?.label ?? "a unit"}. Inspection ${_dateOf(input.inspectionDate)}.` },
   });
-  pushNotify("lease", "Your move-out has been initiated", `Your move-out has been initiated. An inspection is scheduled for ${_dateOf(input.inspectionDate)}.`, "lease", id, "updated");
-  pushNotify("maintenance", "Exit inspection assigned", `You've been assigned an exit inspection at ${unit?.label ?? "a unit"}, ${propName} on ${_dateOf(input.inspectionDate)}.`, "lease", id, "updated");
+  pushNotify("lease", "Your move-out has been initiated", `Your move-out has been initiated. An inspection is scheduled for ${_dateOf(input.inspectionDate)}.`, "lease", id, "updated", ["tenant"]);
+  // Directed at the assigned inspector, not the owner or the tenant.
+  pushNotify("maintenance", "Exit inspection assigned", `You've been assigned an exit inspection at ${unit?.label ?? "a unit"}, ${propName} on ${_dateOf(input.inspectionDate)}.`, "lease", id, "updated", ["worker"]);
   return lease;
 }
 
@@ -1401,7 +1402,7 @@ export async function updateTicket(
     notify: { type: "maintenance", title: "Ticket updated", body: `${t.ref} — ${t.title} is now ${t.status.replace("_", " ")}.` },
   });
   // D3 — tenant maintenance-update notification.
-  if (t.status !== before.status) pushNotify("maintenance", "Maintenance update", `Your request ${t.ref} — ${t.title} is now ${t.status.replace("_", " ")}.`, "ticket", t.id, "updated");
+  if (t.status !== before.status) pushNotify("maintenance", "Maintenance update", `Your request ${t.ref} — ${t.title} is now ${t.status.replace("_", " ")}.`, "ticket", t.id, "updated", ["tenant"]);
   return t;
 }
 
@@ -1447,7 +1448,7 @@ export async function createInvoice(input: { tenantId: string; amount: number; d
     notify: { type: "payment", title: "Invoice generated", body: `${inv.number} was raised for ${tenant?.name ?? "a tenant"}.` },
   });
   // D3 — tenant rent-due notification.
-  pushNotify("payment", "Rent due", `Invoice ${inv.number} for ${_money(inv.amount)} is due ${_dateOf(inv.due)}.`, "invoice", inv.id, "created");
+  pushNotify("payment", "Rent due", `Invoice ${inv.number} for ${_money(inv.amount)} is due ${_dateOf(inv.due)}.`, "invoice", inv.id, "created", ["tenant"]);
   return inv;
 }
 

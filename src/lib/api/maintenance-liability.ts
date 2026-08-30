@@ -110,9 +110,9 @@ export async function closeTicketWithLiability(
     });
     pushNotify("maintenance", "Maintenance completed",
       `Maintenance completed at ${unit}, ${property} — ${t.title}. Cost of ${money(total)} has been recorded as a property expense and will be reflected in your next settlement.`,
-      "ticket", id);
+      "ticket", id, "updated", ["owner"]);
     pushNotify("maintenance", "Your request has been resolved",
-      "Your maintenance request has been resolved at no cost to you.", "ticket", id);
+      "Your maintenance request has been resolved at no cost to you.", "ticket", id, "updated", ["tenant"]);
     return t;
   }
 
@@ -158,11 +158,11 @@ export async function closeTicketWithLiability(
       if (!settled) {
         pushNotify("payment", "Maintenance charge",
           `Maintenance charge — ${t.title}. Amount due: ${money(total - existing.paid)}. Invoice ${number}.`,
-          "ticket", id);
+          "ticket", id, "updated", ["tenant"]);
       } else {
         pushNotify("maintenance", "Your maintenance request has been resolved",
           `${t.title} is complete. Your payment of ${money(existing.paid)} on ${number} covers it in full.`,
-          "ticket", id);
+          "ticket", id, "updated", ["tenant"]);
       }
       return t;
     }
@@ -199,7 +199,7 @@ export async function closeTicketWithLiability(
     });
     pushNotify("payment", "Maintenance charge",
       `Maintenance charge — ${t.title}. Amount due: ${money(total)}. Invoice ${number}. Please make payment from your dashboard.`,
-      "ticket", id);
+      "ticket", id, "updated", ["tenant"]);
     return t;
   }
 
@@ -238,7 +238,7 @@ export async function closeTicketWithLiability(
     notify: { type: "maintenance", title: "Cost absorbed by Nexora", body: `Maintenance cost of ${money(total)} absorbed by Nexora — ${input.liabilityReason}` },
   });
   pushNotify("maintenance", "Your request has been resolved",
-    "Your maintenance request has been resolved at no cost to you.", "ticket", id);
+    "Your maintenance request has been resolved at no cost to you.", "ticket", id, "updated", ["tenant"]);
   return t;
 }
 
@@ -284,11 +284,11 @@ export async function payMaintenanceCharge(
   });
   pushNotify("payment", "Payment confirmed",
     `Your maintenance payment of ${money(input.amount)} for ${t.title} was received. Reference ${input.reference}.`,
-    "ticket", ticketId);
+    "ticket", ticketId, "updated", ["tenant"]);
   if (releasedForWork) {
     // Admin and the assigned technician both need to know work is unblocked.
     pushNotify("maintenance", "Payment received — work may proceed",
-      `Payment received — work may proceed on ${t.ref}, ${uLabel(t.unitId)}.`, "ticket", ticketId);
+      `Payment received — work may proceed on ${t.ref}, ${uLabel(t.unitId)}.`, "ticket", ticketId, "updated", ["admin", "worker"]);
   }
   return t;
 }

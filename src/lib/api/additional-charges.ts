@@ -137,6 +137,8 @@ export async function raiseAdditionalCharge(input: RaiseChargeInput): Promise<Ad
     `Additional work required on your ${booking.category} — ${money(amount)}. Please review and approve.`,
     "additional_charge",
     charge.id,
+    "created",
+    ["tenant"],
   );
   return charge;
 }
@@ -226,6 +228,8 @@ export async function declineAdditionalCharge(id: string, reason: string, respon
       `Additional charge declined — ${charge.declineReason}. Continue with the original scope only.`,
       "service-booking",
       charge.bookingId,
+      "updated",
+      ["admin", "worker"],
     );
   }
   return charge;
@@ -284,6 +288,8 @@ export async function payAdditionalCharge(id: string, input: ChargePaymentInput)
       `Additional work approved and paid — you may proceed. ${charge.description}`,
       "service-booking",
       charge.bookingId,
+      "updated",
+      ["admin", "worker"],
     );
   }
   return charge;

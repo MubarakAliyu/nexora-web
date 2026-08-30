@@ -33,7 +33,6 @@ export function pushNotify(
 const money = (n: number) => `UGX ${Math.round(n).toLocaleString("en-UG")}`;
 const dateOf = (iso: string) => new Date(iso).toLocaleDateString("en-GB", { day: "numeric", month: "short", year: "numeric" });
 const propName = (propertyId: string) => db.properties.find((p) => p.id === propertyId)?.name ?? "the property";
-const tenantNameById = (tenantId?: string) => db.tenants.find((t) => t.id === tenantId)?.name ?? "the tenant";
 import type {
   Expense,
   ExpenseCategory,
@@ -217,9 +216,12 @@ export async function createLease(input: LeaseInput): Promise<Lease> {
     after: { rent: lease.rent, start: lease.start, end: lease.end },
     notify: { type: "lease", title: "Lease created", body: `A lease was created for ${tenant?.name ?? "a tenant"} on unit ${unit?.label ?? ""}.` },
   });
-  // C6 — notify the tenant + owner directly.
-  pushNotify("lease", "Your lease is active", `Your lease for ${unit?.label ?? "your unit"} at ${propName} is now active. Monthly rent: ${money(lease.rent)}. Start date: ${dateOf(lease.start)}.`, "lease", lease.id, "created");
-  pushNotify("lease", "New tenant assigned", `New tenant ${tenant?.name ?? "a tenant"} has been assigned to ${unit?.label ?? "a unit"}, ${propName}.`, "lease", lease.id, "created");
+  /* C6 — each party gets the message written for them, and ONLY that one. These were
+     always meant to be a tenant/owner pair (see the titles); without the audience scoping
+     the owner also received the tenant's "Your lease is active", addressed as if they
+     were the one moving in. */
+  pushNotify("lease", "Your lease is active", `Your lease for ${unit?.label ?? "your unit"} at ${propName} is now active. Monthly rent: ${money(lease.rent)}. Start date: ${dateOf(lease.start)}.`, "lease", lease.id, "created", ["tenant"]);
+  pushNotify("lease", "New tenant assigned", `${tenant?.name ?? "A tenant"} has been assigned to ${unit?.label ?? "a unit"}, ${propName}. The unit is now occupied.`, "lease", lease.id, "created", ["owner"]);
   return lease;
 }
 
@@ -371,9 +373,9 @@ export async function payInvoice(input: PayInput): Promise<Payment> {
     after: { amount, invoice: invoice.number, method: input.method },
     notify: { type: "system", title: "Payment received", body: `${invoice.number}: ${payment.reference} recorded.` },
   });
-  // D3 — tenant receipt + owner revenue notifications.
-  pushNotify("payment", "Payment confirmed", `Your payment of ${money(amount)} for ${invoice.number} was received. Thank you.`, "payment", payment.id, "created");
-  pushNotify("payment", "Revenue generated", `Rent of ${money(amount)} received from ${tenantNameById(invoice.tenantId)} at ${propName(invoice.propertyId)}.`, "payment", payment.id, "created");
+  // D3 — tenant receipt + owner revenue, each scoped to its own audience.
+  pushNotify("payment", "Payment confirmed", `Your payment of ${money(amount)} for ${invoice.number} was received. Thank you.`, "payment", payment.id, "created", ["tenant"]);
+  pushNotify("payment", "Rent collected", `Rent of ${money(amount)} was collected at ${propName(invoice.propertyId)}. It will appear in your next settlement.`, "payment", payment.id, "created", ["owner"]);
   return payment;
 }
 
@@ -410,9 +412,11 @@ export async function createTicket(input: TicketInput): Promise<MaintenanceTicke
     summary: `Created ticket ${ticket.ref} — ${ticket.title}`, after: { title: ticket.title, priority: ticket.priority },
     notify: { type: "maintenance", title: ticket.priority === "urgent" || ticket.priority === "high" ? "Urgent ticket" : "New ticket", body: `${ticket.ref} — ${ticket.title} (${ticket.priority}).` },
   });
-  // D3 — tenant confirmation + owner maintenance-request notifications.
-  pushNotify("maintenance", "Maintenance request submitted", `Your request "${ticket.title}" was logged as ${ticket.ref}. We'll keep you updated.`, "ticket", ticket.id, "created");
-  pushNotify("maintenance", "Maintenance request", `A maintenance request (${ticket.ref} — ${ticket.title}) was raised at ${propName(ticket.propertyId)}.`, "ticket", ticket.id, "created");
+  /* D3 — the tenant is CONFIRMING something they reported; the owner is being INFORMED
+     about their property. Unscoped, owners were reading "Your request ... was logged"
+     about a ticket they did not raise. */
+  pushNotify("maintenance", "Maintenance request submitted", `Your request "${ticket.title}" was logged as ${ticket.ref}. We'll keep you updated.`, "ticket", ticket.id, "created", ["tenant"]);
+  pushNotify("maintenance", "Maintenance reported", `A maintenance issue was reported at ${propName(ticket.propertyId)} — ${ticket.title} (${ticket.ref}). Nexora is handling it.`, "ticket", ticket.id, "created", ["owner"]);
   return ticket;
 }
 
@@ -431,9 +435,9 @@ export async function closeTicket(id: string, resolution: string): Promise<Maint
     summary: `Closed ticket ${t.ref}: ${resolution}`, before, after: { status: "closed", resolution },
     notify: { type: "maintenance", title: "Ticket closed", body: `${t.ref} was closed.` },
   });
-  // D3 — tenant + owner maintenance-resolved notifications.
-  pushNotify("maintenance", "Maintenance resolved", `Your request ${t.ref} — ${t.title} has been resolved: ${resolution}`, "ticket", t.id, "updated");
-  pushNotify("maintenance", "Maintenance resolved", `${t.ref} — ${t.title} at ${propName(t.propertyId)} has been resolved.`, "ticket", t.id, "updated");
+  // D3 — tenant + owner maintenance-resolved, each in its own voice.
+  pushNotify("maintenance", "Maintenance resolved", `Your request ${t.ref} — ${t.title} has been resolved: ${resolution}`, "ticket", t.id, "updated", ["tenant"]);
+  pushNotify("maintenance", "Maintenance resolved", `${t.title} at ${propName(t.propertyId)} has been resolved (${t.ref}).`, "ticket", t.id, "updated", ["owner"]);
   return t;
 }
 
@@ -660,7 +664,7 @@ export async function updateStaff(
   });
   // D3 — notify the staff member when their account is deactivated.
   if (member.status === "suspended" && before.status !== "suspended") {
-    pushNotify("system", "Account deactivated", "Your Nexora account has been deactivated. Contact an administrator for access.", "staff", id, "updated");
+    pushNotify("system", "Account deactivated", "Your Nexora account has been deactivated. Contact an administrator for access.", "staff", id, "updated", ["worker"]);
   }
   return member;
 }
@@ -815,7 +819,7 @@ export async function cycleStaffAvailability(id: string): Promise<Staff> {
     notify: false,
   });
   // D3 — staff availability-changed notification.
-  pushNotify("system", "Availability changed", `Your availability was set to ${member.availability}.`, "staff", id, "updated");
+  pushNotify("system", "Availability changed", `Your availability was set to ${member.availability}.`, "staff", id, "updated", ["worker"]);
   return member;
 }
 

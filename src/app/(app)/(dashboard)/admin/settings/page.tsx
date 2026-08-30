@@ -22,6 +22,7 @@ import { AuditTab } from "@/components/admin/settings/audit-tab";
 import { SESSION_TIMEOUT_MINUTES, SESSION_WARNING_MINUTES } from "@/components/app/session-timeout";
 import { getOwnerApprovalThreshold, setOwnerApprovalThreshold } from "@/lib/api/maintenance-routing";
 import { useSession } from "@/lib/stores/session";
+import { formatUGX } from "@/lib/format";
 import { SecurityTab } from "@/components/admin/settings/security-tab";
 import { IntegrationsTab } from "@/components/admin/settings/integrations-tab";
 
@@ -88,13 +89,64 @@ function GlobalTab() {
   const [busy, setBusy] = React.useState(false);
   const [state, setState] = React.useState({ currency: "UGX", timezone: "Africa/Kampala", dateFormat: "DD MMM YYYY", grace: "5", dueDay: "1", urgentSla: "4", highSla: "24", sessionTimeout: String(SESSION_TIMEOUT_MINUTES), approvalThreshold: String(getOwnerApprovalThreshold()) });
   const set = (k: string, v: string) => setState((s) => ({ ...s, [k]: v }));
-  /* The initial state above is computed during the server/first render, when the
-     mock DB still holds the pure seed. Re-read once the persistence shim has
-     hydrated, or the field shows the default over a threshold already changed. */
+
+  /* The committed threshold, tracked separately from the field so we can tell an
+     edited-but-unsaved value from a saved one. The initial state above is computed
+     during the server/first render, when the mock DB still holds the pure seed —
+     re-read once the persistence shim has hydrated, or the field shows the default
+     over a threshold already changed. */
+  const [committedThreshold, setCommittedThreshold] = React.useState(getOwnerApprovalThreshold());
   React.useEffect(() => {
-    setState((s) => ({ ...s, approvalThreshold: String(getOwnerApprovalThreshold()) }));
+    const live = getOwnerApprovalThreshold();
+    setCommittedThreshold(live);
+    setState((s) => ({ ...s, approvalThreshold: String(live) }));
   }, []);
-  const save = async () => { setBusy(true); await saveSettingsSection("global", "Updated global settings"); toast.success("Global settings saved"); setBusy(false); };
+
+  const parsedThreshold = Number(state.approvalThreshold);
+  const thresholdValid = Number.isFinite(parsedThreshold) && parsedThreshold >= 0;
+  const thresholdDirty = thresholdValid && parsedThreshold !== committedThreshold;
+
+  /* F4.0 — the threshold used to commit on BLUR, inside a card with a Save button.
+     It worked (clicking Save blurs the field first) but it read as a Save-owned
+     field and committed on tab-out, so a half-typed figure could land. Save now
+     owns it, which means an edited-but-unsaved value can be lost by navigating
+     away — hence the guard below. */
+  React.useEffect(() => {
+    if (!thresholdDirty) return;
+    const onBeforeUnload = (e: BeforeUnloadEvent) => { e.preventDefault(); e.returnValue = ""; };
+    const onCapturedClick = (e: MouseEvent) => {
+      const link = (e.target as HTMLElement | null)?.closest?.("a[href]") as HTMLAnchorElement | null;
+      if (!link || link.target === "_blank") return;
+      if (!window.confirm("You have an unsaved approval threshold. Leave without saving?")) {
+        e.preventDefault();
+        e.stopPropagation();
+      }
+    };
+    window.addEventListener("beforeunload", onBeforeUnload);
+    document.addEventListener("click", onCapturedClick, true);
+    return () => {
+      window.removeEventListener("beforeunload", onBeforeUnload);
+      document.removeEventListener("click", onCapturedClick, true);
+    };
+  }, [thresholdDirty]);
+
+  const save = async () => {
+    setBusy(true);
+    try {
+      // Commit the threshold first — it has its own toast + notification + audit.
+      if (isSuperAdmin && thresholdDirty) {
+        await setOwnerApprovalThreshold(parsedThreshold, actorName);
+        setCommittedThreshold(parsedThreshold);
+        toast.success("Approval threshold updated", {
+          description: `Owner approval now required above UGX ${parsedThreshold.toLocaleString("en-UG")}.`,
+        });
+      }
+      await saveSettingsSection("global", "Updated global settings");
+      toast.success("Global settings saved");
+    } finally {
+      setBusy(false);
+    }
+  };
   return (
     <Card className="max-w-2xl p-6">
       <div className="space-y-5">
@@ -113,19 +165,19 @@ function GlobalTab() {
               <Input id="g-thresh" type="number" min={0} step={50000} value={state.approvalThreshold}
                 disabled={!isSuperAdmin}
                 title={isSuperAdmin ? undefined : "Only a Super Admin may change the approval threshold"}
-                onChange={(e) => set("approvalThreshold", e.target.value)}
-                onBlur={async (e) => {
-                  const next = Number(e.target.value);
-                  if (!isSuperAdmin || !Number.isFinite(next) || next === getOwnerApprovalThreshold()) return;
-                  await setOwnerApprovalThreshold(next, actorName);
-                  toast.success("Approval threshold updated", {
-                    description: `Owner approval now required above UGX ${next.toLocaleString("en-UG")}.`,
-                  });
-                }} />
+                onChange={(e) => set("approvalThreshold", e.target.value)} />
               <p className="mt-1 text-caption text-muted">
                 Owner-liable maintenance above this amount needs the owner&rsquo;s approval before work
                 proceeds. <span className="text-foreground">Threshold pending stakeholder confirmation.</span>
               </p>
+              {thresholdDirty && (
+                <p
+                  key="thresh-dirty"
+                  className="mt-1 text-caption font-medium text-primary motion-safe:animate-in motion-safe:fade-in"
+                >
+                  Unsaved — currently {formatUGX(committedThreshold)}. Save changes to apply.
+                </p>
+              )}
             </Field>
           </div>
         </div>

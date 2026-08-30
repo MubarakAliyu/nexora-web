@@ -37,6 +37,19 @@ export function recordMutation(input: RecordInput): void {
   if (input.notify) {
     useNotifications.getState().pushSystem({
       ...input.notify,
+      /*
+       * A `recordMutation` notification is the INTERNAL operational record of the
+       * change — it names the other party, quotes figures, and is written in
+       * back-office voice ("TKT-0027 — Voice check kitchen tap drip (low)").
+       * Every party-facing message in this codebase is a separate `pushNotify`
+       * written in that party's own voice, so defaulting these to admin is what
+       * the pairing always assumed. Without it an owner reads operational chatter
+       * about their tenant, and a worker reads settings changes.
+       *
+       * An explicit `audiences` on the notify still wins — that is how the F3
+       * owner-decision messages reach the owner as well as the admin.
+       */
+      audiences: input.notify.audiences ?? ["admin"],
       entityType: input.entityType,
       entityId: input.entityId,
       action: input.action,

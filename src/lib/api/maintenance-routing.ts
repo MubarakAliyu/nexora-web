@@ -183,7 +183,7 @@ export async function recordAssessment(id: string, input: AssessmentInput): Prom
   });
   pushNotify("maintenance", "Your request has been assessed",
     "Your maintenance request has been assessed. We will confirm next steps shortly.",
-    "ticket", id);
+    "ticket", id, "updated", ["tenant"]);
   return t;
 }
 
@@ -265,7 +265,7 @@ export async function routeCharge(id: string, input: RouteChargeInput): Promise<
     });
     pushNotify("payment", "Maintenance charge",
       `Maintenance charge — ${t.title}. Amount due: ${money(cost)}. Invoice ${number}. Work will be scheduled once payment is received.`,
-      "ticket", id);
+      "ticket", id, "updated", ["tenant"]);
     return t;
   }
 
@@ -332,7 +332,7 @@ export async function routeCharge(id: string, input: RouteChargeInput): Promise<
     },
   });
   pushNotify("maintenance", "Your request has been approved",
-    "Your maintenance request has been approved at no cost to you.", "ticket", id);
+    "Your maintenance request has been approved at no cost to you.", "ticket", id, "updated", ["tenant"]);
   return t;
 }
 
@@ -391,7 +391,7 @@ export async function approveMaintenance(id: string, approverName: string): Prom
     },
   });
   pushNotify("maintenance", "Your maintenance request has been approved",
-    "Your maintenance request has been approved and will be scheduled.", "ticket", id);
+    "Your maintenance request has been approved and will be scheduled.", "ticket", id, "updated", ["tenant"]);
   return t;
 }
 
@@ -425,7 +425,7 @@ export async function declineMaintenance(id: string, reason: string, approverNam
   // Deliberately neutral: the owner's reason is between Nexora and the owner.
   pushNotify("maintenance", "Update on your maintenance request",
     "We are unable to proceed with this repair at present. Please contact us to discuss.",
-    "ticket", id);
+    "ticket", id, "updated", ["tenant"]);
   return t;
 }
 
@@ -470,7 +470,7 @@ export async function markTenantPaidAndSchedule(id: string): Promise<Maintenance
   });
   if (t.assignee) {
     pushNotify("maintenance", "Work may proceed",
-      `Payment received — work may proceed on ${t.ref}, ${uLabel(t.unitId)}.`, "ticket", id);
+      `Payment received — work may proceed on ${t.ref}, ${uLabel(t.unitId)}.`, "ticket", id, "updated", ["admin", "worker"]);
   }
   return t;
 }

@@ -96,7 +96,7 @@ export async function verifyPayment(paymentId: string): Promise<Payment> {
     notify: { type: "payment", title: "Payment verified", body: `${p.reference} verified — ${money(p.amount)}.` },
   });
   pushNotify("payment", "Payment verified",
-    `Your payment of ${money(p.amount)} has been verified. Thank you.`, "payment", paymentId);
+    `Your payment of ${money(p.amount)} has been verified. Thank you.`, "payment", paymentId, "updated", ["tenant"]);
   return p;
 }
 
@@ -121,7 +121,7 @@ export async function rejectPayment(paymentId: string, reason: string): Promise<
   });
   pushNotify("payment", "Payment could not be verified",
     `We couldn’t verify your payment of ${money(p.amount)} — ${p.failureReason}. Please try again or contact support.`,
-    "payment", paymentId);
+    "payment", paymentId, "updated", ["tenant"]);
   return p;
 }
 

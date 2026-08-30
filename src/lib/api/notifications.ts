@@ -37,7 +37,7 @@ export interface AppNotification {
   actor?: string;
 }
 
-export type NotificationAudience = "admin" | "owner" | "tenant";
+export type NotificationAudience = "admin" | "owner" | "tenant" | "worker";
 
 /** Org-wide operational notifications (internal staff portal). */
 const adminNotifications: AppNotification[] = [
@@ -70,10 +70,18 @@ const tenantNotifications: AppNotification[] = [
   { id: "tn4", type: "announcement", title: "Water maintenance — Nakasero Heights", body: "Water will be interrupted Saturday 09:00–13:00 for tank cleaning.", entityType: "announcement", channel: "in_app", status: "read", sent_at: "2026-06-28T10:00:00Z", read_at: "2026-06-28T12:00:00Z" },
 ];
 
+/** Worker-personal only: their assigned jobs and their pay. */
+const workerNotifications: AppNotification[] = [
+  { id: "wn1", type: "system", title: "Job assigned", body: "A cleaning job at Nakasero Heights, A-407 was assigned to you for Thursday 09:00.", entityType: "service-booking", channel: "in_app", status: "sent", sent_at: "2026-07-08T07:30:00Z", read_at: null },
+  { id: "wn2", type: "system", title: "Schedule updated", body: "Your Friday afternoon job was rescheduled to 14:00.", entityType: "service-booking", channel: "in_app", status: "sent", sent_at: "2026-07-06T15:10:00Z", read_at: null },
+  { id: "wn3", type: "payment", title: "Payout processed", body: "Your payout for June has been processed.", entityType: "payout", channel: "in_app", status: "read", sent_at: "2026-07-02T09:00:00Z", read_at: "2026-07-02T09:20:00Z" },
+];
+
 export const notificationsByAudience: Record<NotificationAudience, AppNotification[]> = {
   admin: adminNotifications,
   owner: ownerNotifications,
   tenant: tenantNotifications,
+  worker: workerNotifications,
 };
 
 /** Back-compat default (admin set). */

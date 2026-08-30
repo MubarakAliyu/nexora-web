@@ -136,7 +136,7 @@ export async function processSettlement(input: ProcessSettlementInput): Promise<
     after: { period: rec.period, gross: rec.grossRevenue, fee: rec.managementFee, expenses: rec.expenses, net: rec.netPayout },
     notify: { type: "system", title: "Settlement processed", body: `Settlement of ${money(rec.netPayout)} processed for ${rec.ownerName}, ${rec.period}.` },
   });
-  pushNotify("system", "Settlement processed", `Settlement processed — ${money(rec.netPayout)} for ${rec.period}. View your statement in the Reports section.`, "settlement", rec.id, "created");
+  pushNotify("system", "Settlement processed", `Settlement processed — ${money(rec.netPayout)} for ${rec.period}. View your statement in the Reports section.`, "settlement", rec.id, "created", ["owner"]);
   return rec;
 }
 
