@@ -8,9 +8,11 @@ export interface SessionUser {
   email: string;
   role: Role;
   title?: string;
-  /** Domain links for identity-scoped portals (owner / tenant). */
+  /** Domain links for identity-scoped portals (owner / tenant / worker). */
   ownerId?: string;
   tenantId?: string;
+  /** F4 — the Staff record behind a service worker's login. */
+  staffId?: string;
   /** Forces the first-login password-change gate. */
   requiresPasswordChange?: boolean;
 }

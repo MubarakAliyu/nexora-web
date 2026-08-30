@@ -1383,6 +1383,29 @@ export const workerPayouts: WorkerPayout[] = [];
       payoutId: null,
     });
   }
+  /* Maintenance work earns too. Without this a maintenance worker like Fred
+     Wanyama opened Earnings to zeroes despite a full ticket history — the seed
+     only knew about service bookings. */
+  for (const t of tickets) {
+    if (t.status !== "closed" && t.status !== "completed") continue;
+    const cost = t.cost ?? t.actualCost ?? t.assessedCost ?? 0;
+    if (cost <= 0) continue;
+    const member = staff.find((st) => (t.assigneeId ? st.id === t.assigneeId : st.name === t.assignee) && st.staffType === "operational_staff");
+    if (!member?.hasPortalAccess) continue;
+    n += 1;
+    workerEarnings.push({
+      id: `wed_${n}`,
+      staffId: member.id,
+      sourceType: "ticket",
+      sourceId: t.id,
+      reference: t.ref,
+      description: `${t.title} — ${units.find((u) => u.id === t.unitId)?.label ?? "unit"}`,
+      amount: Math.round((cost * rate) / 1000) * 1000,
+      earnedAt: t.closedAt ?? t.updatedAt ?? NOW.toISOString(),
+      payoutId: null,
+    });
+  }
+
   // One historical payout per worker so the payout history is not empty.
   let p = 0;
   for (const member of staff.filter((st) => st.hasPortalAccess)) {

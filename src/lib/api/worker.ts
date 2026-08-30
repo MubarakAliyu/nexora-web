@@ -249,3 +249,49 @@ export function isWithinSchedule(member: Staff | undefined, when: string | Date)
   const hhmm = `${String(d.getUTCHours()).padStart(2, "0")}:${String(d.getUTCMinutes()).padStart(2, "0")}`;
   return hhmm >= row.start && hhmm <= row.end;
 }
+
+/* ------------------------------------------------------ self-service edit */
+
+/**
+ * A worker editing their OWN contact details.
+ *
+ * Deliberately separate from the admin `updateStaff`: that function is an admin
+ * changing someone else's role/status/department, and widening it to carry
+ * self-service fields would blur who did what in the audit trail. This records
+ * the worker as the actor and touches only what they own.
+ */
+export async function updateWorkerContact(
+  staffId: string,
+  patch: { phone?: string; email?: string; address?: string },
+): Promise<Staff> {
+  await mDelay();
+  const member = db.staff.find((s) => s.id === staffId);
+  if (!member) throw new Error("Staff member not found");
+
+  const email = patch.email?.trim().toLowerCase();
+  if (email && email !== member.email?.toLowerCase()) {
+    if (db.users.some((u) => u.email.toLowerCase() === email && u.id !== member.userId)) {
+      throw new Error("That email is already in use");
+    }
+    // Keep the login in step with the record, or they can't sign in tomorrow.
+    const account = db.users.find((u) => u.id === member.userId);
+    if (account) account.email = email;
+  }
+
+  const before = { phone: member.phone, email: member.email, address: member.address };
+  if (patch.phone !== undefined) member.phone = patch.phone.trim();
+  if (email !== undefined) member.email = email;
+  if (patch.address !== undefined) member.address = patch.address.trim();
+
+  recordMutation({
+    entityType: "staff", entityId: staffId, entityName: member.name, action: "updated",
+    summary: `${member.name} updated their own contact details`,
+    before, after: { phone: member.phone, email: member.email, address: member.address },
+    notify: {
+      type: "system", title: "Worker details updated",
+      body: `${member.name} updated their contact details.`,
+      audiences: ["admin"],
+    },
+  });
+  return member;
+}

@@ -97,6 +97,26 @@ export function AppShell({ children }: { children: React.ReactNode }) {
     if (mounted && user?.requiresPasswordChange) router.replace("/change-password");
   }, [mounted, user, router]);
 
+  /* PORTAL GUARD (F4.2).
+   *
+   * Until now nothing stopped a signed-in user from typing another portal's URL
+   * — the only guards were "are you logged in" and "must you change your
+   * password". F4 makes that untenable: a service worker reaching /admin would
+   * see every property, every owner and every settlement.
+   *
+   * Anyone standing in a portal that is not theirs is sent to their own. The
+   * shared routes (/profile, /settings, /notifications) are deliberately not
+   * portal-prefixed and so are unaffected. The mirror of this rule — non-workers
+   * kept out of /worker — lives in WorkerShell.
+   */
+  React.useEffect(() => {
+    if (!mounted || !user) return;
+    const mine = portalForRole(user.role);
+    const PORTALS = ["/admin", "/owner", "/tenant", "/worker"];
+    const standingIn = PORTALS.find((p) => pathname === p || pathname.startsWith(`${p}/`));
+    if (standingIn && standingIn !== mine) router.replace(mine);
+  }, [mounted, user, pathname, router]);
+
   React.useEffect(() => setDrawerOpen(false), [pathname]);
 
   // Apply dark theme to <html> — scoped to dashboard routes (AppShell only
@@ -112,7 +132,10 @@ export function AppShell({ children }: { children: React.ReactNode }) {
   React.useEffect(() => {
     if (!user) return;
     const audience: NotificationAudience =
-      user.role === "owner" ? "owner" : user.role === "tenant" ? "tenant" : "admin";
+      user.role === "owner" ? "owner"
+      : user.role === "tenant" ? "tenant"
+      : user.role === "service_worker" ? "worker"
+      : "admin";
     setAudience(audience);
   }, [user, setAudience]);
 

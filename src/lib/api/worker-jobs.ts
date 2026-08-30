@@ -166,12 +166,32 @@ export function jobsToday(member: Staff | undefined): WorkerJob[] {
   return jobsForWorker(member).filter((j) => OPEN_STAGES.includes(j.stage) && sameDay(j.scheduledAt, today));
 }
 
+/**
+ * The next few jobs AFTER today.
+ *
+ * Note the `>= db.NOW_ISO` — without it "Next up" happily listed jobs dated
+ * months in the past, because "not today and still open" is true of anything
+ * overdue. A worker reading "Next up" needs what is coming, not what slipped.
+ */
 export function jobsUpcoming(member: Staff | undefined, limit = 3): WorkerJob[] {
   const today = new Date(db.NOW_ISO);
   return jobsForWorker(member)
-    .filter((j) => OPEN_STAGES.includes(j.stage) && !sameDay(j.scheduledAt, today))
+    .filter((j) =>
+      OPEN_STAGES.includes(j.stage)
+      && !sameDay(j.scheduledAt, today)
+      && !!j.scheduledAt
+      && j.scheduledAt >= db.NOW_ISO)
     .sort((a, b) => ((a.scheduledAt ?? "") < (b.scheduledAt ?? "") ? -1 : 1))
     .slice(0, limit);
+}
+
+/** Open jobs whose scheduled date has already passed. */
+export function jobsOverdue(member: Staff | undefined): WorkerJob[] {
+  const today = new Date(db.NOW_ISO);
+  return jobsForWorker(member).filter(
+    (j) => OPEN_STAGES.includes(j.stage) && !!j.scheduledAt
+      && j.scheduledAt < db.NOW_ISO && !sameDay(j.scheduledAt, today),
+  );
 }
 
 export interface WorkerStats {

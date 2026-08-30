@@ -15,6 +15,8 @@ export interface SessionUserPayload {
   title?: string;
   ownerId?: string;
   tenantId?: string;
+  /** F4 — the Staff record behind a service worker's login. */
+  staffId?: string;
   requiresPasswordChange?: boolean;
 }
 
@@ -51,6 +53,7 @@ export async function login(email: string, password: string): Promise<AuthSessio
       title: u.title,
       ownerId: u.ownerId,
       tenantId: u.tenantId,
+      staffId: u.staffId,
       requiresPasswordChange: u.requiresPasswordChange,
     },
   };
