@@ -119,10 +119,12 @@ export async function grantPortalAccess(
   member.userId = userId;
   member.workerType = input.workerType;
   member.availabilitySchedule ??= db.defaultAvailabilitySchedule();
+  // Credit work they had already completed before they had a login.
+  const backfilled = backfillEarnings(member);
 
   recordMutation({
     entityType: "staff", entityId: staffId, entityName: member.name, action: "updated",
-    summary: `Granted worker portal access to ${member.name} (${email}, ${WORKER_TYPE_LABEL[input.workerType]}) by ${input.actor}`,
+    summary: `Granted worker portal access to ${member.name} (${email}, ${WORKER_TYPE_LABEL[input.workerType]}) by ${input.actor}${backfilled ? `; credited ${backfilled} completed job${backfilled === 1 ? "" : "s"} to their earnings` : ""}`,
     before: { hasPortalAccess: false },
     after: { hasPortalAccess: true, email, workerType: input.workerType, userId },
     notify: {
@@ -294,4 +296,69 @@ export async function updateWorkerContact(
     },
   });
   return member;
+}
+
+/* ------------------------------------------------------------- earnings */
+
+/**
+ * The worker's share of a job. Placeholder pending stakeholder confirmation —
+ * the 27 Aug meeting did not settle worker rates.
+ */
+export const WORKER_SHARE_RATE = 0.35;
+
+/**
+ * Credit a worker for work they have ALREADY completed.
+ *
+ * The seed credits the three pre-granted workers at module load. Anyone granted
+ * access afterwards has exactly the same job history and, without this, opened
+ * Earnings to zeroes — E2 staff have been working for months before they get a
+ * login. Idempotent: it skips anything already credited, so re-granting after a
+ * revoke does not double-pay.
+ */
+export function backfillEarnings(member: Staff): number {
+  const already = new Set(
+    db.workerEarnings.filter((e) => e.staffId === member.id).map((e) => e.sourceId),
+  );
+  let added = 0;
+
+  for (const sb of db.serviceBookings) {
+    if (sb.status !== "completed" && sb.status !== "confirmed") continue;
+    if (!isAssignedTo(sb, member) || already.has(sb.id)) continue;
+    const amount = Math.round(((sb.amount ?? 0) * WORKER_SHARE_RATE) / 1000) * 1000;
+    if (amount <= 0) continue;
+    db.workerEarnings.push({
+      id: `wed_${member.id}_${sb.id}`,
+      staffId: member.id,
+      sourceType: "service_booking",
+      sourceId: sb.id,
+      reference: sb.reference,
+      description: `${sb.category} — ${sb.name ?? "customer"}`,
+      amount,
+      earnedAt: sb.date ?? db.NOW_ISO,
+      payoutId: null,
+    });
+    added += 1;
+  }
+
+  for (const t of db.tickets) {
+    if (t.status !== "closed" && t.status !== "completed") continue;
+    if (!isAssignedTo(t, member) || already.has(t.id)) continue;
+    const cost = t.cost ?? t.actualCost ?? t.assessedCost ?? 0;
+    const amount = Math.round((cost * WORKER_SHARE_RATE) / 1000) * 1000;
+    if (amount <= 0) continue;
+    const unit = db.units.find((u) => u.id === t.unitId)?.label ?? "unit";
+    db.workerEarnings.push({
+      id: `wed_${member.id}_${t.id}`,
+      staffId: member.id,
+      sourceType: "ticket",
+      sourceId: t.id,
+      reference: t.ref,
+      description: `${t.title} — ${unit}`,
+      amount,
+      earnedAt: t.closedAt ?? t.updatedAt ?? db.NOW_ISO,
+      payoutId: null,
+    });
+    added += 1;
+  }
+  return added;
 }

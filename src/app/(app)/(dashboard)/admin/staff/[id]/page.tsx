@@ -9,7 +9,7 @@ import { hasLoginAccount } from "@/lib/api/password-reset";
 import { useSession } from "@/lib/stores/session";
 import { StatusBadge } from "@/components/app/status";
 import { AvailabilityBadge } from "@/components/admin/availability-badge";
-import { WEEK_DAYS, DAY_LABEL, availabilityScheduleFor, WORKER_TYPE_LABEL } from "@/lib/api/worker";
+import { WEEK_DAYS, DAY_LABEL, availabilityScheduleFor } from "@/lib/api/worker";
 import { Card } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { StatCard } from "@/components/ui/stat-card";
@@ -154,8 +154,8 @@ export default function StaffDetailPage() {
             )}
             {isOps && m.hasPortalAccess && (
               <p className="mt-5 rounded-lg border border-border bg-surface-hover p-3 text-caption text-muted">
-                Has a worker portal login ({m.email}) as a{" "}
-                {m.workerType ? WORKER_TYPE_LABEL[m.workerType].toLowerCase() : "worker"}.
+                Has a worker portal login ({m.email}) as{" "}
+                {m.workerType === "employee" ? "an employee" : m.workerType === "contractor" ? "a contractor" : "a worker"}.
               </p>
             )}
           </Card>

@@ -269,12 +269,12 @@ export async function declineJob(id: string, member: Staff, reason: string): Pro
 
   recordMutation({
     entityType: booking ? "service_booking" : "ticket", entityId: id, entityName: ref, action: "updated",
-    summary: `${member.name} declined ${ref} — ${clean}. Assignment released for reassignment.`,
+    summary: `${member.name} declined ${ref} — ${clean.replace(/[.\s]+$/, "")}. Assignment released for reassignment.`,
     before: { assignee: member.name, workerResponse: "pending" },
     after: { assignee: null, workerResponse: "declined", reason: clean },
     notify: {
       type: "system", title: "Job declined — needs reassignment",
-      body: `${member.name} declined ${ref} — ${clean}. The job is unassigned and needs reallocating.`,
+      body: `${member.name} declined ${ref} — ${clean.replace(/[.\s]+$/, "")}. The job is unassigned and needs reallocating.`,
       audiences: ["admin"],
     },
   });
