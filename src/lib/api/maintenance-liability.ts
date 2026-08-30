@@ -123,6 +123,50 @@ export async function closeTicketWithLiability(
       ? new Date(input.invoiceDueDate).toISOString()
       : new Date(Date.now() + 14 * 86_400_000).toISOString();
     const tenantRec = db.tenants.find((x) => x.id === t.tenantId);
+
+    /* F3 — under E4 this branch was the FIRST time a tenant was invoiced, so it
+       could safely raise one. F3 moved that forward to routing, and the tenant's
+       payment is what releases the work — so by the time we get here the invoice
+       usually exists and is usually already PAID.
+       Re-issuing it billed the tenant a second time for the same repair, reset
+       `paymentStatus` off "paid", and so erased real collected money from
+       Maintenance Revenue. Reconcile against the existing invoice instead. */
+    const existing = t.invoiceId ? db.invoices.find((i) => i.id === t.invoiceId) : undefined;
+    if (existing) {
+      const variance = total - existing.amount;
+      existing.amount = total;
+      existing.status = existing.paid >= total ? "paid" : "pending";
+      t.invoiceAmount = total;
+      t.paymentStatus = existing.paid >= total ? "paid" : "awaiting_payment";
+      const settled = existing.paid >= total;
+
+      recordMutation({
+        entityType: "ticket", entityId: id, entityName: t.ref, action: "status_changed",
+        summary: settled
+          ? `Closed ${t.ref} — ${money(total)} already paid by ${tenant} on ${number}${variance ? `, estimate adjusted by ${money(variance)}` : ""} (${input.liabilityReason})`
+          : `Closed ${t.ref} — ${money(total - existing.paid)} still outstanding from ${tenant} on ${number} (${input.liabilityReason})`,
+        before, after: { liability: "tenant", cost: total, invoiceNumber: number, paid: existing.paid },
+        notify: {
+          type: "payment", title: "Ticket closed — tenant charge",
+          body: settled
+            ? `${t.ref} closed. ${money(total)} collected from ${tenant} on ${number}.`
+            : `${t.ref} closed. ${money(total - existing.paid)} still due from ${tenant} on ${number}.`,
+          audiences: ["admin"],
+        },
+      });
+      // Only chase them if something is actually still owed.
+      if (!settled) {
+        pushNotify("payment", "Maintenance charge",
+          `Maintenance charge — ${t.title}. Amount due: ${money(total - existing.paid)}. Invoice ${number}.`,
+          "ticket", id);
+      } else {
+        pushNotify("maintenance", "Your maintenance request has been resolved",
+          `${t.title} is complete. Your payment of ${money(existing.paid)} on ${number} covers it in full.`,
+          "ticket", id);
+      }
+      return t;
+    }
+
     const invoice: Invoice = {
       id: `inv_mt_${Date.now()}`,
       number,

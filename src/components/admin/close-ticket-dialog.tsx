@@ -102,7 +102,13 @@ export function CloseTicketDialog({
       if (liability === "owner") {
         toast.success(`Ticket closed — ${formatUGX(total)} recorded as owner expense`);
       } else if (liability === "tenant") {
-        toast.success(`Ticket closed — invoice INV-${ticket.ref} issued to ${tenantName(ticket.tenantId)}`);
+        // F3 — the tenant is usually invoiced at routing and has usually already
+        // paid, which is what released the work. Saying "issued" then is wrong.
+        toast.success(
+          ticket.paymentStatus === "paid"
+            ? `Ticket closed — ${formatUGX(total)} already collected from ${tenantName(ticket.tenantId)} on INV-${ticket.ref}`
+            : `Ticket closed — invoice INV-${ticket.ref} issued to ${tenantName(ticket.tenantId)}`,
+        );
       } else {
         toast.success(`Ticket closed — ${formatUGX(total)} absorbed by Nexora`);
       }
@@ -218,7 +224,17 @@ export function CloseTicketDialog({
                     <Field label="Invoice due date" htmlFor="cl-due">
                       <Input id="cl-due" type="date" value={due} onChange={(e) => setDue(e.target.value)} />
                       <p className="mt-1 text-caption text-muted">
-                        Invoice <span className="font-medium text-foreground">INV-{ticket.ref}</span> will be issued to {tenantName(ticket.tenantId)}.
+                        {ticket.paymentStatus === "paid" ? (
+                          <>
+                            {tenantName(ticket.tenantId)} has already paid{" "}
+                            <span className="font-medium text-foreground">INV-{ticket.ref}</span>. Closing
+                            reconciles that invoice — they will not be charged again.
+                          </>
+                        ) : (
+                          <>
+                            Invoice <span className="font-medium text-foreground">INV-{ticket.ref}</span> will be issued to {tenantName(ticket.tenantId)}.
+                          </>
+                        )}
                       </p>
                     </Field>
                   </div>
