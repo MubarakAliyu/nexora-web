@@ -15,6 +15,7 @@ import { pushNotify, resolveStaff } from "@/lib/api/admin-mutations";
 import type {
   MaintenanceTicket, TicketStatus, ChargeTo, Invoice,
 } from "@/lib/mock/types";
+import type { NotificationAudience } from "@/lib/api/notifications";
 
 const mDelay = (ms = 450) => new Promise((r) => setTimeout(r, ms));
 const money = (n: number) => `UGX ${Math.round(n).toLocaleString("en-UG")}`;
@@ -85,6 +86,18 @@ export function ticketTransitionHint(from: TicketStatus, to: TicketStatus): stri
  */
 export const DEFAULT_OWNER_APPROVAL_THRESHOLD = 500_000;
 
+/**
+ * PRIVACY. Every `recordMutation` below emits an INTERNAL operational record —
+ * who was asked, what it cost, whose name is on it — and each is deliberately
+ * paired with a `pushNotify` carrying the same event with the sensitive detail
+ * stripped, for whichever party is entitled to it. That pairing only works if the
+ * internal record stays internal; without this restriction the store delivers it
+ * to every audience and the stripped version is pointless. Owners and tenants
+ * never deal with each other in this model, so neither may see the other named,
+ * nor the figure being put to them.
+ */
+const ADMIN_ONLY: NotificationAudience[] = ["admin"];
+
 let ownerApprovalThreshold = DEFAULT_OWNER_APPROVAL_THRESHOLD;
 
 export function getOwnerApprovalThreshold(): number {
@@ -103,6 +116,7 @@ export async function setOwnerApprovalThreshold(next: number, actor: string): Pr
     notify: {
       type: "system", title: "Approval threshold updated",
       body: `Owner approval is now required above ${money(ownerApprovalThreshold)}.`,
+      audiences: ADMIN_ONLY,
     },
   });
   return ownerApprovalThreshold;
@@ -154,6 +168,7 @@ export async function recordAssessment(id: string, input: AssessmentInput): Prom
     notify: {
       type: "maintenance", title: "Assessment complete",
       body: `Assessment complete — ${t.ref}, ${t.title}, ${money(total)} estimated.`,
+      audiences: ADMIN_ONLY,
     },
   });
   pushNotify("maintenance", "Your request has been assessed",
@@ -234,6 +249,7 @@ export async function routeCharge(id: string, input: RouteChargeInput): Promise<
       notify: {
         type: "payment", title: "Maintenance charge routed to tenant",
         body: `${t.ref} — ${money(cost)} invoiced to ${tName(t.tenantId)} as ${number}.`,
+        audiences: ADMIN_ONLY,
       },
     });
     pushNotify("payment", "Maintenance charge",
@@ -260,6 +276,7 @@ export async function routeCharge(id: string, input: RouteChargeInput): Promise<
         notify: {
           type: "maintenance", title: "Owner approval requested",
           body: `${t.ref} — ${money(cost)} sent to ${owner?.name ?? "the owner"} for approval.`,
+          audiences: ADMIN_ONLY,
         },
       });
       // Owner-directed: the tenant must not see that the owner is being asked, nor
@@ -280,6 +297,7 @@ export async function routeCharge(id: string, input: RouteChargeInput): Promise<
       notify: {
         type: "maintenance", title: "Maintenance scheduled",
         body: `${t.ref} — ${money(cost)} charged to ${owner?.name ?? "the owner"}, below the approval threshold.`,
+        audiences: ADMIN_ONLY,
       },
     });
     pushNotify("maintenance", "Maintenance approved",
@@ -299,6 +317,7 @@ export async function routeCharge(id: string, input: RouteChargeInput): Promise<
     notify: {
       type: "maintenance", title: "Cost absorbed by Nexora",
       body: `${t.ref} — ${money(cost)} absorbed by Nexora, work scheduled.`,
+      audiences: ADMIN_ONLY,
     },
   });
   pushNotify("maintenance", "Your request has been approved",
@@ -355,6 +374,9 @@ export async function approveMaintenance(id: string, approverName: string): Prom
     notify: {
       type: "maintenance", title: "Owner approved",
       body: `Owner approved — ${t.ref}, ${pName(t.propertyId)}, work may proceed.`,
+      // The owner made this decision and should see it confirmed; the tenant gets
+      // the neutral "has been approved" below, with no cost and no owner named.
+      audiences: ["admin", "owner"],
     },
   });
   pushNotify("maintenance", "Your maintenance request has been approved",
@@ -406,7 +428,11 @@ export async function sendApprovalReminder(id: string, actor: string): Promise<{
     entityType: "ticket", entityId: id, entityName: t.ref, action: "updated",
     summary: `Approval reminder sent to ${owner?.name ?? "owner"} for ${t.ref} by ${actor} (waiting ${waitingLabel(t)})`,
     after: { reminderSentAt: db.NOW_ISO },
-    notify: { type: "maintenance", title: "Reminder sent", body: `Reminder sent to ${owner?.name ?? "the owner"} for ${t.ref}.` },
+    notify: {
+      type: "maintenance", title: "Reminder sent",
+      body: `Reminder sent to ${owner?.name ?? "the owner"} for ${t.ref}.`,
+      audiences: ADMIN_ONLY,
+    },
   });
   pushNotify("maintenance", "Reminder: maintenance approval required",
     `${pName(t.propertyId)}, ${uLabel(t.unitId)} — ${t.title}. Estimated ${money(t.assessedCost ?? 0)}. Awaiting your decision.`,
