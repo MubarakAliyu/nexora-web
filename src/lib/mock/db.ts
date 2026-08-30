@@ -48,6 +48,7 @@ import type {
   CatalogueItem,
   Quotation,
   AdditionalCharge,
+  AppSettings,
   PaymentState,
   TicketCategory,
   TicketPriority,
@@ -1297,6 +1298,14 @@ export const catalogueItems: CatalogueItem[] = [];
 export const quotations: Quotation[] = [];
 /** F2 — additional work charges, linked to but never modifying their booking. */
 export const additionalCharges: AdditionalCharge[] = [];
+
+/**
+ * F3 — admin-configurable settings. A one-row collection, not a module `let`,
+ * because a `let` is re-initialised on every hard navigation: an admin who changed
+ * the approval threshold was told it saved, it was written to the audit trail, and
+ * it silently reverted the moment they left the page.
+ */
+export const appSettings: AppSettings[] = [{ ownerApprovalThreshold: 500_000 }];
 
 /* ------------------------------------------------------------------------
  * F2.2 — payment states.

@@ -958,3 +958,14 @@ export type PaymentState =
   | "failed"
   | "cancelled"
   | "requires_verification";
+
+/**
+ * Runtime-configurable settings an admin can change (F3).
+ *
+ * Held as a single-row collection rather than loose module variables so it rides
+ * the existing persistence shim, which hydrates and persists arrays.
+ */
+export interface AppSettings {
+  /** Owner-liable maintenance above this needs the owner's approval first. */
+  ownerApprovalThreshold: number;
+}

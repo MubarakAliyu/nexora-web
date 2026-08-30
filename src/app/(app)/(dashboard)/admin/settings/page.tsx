@@ -88,6 +88,12 @@ function GlobalTab() {
   const [busy, setBusy] = React.useState(false);
   const [state, setState] = React.useState({ currency: "UGX", timezone: "Africa/Kampala", dateFormat: "DD MMM YYYY", grace: "5", dueDay: "1", urgentSla: "4", highSla: "24", sessionTimeout: String(SESSION_TIMEOUT_MINUTES), approvalThreshold: String(getOwnerApprovalThreshold()) });
   const set = (k: string, v: string) => setState((s) => ({ ...s, [k]: v }));
+  /* The initial state above is computed during the server/first render, when the
+     mock DB still holds the pure seed. Re-read once the persistence shim has
+     hydrated, or the field shows the default over a threshold already changed. */
+  React.useEffect(() => {
+    setState((s) => ({ ...s, approvalThreshold: String(getOwnerApprovalThreshold()) }));
+  }, []);
   const save = async () => { setBusy(true); await saveSettingsSection("global", "Updated global settings"); toast.success("Global settings saved"); setBusy(false); };
   return (
     <Card className="max-w-2xl p-6">

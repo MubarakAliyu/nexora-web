@@ -104,16 +104,19 @@ export const DEFAULT_OWNER_APPROVAL_THRESHOLD = 500_000;
  */
 const ADMIN_ONLY: NotificationAudience[] = ["admin"];
 
-let ownerApprovalThreshold = DEFAULT_OWNER_APPROVAL_THRESHOLD;
-
+/* Kept in the persisted `appSettings` collection, not a module `let` — a `let` is
+   re-initialised on every hard navigation, so a threshold the admin had changed
+   (and been told was saved) reverted silently the moment they left the page. */
 export function getOwnerApprovalThreshold(): number {
-  return ownerApprovalThreshold;
+  return db.appSettings[0]?.ownerApprovalThreshold ?? DEFAULT_OWNER_APPROVAL_THRESHOLD;
 }
 
 export async function setOwnerApprovalThreshold(next: number, actor: string): Promise<number> {
   await mDelay(250);
-  const before = ownerApprovalThreshold;
-  ownerApprovalThreshold = Math.max(0, Math.round(next));
+  const before = getOwnerApprovalThreshold();
+  const ownerApprovalThreshold = Math.max(0, Math.round(next));
+  if (db.appSettings[0]) db.appSettings[0].ownerApprovalThreshold = ownerApprovalThreshold;
+  else db.appSettings.push({ ownerApprovalThreshold });
   recordMutation({
     entityType: "settings", entityId: "owner_approval_threshold", entityName: "Owner approval threshold",
     action: "updated",
@@ -131,10 +134,11 @@ export async function setOwnerApprovalThreshold(next: number, actor: string): Pr
 /** What the system proposes. A hint only — never auto-selected. */
 export function suggestedRoute(t: MaintenanceTicket): { route: ChargeTo | null; why: string } {
   const cost = t.assessedCost ?? 0;
-  if (cost >= ownerApprovalThreshold) {
+  const threshold = getOwnerApprovalThreshold();
+  if (cost >= threshold) {
     return {
       route: "owner",
-      why: `Suggested: Owner — exceeds the approval threshold of ${money(ownerApprovalThreshold)}`,
+      why: `Suggested: Owner — exceeds the approval threshold of ${money(threshold)}`,
     };
   }
   return { route: null, why: "No suggestion — decide based on the cause of the fault." };
@@ -201,6 +205,7 @@ export async function routeCharge(id: string, input: RouteChargeInput): Promise<
   if (!t) throw new Error("Ticket not found");
   const before = { status: t.status, chargeTo: t.chargeTo };
 
+  const threshold = getOwnerApprovalThreshold();
   const suggestion = suggestedRoute(t);
   const overrode = !!suggestion.route && suggestion.route !== input.chargeTo;
   const cost = t.assessedCost ?? 0;
@@ -267,7 +272,7 @@ export async function routeCharge(id: string, input: RouteChargeInput): Promise<
   /* ---- OWNER: approval gate above the threshold ---- */
   if (input.chargeTo === "owner") {
     const owner = ownerOf(t.propertyId);
-    const needsApproval = cost >= ownerApprovalThreshold;
+    const needsApproval = cost >= threshold;
     t.requiresOwnerApproval = needsApproval;
 
     if (needsApproval) {
@@ -277,7 +282,7 @@ export async function routeCharge(id: string, input: RouteChargeInput): Promise<
 
       recordMutation({
         entityType: "ticket", entityId: id, entityName: t.ref, action: "status_changed",
-        summary: `${t.ref} routed to OWNER — ${money(cost)} exceeds the ${money(ownerApprovalThreshold)} threshold, awaiting ${owner?.name ?? "owner"} approval (${t.chargeToReason})${overrode ? " [OVERRIDE: " + t.routingOverrideReason + "]" : ""}`,
+        summary: `${t.ref} routed to OWNER — ${money(cost)} exceeds the ${money(threshold)} threshold, awaiting ${owner?.name ?? "owner"} approval (${t.chargeToReason})${overrode ? " [OVERRIDE: " + t.routingOverrideReason + "]" : ""}`,
         before, after: { status: t.status, chargeTo: "owner", requiresOwnerApproval: true, overridden: overrode },
         notify: {
           type: "maintenance", title: "Owner approval requested",
@@ -298,7 +303,7 @@ export async function routeCharge(id: string, input: RouteChargeInput): Promise<
     t.status = "scheduled";
     recordMutation({
       entityType: "ticket", entityId: id, entityName: t.ref, action: "status_changed",
-      summary: `${t.ref} routed to OWNER — ${money(cost)} is below the ${money(ownerApprovalThreshold)} threshold, scheduled without approval (${t.chargeToReason})${overrode ? " [OVERRIDE: " + t.routingOverrideReason + "]" : ""}`,
+      summary: `${t.ref} routed to OWNER — ${money(cost)} is below the ${money(threshold)} threshold, scheduled without approval (${t.chargeToReason})${overrode ? " [OVERRIDE: " + t.routingOverrideReason + "]" : ""}`,
       before, after: { status: "scheduled", chargeTo: "owner", requiresOwnerApproval: false, overridden: overrode },
       notify: {
         type: "maintenance", title: "Maintenance scheduled",
