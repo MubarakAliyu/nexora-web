@@ -8,7 +8,7 @@ import { useLive } from "@/lib/stores/live";
 import { useAudit, type AuditAction } from "@/lib/stores/audit";
 import { useNotifications } from "@/lib/stores/notifications";
 import { useSession } from "@/lib/stores/session";
-import type { NotificationType } from "@/lib/api/notifications";
+import type { NotificationAudience, NotificationType } from "@/lib/api/notifications";
 
 export interface RecordInput {
   entityType: string;
@@ -18,7 +18,7 @@ export interface RecordInput {
   summary: string;
   before?: Record<string, unknown>;
   after?: Record<string, unknown>;
-  notify?: { type: NotificationType; title: string; body: string } | false;
+  notify?: { type: NotificationType; title: string; body: string; audiences?: NotificationAudience[] } | false;
 }
 
 export function recordMutation(input: RecordInput): void {

@@ -9,7 +9,7 @@ import { recordMutation } from "@/lib/api/actions";
 import { useNotifications } from "@/lib/stores/notifications";
 import { createAgreement, type AgreementInput } from "@/lib/api/agreements";
 import type { Role } from "@/lib/roles";
-import type { NotificationType } from "@/lib/api/notifications";
+import type { NotificationAudience, NotificationType } from "@/lib/api/notifications";
 
 /**
  * Push an extra in-app notification for a secondary recipient (tenant / owner /
@@ -24,8 +24,10 @@ export function pushNotify(
   entityType: string,
   entityId: string,
   action = "updated",
+  /** Restrict who may see it. Omit for the usual "everyone" behaviour. */
+  audiences?: NotificationAudience[],
 ) {
-  useNotifications.getState().pushSystem({ type, title, body, entityType, entityId, action });
+  useNotifications.getState().pushSystem({ type, title, body, entityType, entityId, action, audiences });
 }
 
 const money = (n: number) => `UGX ${Math.round(n).toLocaleString("en-UG")}`;

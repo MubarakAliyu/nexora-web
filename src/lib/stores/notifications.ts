@@ -10,6 +10,8 @@ export interface SystemNotificationInput {
   type: NotificationType;
   title: string;
   body: string;
+  /** Restrict who may see this. Undefined = everyone (the usual case). */
+  audiences?: NotificationAudience[];
   entityType?: string;
   entityId?: string;
   action?: string;
@@ -38,6 +40,10 @@ let sysSeq = 0;
 const clone = (audience: NotificationAudience) =>
   notificationsByAudience[audience].map((n) => ({ ...n }));
 
+/** Runtime notifications visible to one audience. */
+const visibleTo = (list: AppNotification[], audience: NotificationAudience) =>
+  list.filter((n) => !n.audiences || n.audiences.includes(audience));
+
 const markIn = (list: AppNotification[], id: string) =>
   list.map((n) => (n.id === id ? { ...n, status: "read" as const, read_at: new Date().toISOString() } : n));
 
@@ -49,7 +55,11 @@ const markAllIn = (list: AppNotification[]) =>
  * Audience-aware: the app shell calls `setAudience(role)` so an owner sees only
  * owner-relevant notifications, a tenant only theirs, staff the org feed.
  * Runtime notifications (`systemItems`) ride along on every audience so an action
- * taken on the marketing site is still visible after landing in the dashboard.
+ * taken on the marketing site is still visible after landing in the dashboard —
+ * UNLESS they carry an explicit `audiences` restriction. That escape hatch exists
+ * because some messages must never reach a particular party: an owner declining a
+ * repair gives Nexora a reason that the tenant must not see, since owners and
+ * tenants never deal with each other directly in this model.
  */
 export const useNotifications = create<NotificationsState>((set, get) => ({
   audience: "admin",
@@ -57,7 +67,9 @@ export const useNotifications = create<NotificationsState>((set, get) => ({
   systemItems: [],
   setAudience: (audience) =>
     set((s) =>
-      s.audience === audience ? {} : { audience, items: [...s.systemItems, ...clone(audience)] },
+      s.audience === audience
+        ? {}
+        : { audience, items: [...visibleTo(s.systemItems, audience), ...clone(audience)] },
     ),
   unreadCount: () => get().items.filter((n) => n.status !== "read").length,
   markRead: (id) =>
@@ -79,13 +91,19 @@ export const useNotifications = create<NotificationsState>((set, get) => ({
         entityId: n.entityId,
         action: n.action,
         actor: n.actor,
+        audiences: n.audiences,
       };
-      return { items: [entry, ...s.items], systemItems: [entry, ...s.systemItems] };
+      // Only surface it in the live list if the current audience is allowed to see it.
+      const visible = !entry.audiences || entry.audiences.includes(s.audience);
+      return {
+        items: visible ? [entry, ...s.items] : s.items,
+        systemItems: [entry, ...s.systemItems],
+      };
     }),
   hydrate: (systemItems) =>
     set((s) => {
       if (systemItems.length === 0) return {};
       const seeded = s.items.filter((n) => !n.id.startsWith("sys_"));
-      return { systemItems, items: [...systemItems, ...seeded] };
+      return { systemItems, items: [...visibleTo(systemItems, s.audience), ...seeded] };
     }),
 }));

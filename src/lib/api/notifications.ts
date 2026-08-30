@@ -24,6 +24,13 @@ export interface AppNotification {
   sent_at: string;
   read_at: string | null;
   /** Present on notifications generated live by an action. */
+  /**
+   * Restricts this notification to specific audiences. Undefined means "everyone",
+   * which is the existing behaviour for the vast majority of runtime notifications.
+   * Set it when a message must NOT reach a party — e.g. an owner's decline reason,
+   * which is between Nexora and the owner and must never reach the tenant.
+   */
+  audiences?: NotificationAudience[];
   entityType?: string;
   entityId?: string;
   action?: string;

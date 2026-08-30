@@ -262,9 +262,11 @@ export async function routeCharge(id: string, input: RouteChargeInput): Promise<
           body: `${t.ref} — ${money(cost)} sent to ${owner?.name ?? "the owner"} for approval.`,
         },
       });
+      // Owner-directed: the tenant must not see that the owner is being asked, nor
+      // the cost being put to them.
       pushNotify("maintenance", "Maintenance approval required",
         `Maintenance approval required — ${property}, ${unit}. ${t.title}. Estimated cost ${money(cost)}. Please review and approve.`,
-        "ticket", id);
+        "ticket", id, "updated", ["owner"]);
       return t;
     }
 
@@ -282,7 +284,7 @@ export async function routeCharge(id: string, input: RouteChargeInput): Promise<
     });
     pushNotify("maintenance", "Maintenance approved",
       `Maintenance approved for ${property}, ${unit} — ${t.title}, ${money(cost)}. This will appear as a property expense in your settlement.`,
-      "ticket", id);
+      "ticket", id, "updated", ["owner"]);
     return t;
   }
 
@@ -381,6 +383,10 @@ export async function declineMaintenance(id: string, reason: string, approverNam
     notify: {
       type: "maintenance", title: "Owner declined",
       body: `Owner declined — ${t.ref}. Reason: ${t.ownerDeclineReason}`,
+      /* PRIVACY: the reason is between Nexora and the owner. Owners and tenants
+         never deal with each other in this model, and "the owner won't pay for it"
+         reaching a tenant could genuinely damage the tenancy. Admin + owner only. */
+      audiences: ["admin", "owner"],
     },
   });
   // Deliberately neutral: the owner's reason is between Nexora and the owner.
@@ -404,7 +410,7 @@ export async function sendApprovalReminder(id: string, actor: string): Promise<{
   });
   pushNotify("maintenance", "Reminder: maintenance approval required",
     `${pName(t.propertyId)}, ${uLabel(t.unitId)} — ${t.title}. Estimated ${money(t.assessedCost ?? 0)}. Awaiting your decision.`,
-    "ticket", id);
+    "ticket", id, "updated", ["owner"]);
   return { ok: true };
 }
 
