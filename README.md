@@ -2,13 +2,13 @@
 
 The official marketing website and application dashboards for **Nexora Property Management** — an integrated property management ecosystem based in Kampala, Uganda.
 
-Built as a single Next.js 15 application with two route groups: a public, motion-rich **marketing site** and an authenticated **application** (Admin, Owner, and Tenant dashboards).
+Built as a single Next.js 15 application with two route groups: a public, motion-rich **marketing site** and an authenticated **application** with **four portals** — Admin, Owner, Tenant and (mobile-first) Service Worker.
 
 ---
 
 ## Project Status — ✅ Complete (frontend, mock-data)
 
-All build batches are complete and the production build passes clean (80 routes).
+All build batches are complete and the production build passes clean, warning-free.
 
 | Batch | Scope | Status |
 |---|---|---|
@@ -24,6 +24,12 @@ All build batches are complete and the production build passes clean (80 routes)
 | Revision B | Owner/tenant onboarding + forced password change, 7-step property wizard, owner read-only lockdown, staff module | ✅ |
 | Revision C | Enhanced lease statuses (auto expiring/expired), deposit expansion + termination outcomes, Move-Out & Deposit Settlement wizard, tenant lease enhancements | ✅ |
 | Revision D | Owner settlement workflow, owner financials restructure, notification coverage, CSV exports + integration modals (zero stubs) | ✅ |
+| E1–E5 | Persistence shim, operational staff, service lifecycle, maintenance cost liability, admin password reset + data consistency | ✅ |
+| F1 | Three-level admin-managed **Service Catalogue** — nothing about it lives in code; catalogue-driven booking forms; quotations with price snapshotting | ✅ |
+| F2 | Slug-based booking route resolution, additional work charges, five payment states, session timeout | ✅ |
+| F3 | Maintenance payer routing + owner approval — the "who pays?" decision moved from closure to before any work | ✅ |
+| F4 | **Service Worker dashboard** — the fourth portal, mobile-first, with worker accounts, job accept/decline, earnings and admin scheduling-conflict awareness | ✅ |
+| F5 | **Currency (UGX + USD)**, Settings across all four portals, financial traceability audit, backend handoff | ✅ |
 
 ### Public routes (crawlable)
 `/` · `/about` · `/services` + `/services/[slug]` · `/portfolio` + `/portfolio/[slug]` · `/projects` · `/investors` · `/blog` + `/blog/[slug]` · `/careers` · `/contact` · `/request-a-quote` · `/rentals` + `/rentals/[id]` · `/book/cleaning` · `/book/lifestyle`
@@ -33,6 +39,8 @@ All build batches are complete and the production build passes clean (80 routes)
 - **Admin:** `/admin` · `/properties` (+`/[id]`) · `/units` · `/owners` (+`/[id]`) · `/tenants` (+`/[id]`) · `/leases` (+`/[id]/move-out`) · `/finance` · `/financial-overview` · `/agreements` (+`/[id]`) · `/maintenance` · `/leads` (+`/[id]`) · `/bookings` · `/service-bookings` · `/analytics` · `/announcements` · `/staff` (+`/[id]`) · `/settings`
 - **Owner:** `/owner` · `/properties` (+`/[slug]`) · `/agreement` · `/financials` · `/reports` · `/documents` · `/notifications` · `/settings`
 - **Tenant:** `/tenant` · `/lease` · `/payments` · `/maintenance` · `/bookings` · `/documents`
+- **Service Worker (mobile-first):** `/worker` (Today) · `/worker/jobs` (+`/[id]`) · `/worker/earnings` · `/worker/profile` · `/worker/settings`
+- **Admin (F1–F5 additions):** `/admin/service-catalogue`
 
 ---
 
@@ -158,12 +166,36 @@ The app currently runs on mocked authentication. Every account uses password **`
 | `salim@gmail.com` | Owner | `/owner` (owns 4 properties; reconciles with admin Financial Overview) |
 | `mubarak@gmail.com` | Tenant | `/tenant` (rents Nakasero A-407) |
 | `newowner@test.com` | Owner (onboarding demo) | Forced `/change-password` on first login — temp password **`TempPass-1234`** |
+| `sarah.worker@nexora.co.ug` | Service Worker — Cleaning (employee) | `/worker` |
+| `fred.worker@nexora.co.ug` | Service Worker — Maintenance (employee) | `/worker` |
+| `ronald.worker@nexora.co.ug` | Service Worker — Car Wash (contractor) | `/worker` |
+
+Each portal is guarded: signing in as one role and typing another portal's URL redirects
+you to your own. Service workers require 2FA like other staff — they see customer
+addresses and phone numbers.
 
 **Branded PDFs (8 types):** Invoice · Receipt · Owner Statement · Lease Agreement ·
 Deposit Settlement Statement (Move-Out) · Settlement Statement (owner payout) ·
 Service Invoice / Receipt · Maintenance Invoice. **CSV exports** on every admin list
 (properties, units, tenants, owners, leases, invoices, payments, expenses, tickets, leads,
 bookings, transactions, analytics).
+
+### Currency
+
+Two currencies are supported: **UGX** and **USD**, set per user under Settings in any of
+the four portals (they share one preference store).
+
+> **Amounts are displayed in the currency in which they were recorded. Automatic
+> conversion is not enabled.** Every financial record stores its own currency; the
+> preference governs new records and your own totals only. Exchange-rate behaviour was
+> explicitly left undecided by the stakeholder and must not be assumed.
+
+### Backend integration
+
+See **[BACKEND_HANDOFF.md](./BACKEND_HANDOFF.md)** — every mock accessor mapped to the
+endpoint it should become, the full data model, workflow endpoints and the business rules
+they carry, the payment-gateway integration points, the notification recipient model, and
+every placeholder value still awaiting stakeholder input.
 
 ### Operational modules
 

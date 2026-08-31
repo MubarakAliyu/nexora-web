@@ -863,6 +863,92 @@ signed-in user typing another portal's URL — the only guards were "are you sig
 
 Nothing was removed. All E2–F3 functionality remains in place.
 
+## Execution Batch F5 — Currency, Settings, Traceability & Handoff ✅ COMPLETE
+
+**Gate:** lint + `tsc --noEmit` clean · `npm run build` **warning-free, 92 static pages**.
+
+The final batch of the F-round. Currency as a cross-cutting concern, Settings unified
+across all four portals, a financial traceability audit, full regression, and the backend
+handoff pack.
+
+**Verification — all 12 items**
+
+| # | Item | Result |
+|---|---|---|
+| 1 | Money-formatting call sites consolidated | ✅ **262** (see breakdown below) |
+| 2 | UGX → USD updates live, no reload | ✅ toast + store + label change immediately |
+| 3 | ★ A UGX record stays UGX under a USD preference | ✅ demonstrated explicitly — zero USD amounts on screen |
+| 4 | Every financial record stores its currency | ✅ 11 types listed below |
+| 5 | Settings in all four portals, one store | ✅ admin / owner / tenant / worker |
+| 6 | Financial traceability | ✅ 2 gaps found and fixed |
+| 7 | Full regression across four portals | ✅ 60/60 routes clean |
+| 8 | ★ The three anchor tests | ✅ figures below |
+| 9 | Currency sweep | ✅ 28 hardcoded "(UGX)" labels found and fixed |
+| 10 | BACKEND_HANDOFF.md | ✅ 536 lines |
+| 11 | README + PROGRESS updated | ✅ |
+| 12 | Greps | ✅ 0 lucide, 0 non-Flowbite icon libs, palette held |
+
+**Item 1 — the consolidation count**
+
+| Kind | Count |
+|---|---|
+| `formatUGX` / `formatUGXFull` call sites | 220 across 40 files |
+| local `const money = …` helpers | 12 |
+| component-level `const fmt = …` helpers | 8 |
+| inline `` `UGX ${…}` `` template literals | 7 |
+| raw `toLocaleString("en-UG")` money formatters | 15 |
+| **Total routed through `formatCurrency`** | **262** |
+
+Two deliberate exceptions, both commented: `agreements.ts` formats a bare number because
+its caller supplies the currency label, and the PDF builder keeps a local `money()` that
+delegates.
+
+**Item 4 — records storing their own currency:** SettlementRecord, Invoice, Payment,
+Expense, MaintenanceTicket, ServiceBooking, WorkerEarning, WorkerPayout (added) +
+Quotation, CatalogueItem, AdditionalCharge (already had one).
+
+**Item 8 — the three anchor tests**
+
+Salim Kato baseline: gross 113,650,000 · commission 17,047,500 · expenses 17,850,000 ·
+**net 78,752,500** — identical to the F3 baseline.
+
+| Anchor | Result |
+|---|---|
+| F1 price snapshot | Quote accepted at UGX 20,000/room → catalogue repriced to **UGX 60,000** → quotation still `unitPriceAtBooking: 20,000`, total 40,000. **HELD** |
+| E4/F3 owner-liable | UGX 1,250,000 closed to owner → expenses 17,850,000 → **19,100,000**, net 78,752,500 → **77,502,500**. Down by *exactly* the cost |
+| E4/F3 Nexora-absorbed | UGX 2,000,000 absorbed on Salim's **own** property → net **77,502,500, unmoved**; expense `propertyId` still empty |
+| F4 role isolation | Worker → `/admin`, `/admin/settings`, `/owner/financials`, `/tenant/payments` all redirect to `/worker`, nothing leaked |
+
+**Defects found and fixed during F5 (4)**
+
+1. Three places formatted an invoice/expense with a hardcoded "UGX" suffix instead of the
+   record's own currency — surfaced the moment `currency` was added to the types.
+2. The **owner's** Settings currency selector was its own isolated `useState`: it looked
+   like a preference and changed nothing.
+3. The **admin** Global tab's currency selector was likewise local state, and offered KES
+   — an unsupported option in a list that now drives real record currency.
+4. **28 money input labels across 16 files hardcoded "(UGX)"** while the record each one
+   creates takes the active currency. An admin working in USD typed into a field labelled
+   UGX and got a USD record. `Field`'s `label` widened to `ReactNode` and a
+   `<CurrencyCode />` component now keeps them honest.
+
+**Traceability gaps fixed (2)**
+
+- `Invoice` had no link back to the `AdditionalCharge` it was raised for — the
+  relationship existed in one direction only. Added `Invoice.additionalChargeId`.
+- `WorkerPayout` had no link to the jobs it covers — resolved with an
+  `earningsForPayout()` accessor derived from `WorkerEarning.payoutId` rather than
+  duplicating an array that would eventually disagree.
+
+**Verification limitation, stated honestly:** PDFs generate as valid documents (checked:
+`%PDF-` header, 1 page, 23,103-char content stream, 43 text-drawing operations, correct
+filename `Nexora-Service-Invoice-INV-SV-476009.pdf`), but this builder embeds a **subset
+font with no ToUnicode CMap**, so the glyph IDs cannot be decoded back to text and the
+sandboxed browser has no PDF viewer to render it. The itemised content was verified from
+the source records instead, not from inside the PDF.
+
+Nothing was removed. All 12 build batches, Revisions A–D, E1–E5 and F1–F4 remain in place.
+
 ## 🏁 PROJECT COMPLETE — final summary
 
 Nexora Property Management frontend is **complete** (mock-data). Single Next.js 15 app;
