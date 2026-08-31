@@ -92,6 +92,7 @@ export function effectiveRate(a: ManagementAgreement, gross: number): number {
 
 /** Human rate label for tables/badges, e.g. "15%" or "UGX 5,000,000/yr". */
 export function agreementRateLabel(a: ManagementAgreement): string {
+  // F5 — bare number here by design: the caller supplies the currency label.
   const money = (n: number) => new Intl.NumberFormat("en-UG").format(n);
   const freqShort = (f?: string) => (f === "annual" ? "yr" : f === "quarterly" ? "qtr" : "mo");
   switch (a.contractType) {

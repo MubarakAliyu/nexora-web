@@ -19,7 +19,7 @@ import {
 } from "@/components/ui/dialog";
 import { toast } from "@/components/ui/sonner";
 import { useAsync, debugErrorFlag } from "@/lib/use-async";
-import { formatUGX, formatDate } from "@/lib/format";
+import { formatCurrency, formatDate } from "@/lib/format";
 import { listProperties } from "@/lib/api/admin";
 import {
   listBookingRows, getBookingDetail, updateBookingStatus, updateInquiryStage,
@@ -91,10 +91,10 @@ function BookingDetailDialog({ id, onOpenChange, onDone }: { id: string | null; 
               <div className="rounded-lg border border-border p-4">
                 <p className="mb-2 text-caption font-medium uppercase tracking-wide text-muted">Price breakdown</p>
                 <dl className="space-y-1.5 text-body">
-                  <div className="flex justify-between"><dt className="text-muted">{formatUGX(data.booking.nightlyRate)} × {data.booking.nights} nights</dt><dd className="text-foreground">{formatUGX(data.booking.nightlyRate * data.booking.nights)}</dd></div>
-                  <div className="flex justify-between"><dt className="text-muted">Cleaning</dt><dd className="text-foreground">{formatUGX(data.booking.cleaningFee)}</dd></div>
-                  <div className="flex justify-between"><dt className="text-muted">Taxes</dt><dd className="text-foreground">{formatUGX(data.booking.taxes)}</dd></div>
-                  <div className="flex justify-between border-t border-border pt-1.5 font-semibold"><dt className="text-foreground">Total</dt><dd className="text-primary">{formatUGX(data.booking.total)}</dd></div>
+                  <div className="flex justify-between"><dt className="text-muted">{formatCurrency(data.booking.nightlyRate)} × {data.booking.nights} nights</dt><dd className="text-foreground">{formatCurrency(data.booking.nightlyRate * data.booking.nights)}</dd></div>
+                  <div className="flex justify-between"><dt className="text-muted">Cleaning</dt><dd className="text-foreground">{formatCurrency(data.booking.cleaningFee)}</dd></div>
+                  <div className="flex justify-between"><dt className="text-muted">Taxes</dt><dd className="text-foreground">{formatCurrency(data.booking.taxes)}</dd></div>
+                  <div className="flex justify-between border-t border-border pt-1.5 font-semibold"><dt className="text-foreground">Total</dt><dd className="text-primary">{formatCurrency(data.booking.total)}</dd></div>
                 </dl>
               </div>
               <div className="rounded-lg border border-border p-4">
@@ -129,7 +129,7 @@ function BookingDetailDialog({ id, onOpenChange, onDone }: { id: string | null; 
               <dl className="space-y-2 text-body">
                 <div className="flex justify-between"><dt className="text-muted">Contact</dt><dd className="text-foreground">{data.lead.email} · {data.lead.phone}</dd></div>
                 <div className="flex justify-between"><dt className="text-muted">Enquired</dt><dd className="text-foreground">{formatDate(data.lead.createdAt)}</dd></div>
-                <div className="flex justify-between"><dt className="text-muted">Est. value</dt><dd className="text-foreground">{formatUGX(data.lead.value)}</dd></div>
+                <div className="flex justify-between"><dt className="text-muted">Est. value</dt><dd className="text-foreground">{formatCurrency(data.lead.value)}</dd></div>
                 {data.lead.activities.filter((a) => a.kind === "note").map((a) => (
                   <div key={a.id} className="flex justify-between gap-6"><dt className="text-muted">Details</dt><dd className="text-right text-foreground">{a.text}</dd></div>
                 ))}
@@ -261,7 +261,7 @@ export default function BookingsPage() {
     { key: "unitLabel", header: "Unit", render: (r) => r.unitLabel ?? "—" },
     { key: "date", header: "Dates", sortable: true, render: (r) => r.kind === "short-term" && r.checkIn ? <span className="text-body">{formatDate(r.checkIn)} → {formatDate(r.checkOut!)}</span> : formatDate(r.date) },
     { key: "status", header: "Status", sortable: true, render: (r) => <StatusBadge status={r.status} /> },
-    { key: "amount", header: "Amount", align: "right", render: (r) => r.amount != null ? formatUGX(r.amount) : "—" },
+    { key: "amount", header: "Amount", align: "right", render: (r) => r.amount != null ? formatCurrency(r.amount) : "—" },
   ];
 
   return (

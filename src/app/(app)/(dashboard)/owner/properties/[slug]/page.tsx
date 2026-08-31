@@ -17,7 +17,7 @@ import { EmptyState } from "@/components/ui/empty-state";
 import { Skeleton, SkeletonText } from "@/components/ui/skeleton";
 import { useAsync, debugErrorFlag } from "@/lib/use-async";
 import { useSession } from "@/lib/stores/session";
-import { formatUGX, formatDate, fromNow } from "@/lib/format";
+import { formatCurrency, formatDate, fromNow } from "@/lib/format";
 import {
   getProperty, getPropertyUnits, listTickets, NOW_ISO,
   type Unit, type MaintenanceTicket, type Scope,
@@ -65,7 +65,7 @@ export default function OwnerPropertyDetailPage() {
     { key: "label", header: "Unit", sortable: true, render: (u) => <span className="font-medium text-foreground">{u.label}</span> },
     { key: "type", header: "Type", sortable: true },
     { key: "floor", header: "Floor", sortable: true, align: "right" },
-    { key: "rent", header: "Rent / mo", sortable: true, align: "right", render: (u) => formatUGX(u.rent) },
+    { key: "rent", header: "Rent / mo", sortable: true, align: "right", render: (u) => formatCurrency(u.rent) },
     { key: "status", header: "Status", sortable: true, render: (u) => <StatusBadge status={u.status} /> },
   ];
 
@@ -93,7 +93,7 @@ export default function OwnerPropertyDetailPage() {
       <div className="grid grid-cols-1 gap-4 sm:grid-cols-3">
         <StatCard label="Units" value={<span>{occupied}<span className="text-h3 text-muted"> / {p.units}</span></span>} icon={<Home size={22} />} hint="occupied" />
         <StatCard label="Occupancy" value={`${p.occupancy}%`} icon={<AdjustmentsHorizontal size={22} />} />
-        <StatCard label="Revenue / mo" value={formatUGX(p.monthlyRevenue)} icon={<Cash size={22} />} />
+        <StatCard label="Revenue / mo" value={formatCurrency(p.monthlyRevenue)} icon={<Cash size={22} />} />
       </div>
 
       {/* Current bookings — short-term rentals only */}

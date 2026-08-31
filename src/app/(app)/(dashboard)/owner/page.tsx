@@ -17,7 +17,7 @@ import { Button } from "@/components/ui/button";
 import { useAsync, debugErrorFlag } from "@/lib/use-async";
 import { useSession } from "@/lib/stores/session";
 import { ticketsAwaitingOwnerApproval } from "@/lib/api/maintenance-routing";
-import { fromNow, formatDate, formatUGX } from "@/lib/format";
+import { fromNow, formatDate, formatCurrency } from "@/lib/format";
 import {
   getDashboardStats, getRevenueSeries, getOccupancySeries, getOwnerActivity, getOwnerSnapshot, listProperties, NOW_ISO, type Scope,
 } from "@/lib/api/admin";
@@ -144,7 +144,7 @@ export default function OwnerDashboardPage() {
                   <p className="text-caption uppercase tracking-wide text-muted">Next settlement{snapshot.data.settlement.nextPeriod ? ` · ${snapshot.data.settlement.nextPeriod}` : ""}</p>
                   <StatusBadge status="pending" />
                 </div>
-                <p className="mt-1 font-heading text-h2 font-semibold text-primary">{formatUGX(snapshot.data.settlement.pending)}</p>
+                <p className="mt-1 font-heading text-h2 font-semibold text-primary">{formatCurrency(snapshot.data.settlement.pending)}</p>
                 {snapshot.data.settlement.nextDate && <p className="mt-0.5 text-caption text-muted">Scheduled {formatDate(snapshot.data.settlement.nextDate)}</p>}
               </div>
               <div className="flex items-center justify-between rounded-xl border border-border p-4">
@@ -152,7 +152,7 @@ export default function OwnerDashboardPage() {
                   <span className="text-primary"><CheckCircle size={18} /></span>
                   <p className="text-body text-muted">Paid to date</p>
                 </div>
-                <p className="font-heading text-h3 font-semibold text-foreground">{formatUGX(snapshot.data.settlement.paidToDate)}</p>
+                <p className="font-heading text-h3 font-semibold text-foreground">{formatCurrency(snapshot.data.settlement.paidToDate)}</p>
               </div>
             </div>
           ) : null}
@@ -250,7 +250,7 @@ export default function OwnerDashboardPage() {
                   </div>
                 </div>
                 <p className={`shrink-0 font-medium tabular-nums ${t.direction === "in" ? "text-foreground" : "text-muted"}`}>
-                  {t.direction === "in" ? "+" : "−"}{formatUGX(t.amount)}
+                  {t.direction === "in" ? "+" : "−"}{formatCurrency(t.amount)}
                 </p>
               </li>
             ))}

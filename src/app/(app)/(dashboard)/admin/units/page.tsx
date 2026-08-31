@@ -23,7 +23,7 @@ import { Timeline, TimelineItem } from "@/components/ui/timeline";
 import { Skeleton } from "@/components/ui/skeleton";
 import { toast } from "@/components/ui/sonner";
 import { useAsync, debugErrorFlag } from "@/lib/use-async";
-import { formatUGX, formatDate } from "@/lib/format";
+import { formatCurrency, formatDate } from "@/lib/format";
 import {
   listUnits, getUnitDetail, createUnit, updateUnit, deleteUnit,
   propertyOptions, propertyName, tenantName,
@@ -176,10 +176,10 @@ function UnitDrawer({ unitId, onClose, onEdit, onDelete, onChanged }: {
             <div className="flex items-center justify-between gap-4"><dt className="inline-flex items-center gap-2 text-muted"><MapPin size={16} /> Property</dt><dd className="text-right text-foreground">{propertyName(data.unit.propertyId)}</dd></div>
             <div className="flex justify-between gap-4"><dt className="text-muted">Floor</dt><dd className="text-foreground">{data.unit.floor}</dd></div>
             <div className="flex justify-between gap-4"><dt className="text-muted">Size</dt><dd className="text-foreground">{data.unit.sizeSqm} m²</dd></div>
-            <div className="flex items-center justify-between gap-4"><dt className="inline-flex items-center gap-2 text-muted"><Cash size={16} /> Rent / mo</dt><dd className="font-medium text-foreground">{formatUGX(data.unit.rent)}</dd></div>
+            <div className="flex items-center justify-between gap-4"><dt className="inline-flex items-center gap-2 text-muted"><Cash size={16} /> Rent / mo</dt><dd className="font-medium text-foreground">{formatCurrency(data.unit.rent)}</dd></div>
             <div className="flex items-center justify-between gap-4"><dt className="inline-flex items-center gap-2 text-muted"><UserCircle size={16} /> Tenant</dt><dd className="text-right text-foreground">{data.tenant ? tenantName(data.tenant.id) : "Vacant"}</dd></div>
             <div className="flex items-center justify-between gap-4"><dt className="inline-flex items-center gap-2 text-muted"><FileLines size={16} /> Lease</dt><dd className="text-right">{data.lease ? <StatusBadge status={data.lease.status} /> : <span className="text-muted">None</span>}</dd></div>
-            <div className="flex justify-between gap-4"><dt className="text-muted">Rent status</dt><dd className={data.outstanding > 0 ? "font-medium text-primary" : "text-foreground"}>{data.outstanding > 0 ? `${formatUGX(data.outstanding)} due` : "Up to date"}</dd></div>
+            <div className="flex justify-between gap-4"><dt className="text-muted">Rent status</dt><dd className={data.outstanding > 0 ? "font-medium text-primary" : "text-foreground"}>{data.outstanding > 0 ? `${formatCurrency(data.outstanding)} due` : "Up to date"}</dd></div>
             {data.unit.amenities && data.unit.amenities.length > 0 && (
               <div><dt className="mb-1.5 text-muted">Amenities</dt><dd className="flex flex-wrap gap-1.5">{data.unit.amenities.map((a) => <span key={a} className="rounded-full bg-surface-hover px-2 py-0.5 text-caption text-muted">{a}</span>)}</dd></div>
             )}
@@ -257,7 +257,7 @@ export default function UnitsPage() {
     { key: "propertyId", header: "Property", sortable: true, sortValue: (u) => propertyName(u.propertyId), render: (u) => propertyName(u.propertyId) },
     { key: "floor", header: "Floor", sortable: true, align: "right" },
     { key: "sizeSqm", header: "Size", sortable: true, align: "right", render: (u) => `${u.sizeSqm} m²` },
-    { key: "rent", header: "Rent / mo", sortable: true, align: "right", render: (u) => formatUGX(u.rent) },
+    { key: "rent", header: "Rent / mo", sortable: true, align: "right", render: (u) => formatCurrency(u.rent) },
     { key: "status", header: "Status", sortable: true, render: (u) => <StatusBadge status={u.status} /> },
     {
       key: "actions", header: "", align: "right",

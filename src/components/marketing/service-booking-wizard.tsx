@@ -1,6 +1,7 @@
 "use client";
 
 import * as React from "react";
+import { formatCurrencyFull } from "@/lib/format";
 import Link from "next/link";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
@@ -132,7 +133,7 @@ export function ServiceBookingWizard({ config }: { config: WizardConfig }) {
         .map(([itemId, v]) => ({ itemId, quantity: v.quantity, description: v.description }));
       if (serviceTypeId && lines.length > 0) {
         const quote = await acceptQuotation(booking.id, serviceTypeId, lines);
-        setQuoteTotal(`${quote.currency} ${Math.round(quote.total).toLocaleString("en-UG")}`);
+        setQuoteTotal(formatCurrencyFull(quote.total, quote.currency));
       }
       setReference(booking.reference);
       setStep(7);

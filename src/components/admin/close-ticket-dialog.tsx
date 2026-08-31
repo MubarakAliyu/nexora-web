@@ -10,7 +10,7 @@ import {
 } from "@/components/ui/dialog";
 import { toast } from "@/components/ui/sonner";
 import { cn } from "@/lib/utils";
-import { formatUGX } from "@/lib/format";
+import { formatCurrency } from "@/lib/format";
 import { closeTicketWithLiability } from "@/lib/api/maintenance-liability";
 import { tenantName } from "@/lib/api/admin";
 import type { MaintenanceTicket, TicketLiability } from "@/lib/mock/types";
@@ -100,17 +100,17 @@ export function CloseTicketDialog({
         liabilityChangeReason: changedFromRouting ? changeReason.trim() : undefined,
       });
       if (liability === "owner") {
-        toast.success(`Ticket closed — ${formatUGX(total)} recorded as owner expense`);
+        toast.success(`Ticket closed — ${formatCurrency(total)} recorded as owner expense`);
       } else if (liability === "tenant") {
         // F3 — the tenant is usually invoiced at routing and has usually already
         // paid, which is what released the work. Saying "issued" then is wrong.
         toast.success(
           ticket.paymentStatus === "paid"
-            ? `Ticket closed — ${formatUGX(total)} already collected from ${tenantName(ticket.tenantId)} on INV-${ticket.ref}`
+            ? `Ticket closed — ${formatCurrency(total)} already collected from ${tenantName(ticket.tenantId)} on INV-${ticket.ref}`
             : `Ticket closed — invoice INV-${ticket.ref} issued to ${tenantName(ticket.tenantId)}`,
         );
       } else {
-        toast.success(`Ticket closed — ${formatUGX(total)} absorbed by Nexora`);
+        toast.success(`Ticket closed — ${formatCurrency(total)} absorbed by Nexora`);
       }
       onOpenChange(false); onDone();
     } catch { toast.error("Couldn’t close the ticket"); }
@@ -144,13 +144,13 @@ export function CloseTicketDialog({
               <div className="rounded-xl border border-primary/30 bg-primary/5 p-4">
                 <div className="flex items-center justify-between">
                   <span className="text-body font-medium text-foreground">Actual total</span>
-                  <span className="font-heading text-h3 font-semibold text-primary">{formatUGX(total)}</span>
+                  <span className="font-heading text-h3 font-semibold text-primary">{formatCurrency(total)}</span>
                 </div>
                 {assessed != null && (
                   <p className="mt-1.5 text-caption text-muted">
-                    Assessed {formatUGX(assessed)}, actual {formatUGX(total)} — variance{" "}
+                    Assessed {formatCurrency(assessed)}, actual {formatCurrency(total)} — variance{" "}
                     <span className="font-medium text-foreground">
-                      {variance! >= 0 ? "+" : "−"}{formatUGX(Math.abs(variance!))}
+                      {variance! >= 0 ? "+" : "−"}{formatCurrency(Math.abs(variance!))}
                     </span>
                   </p>
                 )}
@@ -158,7 +158,7 @@ export function CloseTicketDialog({
 
               {overApproved && (
                 <p className="rounded-lg border border-accent/40 bg-surface-active px-3.5 py-2.5 text-caption text-foreground motion-safe:animate-in motion-safe:fade-in">
-                  Actual cost exceeds the approved estimate by {formatUGX(variance!)}. Consider whether
+                  Actual cost exceeds the approved estimate by {formatCurrency(variance!)}. Consider whether
                   additional owner approval is needed.
                 </p>
               )}

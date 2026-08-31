@@ -27,7 +27,7 @@ import {
 import { toast } from "@/components/ui/sonner";
 import { useSession } from "@/lib/stores/session";
 import { useLive } from "@/lib/stores/live";
-import { formatUGX, formatDate } from "@/lib/format";
+import { formatCurrency, formatDate } from "@/lib/format";
 import { staffForUser } from "@/lib/api/worker";
 import {
   jobById, acceptJob, declineJob, startJob, completeJob,
@@ -123,12 +123,12 @@ export default function WorkerJobDetailPage() {
                 <div className="min-w-0">
                   <p className="text-body font-medium text-foreground">{l.name}</p>
                   <p className="text-caption text-muted">
-                    {l.quantity} × {formatUGX(l.unitPriceAtBooking)} {l.unit}
+                    {l.quantity} × {formatCurrency(l.unitPriceAtBooking)} {l.unit}
                   </p>
                   {l.description && <p className="text-caption text-muted">{l.description}</p>}
                 </div>
                 <p className="shrink-0 text-body font-medium text-foreground">
-                  {l.excludedFromTotal ? "—" : formatUGX(l.lineTotal)}
+                  {l.excludedFromTotal ? "—" : formatCurrency(l.lineTotal)}
                 </p>
               </li>
             ))}
@@ -136,7 +136,7 @@ export default function WorkerJobDetailPage() {
           <div className="mt-3 flex items-center justify-between border-t border-border pt-3">
             <span className="text-body font-medium text-muted">Agreed total</span>
             <span className="font-heading text-h2 font-semibold text-primary">
-              {formatUGX(job.quotation.total)}
+              {formatCurrency(job.quotation.total)}
             </span>
           </div>
         </Card>
@@ -153,7 +153,7 @@ export default function WorkerJobDetailPage() {
           {job.approvedCost != null && (
             <p className="mt-2 text-body text-muted">
               Approved cost{" "}
-              <span className="font-heading text-h3 font-semibold text-primary">{formatUGX(job.approvedCost)}</span>
+              <span className="font-heading text-h3 font-semibold text-primary">{formatCurrency(job.approvedCost)}</span>
             </p>
           )}
         </Card>

@@ -11,7 +11,7 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { EmptyState } from "@/components/ui/empty-state";
 import { useSession } from "@/lib/stores/session";
 import { useLive } from "@/lib/stores/live";
-import { formatUGX } from "@/lib/format";
+import { formatCurrency } from "@/lib/format";
 import { staffForUser, AVAILABILITY_LABEL } from "@/lib/api/worker";
 import { jobsToday, jobsUpcoming, workerStats } from "@/lib/api/worker-jobs";
 import { AvailabilitySegmented } from "@/components/worker/availability-control";
@@ -93,7 +93,7 @@ export default function WorkerTodayPage() {
           <Card className="p-3 text-center">
             <Wallet size={18} className="mx-auto text-primary" />
             <p className="mt-1.5 font-heading text-h3 font-semibold text-foreground">
-              {formatUGX(stats.earningsThisMonth)}
+              {formatCurrency(stats.earningsThisMonth)}
             </p>
             <p className="text-caption text-muted">This month</p>
           </Card>

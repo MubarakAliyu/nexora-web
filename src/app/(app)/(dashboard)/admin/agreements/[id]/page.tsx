@@ -16,7 +16,7 @@ import { Timeline, TimelineItem } from "@/components/ui/timeline";
 import { Skeleton, SkeletonText } from "@/components/ui/skeleton";
 import { EmptyState } from "@/components/ui/empty-state";
 import { useAsync, debugErrorFlag } from "@/lib/use-async";
-import { formatUGX, formatDate, fromNow } from "@/lib/format";
+import { formatCurrency, formatDate, fromNow } from "@/lib/format";
 import { NOW_ISO } from "@/lib/api/admin";
 import {
   fetchAgreementById, fetchAgreementFinancials, agreementRateLabel, CONTRACT_TYPE_LABEL,
@@ -115,20 +115,20 @@ export default function AgreementDetailPage() {
         ) : fin.data ? (
           <>
             <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-4">
-              <StatCard label="Total revenue managed" value={formatUGX(fin.data.grossRevenue)} icon={<Cash size={22} />} />
-              <StatCard label="Commission earned" value={formatUGX(fin.data.commissionEarned)} icon={<ChartLineUp size={22} />} hint={`per ${CONTRACT_TYPE_LABEL[a.contractType].toLowerCase()}`} />
-              <StatCard label="Property expenses" value={formatUGX(fin.data.expenses)} icon={<Receipt size={22} />} />
-              <StatCard label="Net to owner" value={formatUGX(fin.data.netToOwner)} icon={<Cash size={22} />} hint="gross − fee − expenses" />
+              <StatCard label="Total revenue managed" value={formatCurrency(fin.data.grossRevenue)} icon={<Cash size={22} />} />
+              <StatCard label="Commission earned" value={formatCurrency(fin.data.commissionEarned)} icon={<ChartLineUp size={22} />} hint={`per ${CONTRACT_TYPE_LABEL[a.contractType].toLowerCase()}`} />
+              <StatCard label="Property expenses" value={formatCurrency(fin.data.expenses)} icon={<Receipt size={22} />} />
+              <StatCard label="Net to owner" value={formatCurrency(fin.data.netToOwner)} icon={<Cash size={22} />} hint="gross − fee − expenses" />
             </div>
             <Card className="mt-4 p-6">
               <p className="text-caption font-medium uppercase tracking-wide text-muted">How the commission is calculated</p>
               <p className="mt-2 text-body text-foreground">
                 {a.contractType === "revenue_sharing"
-                  ? `${a.commissionPercentage}% of ${formatUGX(fin.data.grossRevenue)} gross revenue = ${formatUGX(fin.data.commissionEarned)}.`
+                  ? `${a.commissionPercentage}% of ${formatCurrency(fin.data.grossRevenue)} gross revenue = ${formatCurrency(fin.data.commissionEarned)}.`
                   : a.contractType === "fixed_fee"
-                    ? `Fixed ${agreementRateLabel(a)} accrued over the agreement period = ${formatUGX(fin.data.commissionEarned)}.`
-                    : `Base fee + ${a.hybridPercentage}% of gross revenue = ${formatUGX(fin.data.commissionEarned)}.`}
-                {" "}After the fee and {formatUGX(fin.data.expenses)} property expenses, {formatUGX(fin.data.netToOwner)} is net to the owner.
+                    ? `Fixed ${agreementRateLabel(a)} accrued over the agreement period = ${formatCurrency(fin.data.commissionEarned)}.`
+                    : `Base fee + ${a.hybridPercentage}% of gross revenue = ${formatCurrency(fin.data.commissionEarned)}.`}
+                {" "}After the fee and {formatCurrency(fin.data.expenses)} property expenses, {formatCurrency(fin.data.netToOwner)} is net to the owner.
               </p>
             </Card>
           </>

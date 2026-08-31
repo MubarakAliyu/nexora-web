@@ -24,7 +24,7 @@ import { toast } from "@/components/ui/sonner";
 import { cn } from "@/lib/utils";
 import { useAsync, debugErrorFlag } from "@/lib/use-async";
 import { useSession } from "@/lib/stores/session";
-import { formatUGX, formatDate, fromNow } from "@/lib/format";
+import { formatCurrency, formatDate, fromNow } from "@/lib/format";
 import { leaseView, depositSummary } from "@/lib/lease";
 import { downloadPdf } from "@/lib/pdf/download";
 import { leasePdf } from "@/lib/pdf/builders";
@@ -111,7 +111,7 @@ export default function TenantLeasePage() {
   const { lease, unit, property, tenant } = data;
   const v = leaseView(lease, NOW_ISO);
   const monthsLeft = Math.max(0, Math.round((new Date(lease.end).getTime() - new Date(NOW_ISO).getTime()) / (30 * 86_400_000)));
-  const dep = depositSummary(lease, formatUGX);
+  const dep = depositSummary(lease, formatCurrency);
   const renewalRequested = lease.status === "renewal_requested" || lease.status === "pending_renewal";
   const canRequestRenewal = v.status === "active" || v.status === "expiring_soon";
   const renewalState =
@@ -190,8 +190,8 @@ export default function TenantLeasePage() {
         <Card className="p-6">
           <h2 className="mb-2 flex items-center gap-2 font-heading text-h3 font-semibold text-foreground"><FileLines size={20} className="text-primary" /> Lease terms</h2>
           <dl className="divide-y divide-border">
-            <DetailRow label="Monthly rent">{formatUGX(lease.rent)}</DetailRow>
-            <DetailRow label="Security deposit">{formatUGX(lease.deposit)}</DetailRow>
+            <DetailRow label="Monthly rent">{formatCurrency(lease.rent)}</DetailRow>
+            <DetailRow label="Security deposit">{formatCurrency(lease.deposit)}</DetailRow>
             <DetailRow label="Payment frequency"><span className="capitalize">{lease.frequency}</span></DetailRow>
             <DetailRow label="Rent due day">{lease.dueDay ? `Day ${lease.dueDay} of the month` : "5th of the month"}</DetailRow>
             <DetailRow label="Grace period">{lease.gracePeriod ? `${lease.gracePeriod} days` : "3 days"}</DetailRow>
@@ -242,7 +242,7 @@ export default function TenantLeasePage() {
             <span className="mt-0.5 text-primary"><ShieldCheck size={22} /></span>
             <div>
               <h2 className="font-heading text-h3 font-semibold text-foreground">Security Deposit</h2>
-              <p className="mt-0.5 text-h3 font-semibold text-foreground">{formatUGX(lease.deposit)}</p>
+              <p className="mt-0.5 text-h3 font-semibold text-foreground">{formatCurrency(lease.deposit)}</p>
             </div>
           </div>
           <StatusBadge status={dep.status} />

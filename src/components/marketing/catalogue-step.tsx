@@ -1,11 +1,12 @@
 "use client";
 
 import * as React from "react";
+import { formatCurrencyFull } from "@/lib/format";
 import { CheckCircle, ExclamationCircle } from "flowbite-react-icons/outline";
 import { Textarea } from "@/components/ui/textarea";
 import { cn } from "@/lib/utils";
 import { catalogueTree, type CatalogueTree } from "@/lib/api/catalogue";
-import type { CatalogueItem, ServiceCategory } from "@/lib/mock/types";
+import type { CatalogueItem, ServiceCategory, Currency} from "@/lib/mock/types";
 
 /** What the customer has picked. itemId → quantity (+ optional free-text detail). */
 export interface CatalogueSelection {
@@ -19,7 +20,7 @@ export interface CatalogueTotals {
   excludedCount: number;
 }
 
-const fmt = (n: number, c: string) => `${c} ${Math.round(n).toLocaleString("en-UG")}`;
+const fmt = (n: number, c: string) => formatCurrencyFull(n, c as Currency);
 
 /* --------------------------------------------------------------- helpers */
 

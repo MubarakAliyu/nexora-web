@@ -18,7 +18,7 @@ import { toast } from "@/components/ui/sonner";
 import { cn } from "@/lib/utils";
 import { useSession } from "@/lib/stores/session";
 import { useLive } from "@/lib/stores/live";
-import { formatUGX, formatDate } from "@/lib/format";
+import { formatCurrency, formatDate } from "@/lib/format";
 import { propertyName, unitLabel } from "@/lib/api/admin";
 import { resolveStaff } from "@/lib/api/admin-mutations";
 import {
@@ -56,7 +56,7 @@ function ApproveDialog({ ticket, onOpenChange, onDone }: {
             </DialogHeader>
             <p className="rounded-xl border border-primary/30 bg-primary/5 p-4 text-body text-foreground">
               Approve this repair at{" "}
-              <span className="font-heading text-h3 font-semibold text-primary">{formatUGX(ticket.assessedCost ?? 0)}</span>?
+              <span className="font-heading text-h3 font-semibold text-primary">{formatCurrency(ticket.assessedCost ?? 0)}</span>?
               This cost will be deducted from your settlement.
             </p>
             <DialogFooter>
@@ -98,7 +98,7 @@ function DeclineDialog({ ticket, onOpenChange, onDone }: {
           <>
             <DialogHeader>
               <DialogTitle>Decline this repair</DialogTitle>
-              <DialogDescription>{ticket.ref} · {formatUGX(ticket.assessedCost ?? 0)}</DialogDescription>
+              <DialogDescription>{ticket.ref} · {formatCurrency(ticket.assessedCost ?? 0)}</DialogDescription>
             </DialogHeader>
             <Field label="Reason" htmlFor="dm-reason" error={reason.trim().length >= 5 ? undefined : "Required"}>
               <Textarea id="dm-reason" rows={3} value={reason} onChange={(e) => setReason(e.target.value)}
@@ -172,7 +172,7 @@ export default function OwnerApprovalsPage() {
                 </div>
                 <div className="shrink-0 text-right">
                   <p className="text-caption uppercase tracking-wide text-muted">Estimated cost</p>
-                  <p className="font-heading text-h2 font-semibold text-primary">{formatUGX(t.assessedCost ?? 0)}</p>
+                  <p className="font-heading text-h2 font-semibold text-primary">{formatCurrency(t.assessedCost ?? 0)}</p>
                 </div>
               </div>
 
@@ -183,10 +183,10 @@ export default function OwnerApprovalsPage() {
                 <p className="mt-1.5 text-body text-foreground">{t.assessmentNotes}</p>
                 <dl className="mt-3 grid gap-2 sm:grid-cols-2">
                   <div className="flex justify-between gap-4 text-body">
-                    <dt className="text-muted">Labour</dt><dd className="text-foreground">{formatUGX(t.assessedLabour ?? 0)}</dd>
+                    <dt className="text-muted">Labour</dt><dd className="text-foreground">{formatCurrency(t.assessedLabour ?? 0)}</dd>
                   </div>
                   <div className="flex justify-between gap-4 text-body">
-                    <dt className="text-muted">Materials</dt><dd className="text-foreground">{formatUGX(t.assessedMaterials ?? 0)}</dd>
+                    <dt className="text-muted">Materials</dt><dd className="text-foreground">{formatCurrency(t.assessedMaterials ?? 0)}</dd>
                   </div>
                 </dl>
                 <div className="mt-3 rounded-lg border border-dashed border-border p-3 text-center">

@@ -11,7 +11,7 @@ import { BarChart, LineChart, DonutChart, CHART_PALETTE } from "@/components/ui/
 import { Skeleton, SkeletonChart } from "@/components/ui/skeleton";
 import { EmptyState } from "@/components/ui/empty-state";
 import { useAsync, debugErrorFlag } from "@/lib/use-async";
-import { formatUGX } from "@/lib/format";
+import { formatCurrency } from "@/lib/format";
 import { generateCSV } from "@/lib/csv";
 import { getAnalytics, type Scope } from "@/lib/api/admin";
 
@@ -65,7 +65,7 @@ export default function AnalyticsPage() {
           <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-5">
             <StatCard label="Occupancy rate" value={`${data.occupancyRate}%`} icon={<ChartLineUp size={22} />} trend={{ value: "1.8%", direction: "up" }} />
             <StatCard label="Collection rate" value={`${data.collectionRate}%`} icon={<Cash size={22} />} trend={{ value: "2.3%", direction: "up" }} />
-            <StatCard label="Arrears" value={formatUGX(data.arrears)} icon={<Receipt size={22} />} hint="outstanding" />
+            <StatCard label="Arrears" value={formatCurrency(data.arrears)} icon={<Receipt size={22} />} hint="outstanding" />
             <StatCard label="Avg. resolution" value={`${data.avgResolutionDays}d`} icon={<AdjustmentsHorizontal size={22} />} hint="maintenance" />
             <StatCard label="Tenant retention" value={`${data.retentionRate}%`} icon={<Users size={22} />} trend={{ value: "0.9%", direction: "up" }} />
           </div>
@@ -89,7 +89,7 @@ export default function AnalyticsPage() {
                 <li className="flex items-start gap-2"><span className="mt-1.5 h-1.5 w-1.5 shrink-0 rounded-full bg-primary" /> Collection rate is trending up, now at <span className="font-medium text-foreground">{data.collectionRate}%</span>.</li>
                 <li className="flex items-start gap-2"><span className="mt-1.5 h-1.5 w-1.5 shrink-0 rounded-full bg-primary" /> Average maintenance resolution is <span className="font-medium text-foreground">{data.avgResolutionDays} days</span>.</li>
                 <li className="flex items-start gap-2"><span className="mt-1.5 h-1.5 w-1.5 shrink-0 rounded-full bg-primary" /> Tenant retention holding at <span className="font-medium text-foreground">{data.retentionRate}%</span> across the portfolio.</li>
-                <li className="flex items-start gap-2"><span className="mt-1.5 h-1.5 w-1.5 shrink-0 rounded-full bg-primary" /> Arrears stand at <span className="font-medium text-foreground">{formatUGX(data.arrears)}</span> — prioritise overdue accounts.</li>
+                <li className="flex items-start gap-2"><span className="mt-1.5 h-1.5 w-1.5 shrink-0 rounded-full bg-primary" /> Arrears stand at <span className="font-medium text-foreground">{formatCurrency(data.arrears)}</span> — prioritise overdue accounts.</li>
               </ul>
             </Card>
           </div>

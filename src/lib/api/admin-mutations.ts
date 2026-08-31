@@ -5,6 +5,7 @@
  * revision bump + audit entry + system notification. Toasts fired by callers.
  */
 import * as db from "@/lib/mock/db";
+import { formatCurrencyFull } from "@/lib/format";
 import { recordMutation } from "@/lib/api/actions";
 import { useNotifications } from "@/lib/stores/notifications";
 import { createAgreement, type AgreementInput } from "@/lib/api/agreements";
@@ -32,7 +33,8 @@ export function pushNotify(
   useNotifications.getState().pushSystem({ type, title, body, entityType, entityId, action, audiences, recipientStaffId });
 }
 
-const money = (n: number) => `UGX ${Math.round(n).toLocaleString("en-UG")}`;
+/** F5 — delegates to THE formatter. Currency defaults to the record's own. */
+const money = (n: number, c: Currency = "UGX") => formatCurrencyFull(n, c);
 const dateOf = (iso: string) => new Date(iso).toLocaleDateString("en-GB", { day: "numeric", month: "short", year: "numeric" });
 const propName = (propertyId: string) => db.properties.find((p) => p.id === propertyId)?.name ?? "the property";
 import type {
@@ -56,6 +58,7 @@ import type {
   Tenant,
   TicketCategory,
   TicketPriority,
+  Currency,
 } from "@/lib/mock/types";
 
 class NotFoundError extends Error {}

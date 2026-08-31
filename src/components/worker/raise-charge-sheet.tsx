@@ -18,7 +18,7 @@ import {
   Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter, DialogClose,
 } from "@/components/ui/dialog";
 import { toast } from "@/components/ui/sonner";
-import { formatUGX } from "@/lib/format";
+import { formatCurrency } from "@/lib/format";
 import { raiseAdditionalCharge } from "@/lib/api/additional-charges";
 
 export function RaiseChargeSheet({
@@ -59,7 +59,7 @@ export function RaiseChargeSheet({
         raisedBy,
       });
       toast.success("Sent to the customer for approval", {
-        description: `${charge.reference} — ${formatUGX(charge.amount)}. Don't start the extra work until they approve.`,
+        description: `${charge.reference} — ${formatCurrency(charge.amount)}. Don't start the extra work until they approve.`,
       });
       onOpenChange(false);
       onDone();

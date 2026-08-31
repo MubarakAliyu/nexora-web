@@ -12,7 +12,7 @@ import {
   Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter, DialogClose,
 } from "@/components/ui/dialog";
 import { toast } from "@/components/ui/sonner";
-import { formatUGX, formatDate } from "@/lib/format";
+import { formatCurrency, formatDate } from "@/lib/format";
 import { serviceStaffFor } from "@/lib/api/admin";
 import {
   recordAssessment, generateServiceInvoice, recordServicePayment,
@@ -56,7 +56,7 @@ export function AssessmentDialog({ booking, onOpenChange, onDone }: {
         assessedBy: v.assessedBy, assessedAt: v.assessedAt, scope: v.scope,
         amount: Number(v.amount), notes: v.notes,
       });
-      toast.success(`Assessment recorded — ${formatUGX(Number(v.amount))} quoted for ${booking.category}`);
+      toast.success(`Assessment recorded — ${formatCurrency(Number(v.amount))} quoted for ${booking.category}`);
       onOpenChange(false); onDone();
     } catch { toast.error("Couldn’t record the assessment"); }
   };
@@ -137,7 +137,7 @@ export function InvoiceDialog({ booking, onOpenChange, onDone }: {
       const sb = await generateServiceInvoice(booking.id, {
         amount, adjustmentReason: adjusted ? reason : undefined, dueDate: due,
       });
-      toast.success(`Invoice ${sb.invoiceNumber} generated — ${formatUGX(amount)}`);
+      toast.success(`Invoice ${sb.invoiceNumber} generated — ${formatCurrency(amount)}`);
       onOpenChange(false); onDone();
     } catch { toast.error("Couldn’t generate the invoice"); }
     finally { setBusy(false); }
@@ -159,7 +159,7 @@ export function InvoiceDialog({ booking, onOpenChange, onDone }: {
                 <div className="flex justify-between gap-4"><dt className="text-muted">Client</dt><dd className="text-right text-foreground">{booking.name} · {booking.phone}</dd></div>
                 <div className="flex justify-between gap-4"><dt className="text-muted">Service</dt><dd className="text-foreground">{booking.category}</dd></div>
                 <div className="flex justify-between gap-4"><dt className="text-muted">Assessed scope</dt><dd className="max-w-[62%] text-right text-foreground">{booking.assessmentScope ?? "—"}</dd></div>
-                <div className="flex justify-between gap-4"><dt className="text-muted">Assessed amount</dt><dd className="font-medium text-foreground">{formatUGX(assessed)}</dd></div>
+                <div className="flex justify-between gap-4"><dt className="text-muted">Assessed amount</dt><dd className="font-medium text-foreground">{formatCurrency(assessed)}</dd></div>
               </dl>
               <Field label="Invoice amount (UGX)" htmlFor="iv-amt">
                 <Input id="iv-amt" type="number" value={amount} onChange={(e) => setAmount(Number(e.target.value))} />
@@ -216,7 +216,7 @@ export function PaymentDialog({ booking, onOpenChange, onDone }: {
     setBusy(true);
     try {
       await recordServicePayment(booking.id, { amount, method, reference, date });
-      toast.success(`Payment recorded — ${formatUGX(amount)} for ${booking.reference}`);
+      toast.success(`Payment recorded — ${formatCurrency(amount)} for ${booking.reference}`);
       onOpenChange(false); onDone();
     } catch { toast.error("Couldn’t record the payment"); }
     finally { setBusy(false); }
@@ -230,13 +230,13 @@ export function PaymentDialog({ booking, onOpenChange, onDone }: {
             <DialogHeader>
               <DialogTitle>Record Payment — {booking.reference}</DialogTitle>
               <DialogDescription>
-                Invoice {booking.invoiceNumber} · {formatUGX(total)}
-                {already > 0 ? ` · ${formatUGX(already)} already received` : ""}
+                Invoice {booking.invoiceNumber} · {formatCurrency(total)}
+                {already > 0 ? ` · ${formatCurrency(already)} already received` : ""}
               </DialogDescription>
             </DialogHeader>
             <div className="space-y-4">
               <div className="grid gap-4 sm:grid-cols-2">
-                <Field label="Amount (UGX)" htmlFor="pm-amt" error={tooMuch ? `Cannot exceed the outstanding ${formatUGX(outstanding)}` : undefined}>
+                <Field label="Amount (UGX)" htmlFor="pm-amt" error={tooMuch ? `Cannot exceed the outstanding ${formatCurrency(outstanding)}` : undefined}>
                   <Input id="pm-amt" type="number" value={amount} onChange={(e) => setAmount(Number(e.target.value))} aria-invalid={tooMuch} />
                 </Field>
                 <Field label="Payment method" htmlFor="pm-method">
@@ -256,7 +256,7 @@ export function PaymentDialog({ booking, onOpenChange, onDone }: {
               </div>
               {amount > 0 && amount < outstanding && (
                 <p className="rounded-lg bg-surface-hover p-3 text-caption text-muted motion-safe:animate-in motion-safe:fade-in">
-                  Part payment — balance of {formatUGX(outstanding - amount)} will remain outstanding.
+                  Part payment — balance of {formatCurrency(outstanding - amount)} will remain outstanding.
                 </p>
               )}
             </div>
@@ -444,7 +444,7 @@ export function AssessmentPanel({ booking }: { booking: ServiceBooking }) {
     <div className="rounded-lg border border-border p-4">
       <p className="mb-2 text-caption font-medium uppercase tracking-wide text-muted">Assessment</p>
       <dl className="space-y-1.5 text-body">
-        <div className="flex justify-between gap-4"><dt className="text-muted">Quoted</dt><dd className="font-medium text-foreground">{formatUGX(booking.assessedAmount)}</dd></div>
+        <div className="flex justify-between gap-4"><dt className="text-muted">Quoted</dt><dd className="font-medium text-foreground">{formatCurrency(booking.assessedAmount)}</dd></div>
         <div className="gap-4"><dt className="text-muted">Scope</dt><dd className="mt-0.5 text-foreground">{booking.assessmentScope}</dd></div>
         {booking.assessmentNotes && <div className="gap-4"><dt className="text-muted">Notes</dt><dd className="mt-0.5 text-foreground">{booking.assessmentNotes}</dd></div>}
         <div className="flex justify-between gap-4"><dt className="text-muted">Assessed by</dt><dd className="text-foreground">{booking.assessedBy ?? "—"}{booking.assessedAt ? ` · ${formatDate(booking.assessedAt)}` : ""}</dd></div>

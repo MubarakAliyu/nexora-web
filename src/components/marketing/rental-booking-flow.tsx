@@ -14,7 +14,7 @@ import { Button } from "@/components/ui/button";
 import { Field } from "@/components/forms/field";
 import { toast } from "@/components/ui/sonner";
 import { cn } from "@/lib/utils";
-import { formatUGX } from "@/lib/format";
+import { formatCurrency } from "@/lib/format";
 import { createBooking, type RentalDetail, type RentalListing } from "@/lib/api/rentals";
 import type { Unit } from "@/lib/mock/types";
 
@@ -211,10 +211,10 @@ export function RentalBookingFlow({
                 <p className="mt-2 text-caption text-muted">{fmtDay(range?.from)} → {fmtDay(range?.to)} · {nights} nights</p>
               </div>
               <dl className="space-y-2 p-4 text-body">
-                <div className="flex justify-between"><dt className="text-muted">{formatUGX(st.daily)} × {nights} nights</dt><dd className="text-foreground">{formatUGX(st.daily * nights)}</dd></div>
-                <div className="flex justify-between"><dt className="text-muted">Cleaning fee</dt><dd className="text-foreground">{formatUGX(st.cleaningFee)}</dd></div>
-                <div className="flex justify-between"><dt className="text-muted">Taxes (18%)</dt><dd className="text-foreground">{formatUGX(taxes)}</dd></div>
-                <div className="mt-2 flex justify-between border-t border-border pt-3"><dt className="font-heading font-semibold text-foreground">Total</dt><dd className="font-heading text-h3 font-semibold text-primary">{formatUGX(total)}</dd></div>
+                <div className="flex justify-between"><dt className="text-muted">{formatCurrency(st.daily)} × {nights} nights</dt><dd className="text-foreground">{formatCurrency(st.daily * nights)}</dd></div>
+                <div className="flex justify-between"><dt className="text-muted">Cleaning fee</dt><dd className="text-foreground">{formatCurrency(st.cleaningFee)}</dd></div>
+                <div className="flex justify-between"><dt className="text-muted">Taxes (18%)</dt><dd className="text-foreground">{formatCurrency(taxes)}</dd></div>
+                <div className="mt-2 flex justify-between border-t border-border pt-3"><dt className="font-heading font-semibold text-foreground">Total</dt><dd className="font-heading text-h3 font-semibold text-primary">{formatCurrency(total)}</dd></div>
               </dl>
             </div>
             <div className="mt-5 flex justify-end">
@@ -250,8 +250,8 @@ export function RentalBookingFlow({
               ))}
             </div>
             <div className="mt-5 flex items-center justify-between">
-              <span className="text-body text-muted">Total <span className="font-heading text-h3 font-semibold text-primary">{formatUGX(total)}</span></span>
-              <Button disabled={!payment} onClick={pay}>Pay {formatUGX(total)}</Button>
+              <span className="text-body text-muted">Total <span className="font-heading text-h3 font-semibold text-primary">{formatCurrency(total)}</span></span>
+              <Button disabled={!payment} onClick={pay}>Pay {formatCurrency(total)}</Button>
             </div>
           </div>
         )}
@@ -268,7 +268,7 @@ export function RentalBookingFlow({
               <div className="flex justify-between"><span className="text-muted">Reference</span><span className="font-semibold text-foreground">{reference}</span></div>
               <div className="flex justify-between"><span className="text-muted">Dates</span><span className="text-foreground">{fmtDay(range?.from)} → {fmtDay(range?.to)}</span></div>
               <div className="flex justify-between"><span className="text-muted">Property</span><span className="text-foreground">{property.name}</span></div>
-              <div className="flex justify-between"><span className="text-muted">Total paid</span><span className="font-semibold text-foreground">{formatUGX(total)}</span></div>
+              <div className="flex justify-between"><span className="text-muted">Total paid</span><span className="font-semibold text-foreground">{formatCurrency(total)}</span></div>
             </div>
             <div className="mt-6 flex flex-wrap justify-center gap-3">
               <Button asChild><Link href="/rentals">Browse more rentals</Link></Button>

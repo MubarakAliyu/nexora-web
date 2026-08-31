@@ -1,6 +1,7 @@
 "use client";
 
 import * as React from "react";
+import { formatCurrencyFull } from "@/lib/format";
 import {
   Plus, PenNib, TrashBin, FileCopy, Download, Upload, ExclamationCircle, CheckCircle, Cash,
 } from "flowbite-react-icons/outline";
@@ -27,9 +28,9 @@ import {
   deleteCategory, updateItem, deleteItem, duplicateItem,
   exportCatalogueRows, SELECTION_MODE_LABEL, unconfirmedPricingCount,
 } from "@/lib/api/catalogue";
-import type { ServiceType, ServiceCategory, CatalogueItem } from "@/lib/mock/types";
+import type { ServiceType, ServiceCategory, CatalogueItem, Currency} from "@/lib/mock/types";
 
-const fmt = (n: number, c: string) => `${c} ${Math.round(n).toLocaleString("en-UG")}`;
+const fmt = (n: number, c: string) => formatCurrencyFull(n, c as Currency);
 
 /* ------------------------------------------------------- inline price cell */
 

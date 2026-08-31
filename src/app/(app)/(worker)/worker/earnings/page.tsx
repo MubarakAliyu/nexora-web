@@ -24,7 +24,7 @@ import {
 import { toast } from "@/components/ui/sonner";
 import { useSession } from "@/lib/stores/session";
 import { useLive } from "@/lib/stores/live";
-import { formatUGX, formatDate } from "@/lib/format";
+import { formatCurrency, formatDate } from "@/lib/format";
 import { staffForUser } from "@/lib/api/worker";
 import {
   earningsFor, payoutsFor, earningsSummary, availableBalance, canRequestPayout, requestPayout,
@@ -85,7 +85,7 @@ export default function WorkerEarningsPage() {
     setBusy(true);
     try {
       const p = await requestPayout(member, parsed, method);
-      toast.success("Payout requested", { description: `${p.reference} — ${formatUGX(p.amount)}. The office has been notified.` });
+      toast.success("Payout requested", { description: `${p.reference} — ${formatCurrency(p.amount)}. The office has been notified.` });
       setOpen(false); setAmount(""); bump();
     } catch (e) {
       toast.error(e instanceof Error ? e.message : "Couldn't request a payout");
@@ -104,15 +104,15 @@ export default function WorkerEarningsPage() {
       <div className="grid gap-3 sm:grid-cols-3">
         <Card className="p-4">
           <p className="text-caption uppercase tracking-wide text-muted">Earned this month</p>
-          <p className="mt-1 font-heading text-h2 font-semibold text-foreground">{formatUGX(summary.earnedThisMonth)}</p>
+          <p className="mt-1 font-heading text-h2 font-semibold text-foreground">{formatCurrency(summary.earnedThisMonth)}</p>
         </Card>
         <Card className="p-4">
           <p className="text-caption uppercase tracking-wide text-muted">Not yet paid</p>
-          <p className="mt-1 font-heading text-h2 font-semibold text-primary">{formatUGX(summary.pendingPayout)}</p>
+          <p className="mt-1 font-heading text-h2 font-semibold text-primary">{formatCurrency(summary.pendingPayout)}</p>
         </Card>
         <Card className="p-4">
           <p className="text-caption uppercase tracking-wide text-muted">Paid to date</p>
-          <p className="mt-1 font-heading text-h2 font-semibold text-foreground">{formatUGX(summary.totalPaid)}</p>
+          <p className="mt-1 font-heading text-h2 font-semibold text-foreground">{formatCurrency(summary.totalPaid)}</p>
         </Card>
       </div>
 
@@ -138,7 +138,7 @@ export default function WorkerEarningsPage() {
                     {e.payoutId ? " · paid out" : " · awaiting payout"}
                   </p>
                 </div>
-                <p className="shrink-0 font-heading text-h3 font-semibold text-foreground">{formatUGX(e.amount)}</p>
+                <p className="shrink-0 font-heading text-h3 font-semibold text-foreground">{formatCurrency(e.amount)}</p>
               </div>
             ))}
           </Card>
@@ -154,7 +154,7 @@ export default function WorkerEarningsPage() {
             {payouts.map((p) => (
               <div key={p.id} className="flex items-start justify-between gap-3 p-4">
                 <div className="min-w-0">
-                  <p className="text-body font-medium text-foreground">{formatUGX(p.amount)}</p>
+                  <p className="text-body font-medium text-foreground">{formatCurrency(p.amount)}</p>
                   <p className="text-caption text-muted">
                     {p.reference} · {formatDate(p.processedAt ?? p.requestedAt)}
                     {p.methodNote ? ` · ${p.methodNote}` : ""}
@@ -171,9 +171,9 @@ export default function WorkerEarningsPage() {
         <DialogContent>
           <DialogHeader>
             <DialogTitle>Request a payout</DialogTitle>
-            <DialogDescription>Up to {formatUGX(available)} available.</DialogDescription>
+            <DialogDescription>Up to {formatCurrency(available)} available.</DialogDescription>
           </DialogHeader>
-          <Field label="Amount (UGX)" htmlFor="po-amt" error={valid ? undefined : `Enter an amount up to ${formatUGX(available)}`}>
+          <Field label="Amount (UGX)" htmlFor="po-amt" error={valid ? undefined : `Enter an amount up to ${formatCurrency(available)}`}>
             <Input id="po-amt" type="number" min={0} max={available} value={amount} onChange={(e) => setAmount(e.target.value)} />
           </Field>
           <Field label="How would you like to be paid?" htmlFor="po-method">

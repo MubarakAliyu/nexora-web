@@ -6,7 +6,7 @@ import Image from "next/image";
 import { motion, useReducedMotion } from "framer-motion";
 import { MapPin, Home, Bed, CheckCircle, Search } from "flowbite-react-icons/outline";
 import { cn } from "@/lib/utils";
-import { formatUGX } from "@/lib/format";
+import { formatCurrency } from "@/lib/format";
 import { selectClass } from "@/components/forms/field";
 import { Input } from "@/components/ui/input";
 import { EmptyState } from "@/components/ui/empty-state";
@@ -94,7 +94,7 @@ function RentalCard({ p, reduce }: { p: RentalListing; reduce: boolean | null })
 
           <div className="mt-auto flex items-end justify-between border-t border-border pt-4">
             <div>
-              <p className="font-heading text-h3 font-semibold text-primary">{formatUGX(price)}</p>
+              <p className="font-heading text-h3 font-semibold text-primary">{formatCurrency(price)}</p>
               <p className="text-caption text-muted">per {period}</p>
             </div>
             <span className="text-caption font-medium text-primary transition-colors group-hover:text-accent">

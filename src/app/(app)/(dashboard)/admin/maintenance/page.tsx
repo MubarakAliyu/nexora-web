@@ -23,7 +23,7 @@ import {
 import { toast } from "@/components/ui/sonner";
 import { useAsync, debugErrorFlag } from "@/lib/use-async";
 import { assignmentOptions, assignmentLabel } from "@/lib/api/assignment";
-import { formatUGX, formatDate } from "@/lib/format";
+import { formatCurrency, formatDate } from "@/lib/format";
 import {
   listTickets, createTicket, updateTicket, deleteTicket, propertyName, unitLabel, tenantName, propertyOptions, unitOptions, ownerNameFor,
   type MaintenanceTicket, type TicketStatus, type TicketCategory, type TicketPriority, type Scope,
@@ -139,7 +139,7 @@ function TicketCard({ t, onClick }: { t: MaintenanceTicket; onClick: () => void 
       {(t.liability || t.chargeTo) && (
         <div className="mt-2 flex flex-wrap items-center gap-1.5 border-t border-border pt-2">
           <LiabilityBadge liability={t.liability ?? t.chargeTo} />
-          <span className="text-caption text-muted">{formatUGX(t.cost ?? 0)}</span>
+          <span className="text-caption text-muted">{formatCurrency(t.cost ?? 0)}</span>
           {t.paymentStatus === "awaiting_payment" && <span className="text-caption font-medium text-primary">· Awaiting payment</span>}
         </div>
       )}
@@ -209,7 +209,7 @@ export default function MaintenancePage() {
       ),
     },
     { key: "assignee", header: "Technician", render: (t) => t.assignee ?? <span className="text-muted">Unassigned</span> },
-    { key: "cost", header: "Cost", align: "right", render: (t) => (t.cost ? formatUGX(t.cost) : "—") },
+    { key: "cost", header: "Cost", align: "right", render: (t) => (t.cost ? formatCurrency(t.cost) : "—") },
     { key: "liability", header: "Liability", sortable: true, sortValue: (t) => t.liability ?? t.chargeTo ?? "", render: (t) => <LiabilityBadge liability={t.liability ?? t.chargeTo} /> },
     {
       key: "paymentStatus", header: "Payment", sortable: true, sortValue: (t) => t.paymentStatus ?? "",
@@ -474,8 +474,8 @@ function TicketDialog({ ticket, onClose, onSaved, onDelete, onClose2, onRecordPa
               <div className="rounded-xl border border-border p-4">
                 <p className="mb-2 text-caption font-medium uppercase tracking-wide text-muted">Assessment</p>
                 <dl className="space-y-1.5 text-body">
-                  <div className="flex justify-between gap-4"><dt className="text-muted">Estimated labour · materials</dt><dd className="text-foreground">{formatUGX(ticket.assessedLabour ?? 0)} · {formatUGX(ticket.assessedMaterials ?? 0)}</dd></div>
-                  <div className="flex justify-between gap-4"><dt className="text-muted">Estimated total</dt><dd className="font-medium text-foreground">{formatUGX(ticket.assessedCost)}</dd></div>
+                  <div className="flex justify-between gap-4"><dt className="text-muted">Estimated labour · materials</dt><dd className="text-foreground">{formatCurrency(ticket.assessedLabour ?? 0)} · {formatCurrency(ticket.assessedMaterials ?? 0)}</dd></div>
+                  <div className="flex justify-between gap-4"><dt className="text-muted">Estimated total</dt><dd className="font-medium text-foreground">{formatCurrency(ticket.assessedCost)}</dd></div>
                   {ticket.assessedAt && <div className="flex justify-between gap-4"><dt className="text-muted">Assessed</dt><dd className="text-foreground">{formatDate(ticket.assessedAt)}</dd></div>}
                   {ticket.assessmentNotes && <div className="gap-4"><dt className="text-muted">Notes</dt><dd className="mt-0.5 text-foreground">{ticket.assessmentNotes}</dd></div>}
                 </dl>
@@ -536,14 +536,14 @@ function TicketDialog({ ticket, onClose, onSaved, onDelete, onClose2, onRecordPa
                   <LiabilityBadge liability={ticket.liability ?? ticket.chargeTo} />
                 </div>
                 <dl className="space-y-1.5 text-body">
-                  <div className="flex justify-between gap-4"><dt className="text-muted">Labour · materials</dt><dd className="text-foreground">{formatUGX(ticket.labourCost ?? 0)} · {formatUGX(ticket.materialsCost ?? 0)}</dd></div>
-                  <div className="flex justify-between gap-4"><dt className="text-muted">Total</dt><dd className="font-medium text-foreground">{formatUGX(ticket.cost ?? 0)}</dd></div>
+                  <div className="flex justify-between gap-4"><dt className="text-muted">Labour · materials</dt><dd className="text-foreground">{formatCurrency(ticket.labourCost ?? 0)} · {formatCurrency(ticket.materialsCost ?? 0)}</dd></div>
+                  <div className="flex justify-between gap-4"><dt className="text-muted">Total</dt><dd className="font-medium text-foreground">{formatCurrency(ticket.cost ?? 0)}</dd></div>
                   {ticket.assessedCost != null && ticket.costVariance != null && (
                     <div className="flex justify-between gap-4">
                       <dt className="text-muted">Assessed vs actual</dt>
                       <dd className="text-foreground">
-                        {formatUGX(ticket.assessedCost)} → {formatUGX(ticket.actualCost ?? ticket.cost ?? 0)}
-                        <span className="ml-1 text-muted">({ticket.costVariance >= 0 ? "+" : "−"}{formatUGX(Math.abs(ticket.costVariance))})</span>
+                        {formatCurrency(ticket.assessedCost)} → {formatCurrency(ticket.actualCost ?? ticket.cost ?? 0)}
+                        <span className="ml-1 text-muted">({ticket.costVariance >= 0 ? "+" : "−"}{formatCurrency(Math.abs(ticket.costVariance))})</span>
                       </dd>
                     </div>
                   )}
@@ -560,7 +560,7 @@ function TicketDialog({ ticket, onClose, onSaved, onDelete, onClose2, onRecordPa
                       <StatusBadge status={ticket.paymentStatus === "paid" ? "paid" : "awaiting_payment"} />
                     </div>
                     <dl className="space-y-1 text-caption">
-                      <div className="flex justify-between"><dt className="text-muted">Amount</dt><dd className="text-foreground">{formatUGX(ticket.invoiceAmount ?? 0)}</dd></div>
+                      <div className="flex justify-between"><dt className="text-muted">Amount</dt><dd className="text-foreground">{formatCurrency(ticket.invoiceAmount ?? 0)}</dd></div>
                       {ticket.invoiceGeneratedAt && <div className="flex justify-between"><dt className="text-muted">Issued</dt><dd className="text-foreground">{formatDate(ticket.invoiceGeneratedAt)}</dd></div>}
                       {ticket.invoiceDueDate && <div className="flex justify-between"><dt className="text-muted">Due</dt><dd className="text-foreground">{formatDate(ticket.invoiceDueDate)}</dd></div>}
                       {ticket.paymentReference && <div className="flex justify-between"><dt className="text-muted">Payment ref</dt><dd className="font-mono text-foreground">{ticket.paymentReference}</dd></div>}
@@ -580,7 +580,7 @@ function TicketDialog({ ticket, onClose, onSaved, onDelete, onClose2, onRecordPa
                       Recorded as {ticket.liability === "owner" ? "Owner Property Expense" : "Nexora Operational Cost"}
                     </p>
                     <p className="mt-0.5 text-muted">
-                      {formatUGX(ticket.cost ?? 0)}{ticket.closedAt ? ` · ${formatDate(ticket.closedAt)}` : ""}
+                      {formatCurrency(ticket.cost ?? 0)}{ticket.closedAt ? ` · ${formatDate(ticket.closedAt)}` : ""}
                       {ticket.liability === "nexora" ? " · not charged to any owner" : ""}
                     </p>
                     <Link href="/admin/finance" className="mt-1.5 inline-block font-medium text-primary hover:text-accent">View in Finance →</Link>
@@ -665,7 +665,7 @@ function RecordMaintenancePaymentDialog({ ticket, onOpenChange, onDone }: {
             <div className="space-y-4">
               <div className="flex items-center justify-between rounded-xl border border-primary/30 bg-primary/5 p-4">
                 <span className="text-body font-medium text-foreground">Amount due</span>
-                <span className="font-heading text-h3 font-semibold text-primary">{formatUGX(ticket.invoiceAmount ?? ticket.cost ?? 0)}</span>
+                <span className="font-heading text-h3 font-semibold text-primary">{formatCurrency(ticket.invoiceAmount ?? ticket.cost ?? 0)}</span>
               </div>
               <Field label="Payment method" htmlFor="mp-method">
                 <select id="mp-method" className={selectClass} value={method} onChange={(e) => setMethod(e.target.value)}>

@@ -12,6 +12,7 @@
  * summary: repricing is a financial control, not a cosmetic edit.
  */
 import * as db from "@/lib/mock/db";
+import { formatCurrencyFull } from "@/lib/format";
 import { recordMutation } from "@/lib/api/actions";
 import type {
   ServiceType, ServiceCategory, CatalogueItem, SelectionMode,
@@ -20,8 +21,8 @@ import type {
 
 const mDelay = (ms = 320) => new Promise((r) => setTimeout(r, ms));
 const now = () => db.NOW_ISO;
-const money = (n: number, c: CatalogueCurrency = "UGX") =>
-  `${c} ${Math.round(n).toLocaleString("en-UG")}`;
+/** F5 — delegates to THE formatter. */
+const money = (n: number, c: CatalogueCurrency = "UGX") => formatCurrencyFull(n, c);
 
 export const slugify = (s: string) =>
   s.toLowerCase().trim().replace(/[^a-z0-9]+/g, "-").replace(/^-|-$/g, "");

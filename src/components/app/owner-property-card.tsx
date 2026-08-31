@@ -2,7 +2,7 @@ import Link from "next/link";
 import Image from "next/image";
 import { MapPin, Home } from "flowbite-react-icons/outline";
 import { StatusBadge } from "@/components/app/status";
-import { formatUGX } from "@/lib/format";
+import { formatCurrency } from "@/lib/format";
 import type { Property } from "@/lib/api/admin";
 
 /**
@@ -36,7 +36,7 @@ export function OwnerPropertyCard({ property: p }: { property: Property }) {
         <div className="mt-4 flex items-end justify-between">
           <div>
             <p className="text-caption uppercase tracking-wide text-muted">Revenue / mo</p>
-            <p className="font-heading text-h3 font-semibold text-foreground">{formatUGX(p.monthlyRevenue)}</p>
+            <p className="font-heading text-h3 font-semibold text-foreground">{formatCurrency(p.monthlyRevenue)}</p>
           </div>
           <div className="text-right">
             <p className="inline-flex items-center gap-1 text-body text-foreground"><Home size={15} /> {p.units}</p>

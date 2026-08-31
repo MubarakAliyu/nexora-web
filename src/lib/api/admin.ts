@@ -9,6 +9,7 @@
  */
 
 import * as db from "@/lib/mock/db";
+import { formatCurrencyFull } from "@/lib/format";
 import { recordMutation } from "@/lib/api/actions";
 import { incrementStaffJobs, pushNotify, staffRef, resolveStaff } from "@/lib/api/admin-mutations";
 import { leaseView } from "@/lib/lease";
@@ -40,6 +41,7 @@ import type {
   Unit,
   UnitStatus,
   UnitType,
+  Currency,
 } from "@/lib/mock/types";
 
 export type { Activity, Announcement, AudienceKind, BroadcastChannel, CommLog, Expense, ExpenseCategory, Invoice, Lead, LeadActivity, Lease, MaintenanceTicket, Owner, Payment, Property, Staff, Tenant, Unit };
@@ -1096,7 +1098,8 @@ export async function getOwnerFinancials(ownerId: string, scope?: Scope): Promis
 
 /* ============================================================ leases (mutations) */
 
-const _money = (n: number) => `UGX ${Math.round(n).toLocaleString("en-UG")}`;
+/** F5 — delegates to THE formatter. */
+const _money = (n: number, c: Currency = "UGX") => formatCurrencyFull(n, c);
 const _dateOf = (iso: string) => new Date(iso).toLocaleDateString("en-GB", { day: "numeric", month: "short", year: "numeric" });
 
 export async function renewLease(id: string, months = 12): Promise<Lease> {
@@ -1443,7 +1446,7 @@ export async function createInvoice(input: { tenantId: string; amount: number; d
     entityId: inv.id,
     entityName: inv.number,
     action: "created",
-    summary: `Generated ${inv.number} for ${tenant?.name ?? "tenant"} — ${inv.amount.toLocaleString("en-UG")} UGX`,
+    summary: `Generated ${inv.number} for ${tenant?.name ?? "tenant"} — ${_money(inv.amount, inv.currency)}`,
     after: { number: inv.number, amount: inv.amount, status: inv.status },
     notify: { type: "payment", title: "Invoice generated", body: `${inv.number} was raised for ${tenant?.name ?? "a tenant"}.` },
   });
@@ -1470,9 +1473,9 @@ export async function createExpense(input: { propertyId: string; category: Expen
     entityId: exp.id,
     entityName: exp.vendor,
     action: "created",
-    summary: `Logged ${exp.category} expense — ${exp.amount.toLocaleString("en-UG")} UGX (${exp.vendor})`,
+    summary: `Logged ${exp.category} expense — ${_money(exp.amount, exp.currency)} (${exp.vendor})`,
     after: { category: exp.category, amount: exp.amount, vendor: exp.vendor },
-    notify: { type: "system", title: "Expense logged", body: `${exp.amount.toLocaleString("en-UG")} UGX logged for ${propertyName(exp.propertyId)}.` },
+    notify: { type: "system", title: "Expense logged", body: `${_money(exp.amount, exp.currency)} logged for ${propertyName(exp.propertyId)}.` },
   });
   return exp;
 }

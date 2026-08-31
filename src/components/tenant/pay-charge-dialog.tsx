@@ -9,7 +9,7 @@ import {
 import { toast } from "@/components/ui/sonner";
 import { cn } from "@/lib/utils";
 import { selectClass } from "@/components/forms/field";
-import { formatUGX, formatDate } from "@/lib/format";
+import { formatCurrency, formatDate } from "@/lib/format";
 import { downloadPdf } from "@/lib/pdf/download";
 import { receiptPdf, maintenanceInvoicePdf } from "@/lib/pdf/builders";
 import { payInvoice, type Invoice, type Payment, type PaymentMethod } from "@/lib/api/admin";
@@ -134,7 +134,7 @@ export function PayChargeDialog({ invoice, ticket, onOpenChange, onDone }: {
             )}
             <div className="mt-3 rounded-xl bg-surface-hover p-4 text-center">
               <p className="text-caption uppercase tracking-wide text-muted">Amount due</p>
-              <p className="mt-1 font-heading text-h1 font-semibold text-primary">{formatUGX(due)}</p>
+              <p className="mt-1 font-heading text-h1 font-semibold text-primary">{formatCurrency(due)}</p>
             </div>
             <div className="mt-4 space-y-2">
               <p className="text-caption font-medium uppercase tracking-wide text-muted">Payment method</p>
@@ -167,7 +167,7 @@ export function PayChargeDialog({ invoice, ticket, onOpenChange, onDone }: {
               </select>
             </div>
             )}
-            <Button className="mt-5 w-full" onClick={pay}>Pay {formatUGX(due)}</Button>
+            <Button className="mt-5 w-full" onClick={pay}>Pay {formatCurrency(due)}</Button>
             <p className="mt-2 text-center text-caption text-muted">Simulated payment — no real charge is made.</p>
           </>
         )}
@@ -258,7 +258,7 @@ export function PayChargeDialog({ invoice, ticket, onOpenChange, onDone }: {
             </p>
             <div className="mt-5 w-full space-y-2 rounded-xl border border-border bg-surface-hover p-4 text-left text-body">
               <div className="flex justify-between"><span className="text-muted">Reference</span><span className="font-semibold text-foreground">{maintPaid?.paymentReference ?? payment?.reference}</span></div>
-              <div className="flex justify-between"><span className="text-muted">Amount</span><span className="font-semibold text-foreground">{formatUGX(maintPaid?.paidAmount ?? payment?.amount ?? 0)}</span></div>
+              <div className="flex justify-between"><span className="text-muted">Amount</span><span className="font-semibold text-foreground">{formatCurrency(maintPaid?.paidAmount ?? payment?.amount ?? 0)}</span></div>
               <div className="flex justify-between"><span className="text-muted">Method</span><span className="capitalize text-foreground">{(maintPaid?.paymentMethod ?? payment?.method ?? "").replace(/_/g, " ")}</span></div>
               <div className="flex justify-between"><span className="text-muted">Date</span><span className="text-foreground">{formatDate(maintPaid?.paidAt ?? payment?.date ?? "")}</span></div>
             </div>

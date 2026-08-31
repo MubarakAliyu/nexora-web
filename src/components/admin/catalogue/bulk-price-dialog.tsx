@@ -1,6 +1,8 @@
 "use client";
 
 import * as React from "react";
+import { formatCurrencyFull } from "@/lib/format";
+import type { Currency } from "@/lib/mock/types";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { Field, selectClass } from "@/components/forms/field";
@@ -10,7 +12,7 @@ import {
 import { toast } from "@/components/ui/sonner";
 import { previewBulkPrice, applyBulkPrice, type BulkMode, type BulkPriceChange } from "@/lib/api/catalogue";
 
-const fmt = (n: number, c: string) => `${c} ${Math.round(n).toLocaleString("en-UG")}`;
+const fmt = (n: number, c: string) => formatCurrencyFull(n, c as Currency);
 
 /**
  * Bulk reprice. Nothing is written until the admin has seen exactly which items

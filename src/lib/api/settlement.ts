@@ -5,16 +5,18 @@
  * moves here — this is the ledger entry a real payout would reference.
  */
 import * as db from "@/lib/mock/db";
+import { formatCurrencyFull } from "@/lib/format";
 import { recordMutation } from "@/lib/api/actions";
 import { pushNotify } from "@/lib/api/admin-mutations";
 import {
   getAgreementForOwner, commissionForAgreement, agreementRateLabel, CONTRACT_TYPE_LABEL,
 } from "@/lib/api/agreements";
-import type { SettlementRecord } from "@/lib/mock/types";
+import type { SettlementRecord, Currency } from "@/lib/mock/types";
 export type { SettlementRecord } from "@/lib/mock/types";
 
 const mDelay = (ms = 400) => new Promise((r) => setTimeout(r, ms));
-const money = (n: number) => `UGX ${Math.round(n).toLocaleString("en-UG")}`;
+/** F5 — delegates to THE formatter. Currency defaults to the record's own. */
+const money = (n: number, c: Currency = "UGX") => formatCurrencyFull(n, c);
 
 export interface SettlementLineItem { label: string; sub: string; amount: number; date?: string }
 

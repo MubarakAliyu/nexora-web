@@ -36,7 +36,7 @@ import { toast } from "@/components/ui/sonner";
 import { useAsync, debugErrorFlag } from "@/lib/use-async";
 import { downloadPdf } from "@/lib/pdf/download";
 import { leasePdf, invoicePdf, receiptPdf } from "@/lib/pdf/builders";
-import { formatUGX, formatDate, fromNow } from "@/lib/format";
+import { formatCurrency, formatDate, fromNow } from "@/lib/format";
 import {
   getTenant,
   renewLease,
@@ -89,7 +89,7 @@ export default function TenantDetailPage() {
   const paymentColumns: Column<Payment>[] = [
     { key: "date", header: "Date", sortable: true, render: (p) => formatDate(p.date) },
     { key: "invoiceId", header: "Invoice", render: (p) => invoiceNo(p.invoiceId) },
-    { key: "amount", header: "Amount", sortable: true, align: "right", render: (p) => formatUGX(p.amount) },
+    { key: "amount", header: "Amount", sortable: true, align: "right", render: (p) => formatCurrency(p.amount) },
     { key: "method", header: "Method", render: (p) => <span className="capitalize">{p.method.replace("_", " ")}</span> },
     { key: "reference", header: "Reference", render: (p) => <span className="text-muted">{p.reference}</span> },
     { key: "status", header: "Status", render: (p) => <StatusBadge status={p.status} /> },
@@ -99,7 +99,7 @@ export default function TenantDetailPage() {
     { key: "number", header: "Invoice", sortable: true, render: (i) => <span className="font-medium text-foreground">{i.number}</span> },
     { key: "issued", header: "Issued", sortable: true, render: (i) => formatDate(i.issued) },
     { key: "due", header: "Due", sortable: true, render: (i) => formatDate(i.due) },
-    { key: "amount", header: "Amount", sortable: true, align: "right", render: (i) => formatUGX(i.amount) },
+    { key: "amount", header: "Amount", sortable: true, align: "right", render: (i) => formatCurrency(i.amount) },
     { key: "status", header: "Status", sortable: true, render: (i) => <StatusBadge status={i.status} /> },
   ];
 
@@ -113,7 +113,7 @@ export default function TenantDetailPage() {
 
   // Merge recent payments + tickets into one activity feed for the Timeline.
   const feed = [
-    ...payments.map((p) => ({ id: p.id, at: p.date, text: `Paid ${formatUGX(p.amount)} (${invoiceNo(p.invoiceId)})` })),
+    ...payments.map((p) => ({ id: p.id, at: p.date, text: `Paid ${formatCurrency(p.amount)} (${invoiceNo(p.invoiceId)})` })),
     ...tickets.map((t) => ({ id: t.id, at: t.createdAt, text: `Raised ticket ${t.ref} — ${t.title}` })),
   ]
     .sort((a, b) => (a.at < b.at ? 1 : -1))
@@ -173,10 +173,10 @@ export default function TenantDetailPage() {
         {/* Overview */}
         <TabsContent value="overview">
           <div className="grid grid-cols-2 gap-4 sm:grid-cols-3 xl:grid-cols-5">
-            <StatCard label="Monthly rent" value={lease ? formatUGX(lease.rent) : "—"} icon={<Cash size={22} />} />
-            <StatCard label="Deposit" value={lease ? formatUGX(lease.deposit) : "—"} icon={<CreditCardPlus size={22} />} />
-            <StatCard label="Paid to date" value={formatUGX(totals.paid)} icon={<Receipt size={22} />} />
-            <StatCard label="Outstanding" value={formatUGX(outstanding)} icon={<FileLines size={22} />} hint={outstanding > 0 ? "action needed" : "all settled"} />
+            <StatCard label="Monthly rent" value={lease ? formatCurrency(lease.rent) : "—"} icon={<Cash size={22} />} />
+            <StatCard label="Deposit" value={lease ? formatCurrency(lease.deposit) : "—"} icon={<CreditCardPlus size={22} />} />
+            <StatCard label="Paid to date" value={formatCurrency(totals.paid)} icon={<Receipt size={22} />} />
+            <StatCard label="Outstanding" value={formatCurrency(outstanding)} icon={<FileLines size={22} />} hint={outstanding > 0 ? "action needed" : "all settled"} />
             <StatCard label="Open tickets" value={tickets.filter((t) => t.status !== "closed" && t.status !== "completed").length} icon={<AdjustmentsHorizontal size={22} />} />
           </div>
 

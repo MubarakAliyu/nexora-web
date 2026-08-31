@@ -35,7 +35,7 @@ import { ExportCsvButton } from "@/components/app/export-csv-button";
 import { downloadPdf } from "@/lib/pdf/download";
 import { invoicePdf, receiptPdf, statementPdf } from "@/lib/pdf/builders";
 import { ownerOptions } from "@/lib/api/admin";
-import { formatUGX, formatUGXFull, formatDate } from "@/lib/format";
+import { formatCurrency, formatCurrencyFull, formatDate } from "@/lib/format";
 import {
   listInvoices, listPayments, listExpenses, getFinanceSummary, createInvoice, updateInvoice, deleteInvoice,
   createExpense, updateExpense, deleteExpense,
@@ -63,7 +63,7 @@ function GenerateInvoiceDialog({ onDone }: { onDone: () => void }) {
   });
   const onSubmit = async (v: InvValues) => {
     await createInvoice({ tenantId: v.tenantId, amount: v.amount, due: new Date(v.due).toISOString(), kind: v.kind as Invoice["kind"] });
-    toast.success("Invoice generated", { description: `${formatUGX(v.amount)} billed to ${tenantName(v.tenantId)}.` });
+    toast.success("Invoice generated", { description: `${formatCurrency(v.amount)} billed to ${tenantName(v.tenantId)}.` });
     reset(); setOpen(false); onDone();
   };
   return (
@@ -118,7 +118,7 @@ function InvoiceEditDialog({ invoice, onOpenChange, onDone }: { invoice: Invoice
       <DialogContent>
         {invoice && (
           <>
-            <DialogHeader><DialogTitle>Edit {invoice.number}</DialogTitle><DialogDescription>{tenantName(invoice.tenantId)} · {formatUGX(invoice.amount)}</DialogDescription></DialogHeader>
+            <DialogHeader><DialogTitle>Edit {invoice.number}</DialogTitle><DialogDescription>{tenantName(invoice.tenantId)} · {formatCurrency(invoice.amount)}</DialogDescription></DialogHeader>
             <Field label="Status" htmlFor="ie-status">
               <select id="ie-status" className={selectClass} value={status} onChange={(e) => setStatus(e.target.value as InvoiceStatus)}>
                 <option value="pending">Pending</option><option value="paid">Paid</option>
@@ -148,7 +148,7 @@ function InvoicesTab() {
     { key: "kind", header: "Type", render: (i) => <span className="capitalize">{i.kind}</span> },
     { key: "issued", header: "Issued", sortable: true, render: (i) => formatDate(i.issued) },
     { key: "due", header: "Due", sortable: true, render: (i) => formatDate(i.due) },
-    { key: "amount", header: "Amount", sortable: true, align: "right", render: (i) => formatUGX(i.amount) },
+    { key: "amount", header: "Amount", sortable: true, align: "right", render: (i) => formatCurrency(i.amount) },
     { key: "status", header: "Status", sortable: true, render: (i) => <StatusBadge status={i.status} /> },
     {
       key: "actions", header: "", align: "right",
@@ -223,7 +223,7 @@ function PaymentsTab() {
     { key: "date", header: "Date", sortable: true, render: (p) => formatDate(p.date) },
     { key: "tenantId", header: "Tenant", sortValue: (p) => tenantName(p.tenantId), render: (p) => tenantName(p.tenantId) },
     { key: "propertyId", header: "Property", render: (p) => propertyName(p.propertyId) },
-    { key: "amount", header: "Amount", sortable: true, align: "right", render: (p) => formatUGX(p.amount) },
+    { key: "amount", header: "Amount", sortable: true, align: "right", render: (p) => formatCurrency(p.amount) },
     { key: "method", header: "Method", render: (p) => <span className="capitalize">{p.method.replace("_", " ")}</span> },
     { key: "reference", header: "Reference", render: (p) => <span className="text-muted">{p.reference}</span> },
     {
@@ -262,7 +262,7 @@ function PaymentsTab() {
       <Card className="mb-4 flex flex-wrap items-center justify-between gap-3 p-4">
         <div>
           <p className="text-caption uppercase tracking-wide text-muted">Total received (reconciled)</p>
-          <p className="mt-1 font-heading text-h2 font-semibold text-foreground">{formatUGXFull(total)}</p>
+          <p className="mt-1 font-heading text-h2 font-semibold text-foreground">{formatCurrencyFull(total)}</p>
         </div>
         <ExportCsvButton data={data ?? []} filename="payments" columns={[
           { header: "Date", accessor: (p) => p.date.slice(0, 10) },
@@ -319,7 +319,7 @@ function PaymentsTab() {
                 <DialogDescription>{verifying.reference} · {tenantName(verifying.tenantId)}</DialogDescription>
               </DialogHeader>
               <div className="space-y-1.5 rounded-xl border border-border p-4 text-body">
-                <div className="flex justify-between"><span className="text-muted">Amount</span><span className="font-medium text-foreground">{formatUGXFull(verifying.amount)}</span></div>
+                <div className="flex justify-between"><span className="text-muted">Amount</span><span className="font-medium text-foreground">{formatCurrencyFull(verifying.amount)}</span></div>
                 <div className="flex justify-between"><span className="text-muted">Method</span><span className="capitalize text-foreground">{verifying.method.replace("_", " ")}</span></div>
                 {verifying.providerReference && <div className="flex justify-between"><span className="text-muted">Provider ref</span><span className="font-mono text-foreground">{verifying.providerReference}</span></div>}
               </div>
@@ -411,7 +411,7 @@ function ExpenseFormDialog({ open, onOpenChange, editing, onDone }: {
   const onSubmit = async (v: ExpValues) => {
     try {
       if (isEdit && editing) { await updateExpense(editing.id, { propertyId: v.propertyId, category: v.category as ExpenseCategory, vendor: v.vendor, amount: v.amount, description: v.description }); toast.success("Expense updated", { description: `${v.vendor} saved.` }); }
-      else { await createExpense({ propertyId: v.propertyId, category: v.category as ExpenseCategory, vendor: v.vendor, amount: v.amount, description: v.description }); toast.success("Expense logged", { description: `${formatUGX(v.amount)} — ${v.vendor}.` }); }
+      else { await createExpense({ propertyId: v.propertyId, category: v.category as ExpenseCategory, vendor: v.vendor, amount: v.amount, description: v.description }); toast.success("Expense logged", { description: `${formatCurrency(v.amount)} — ${v.vendor}.` }); }
       onOpenChange(false); onDone();
     } catch { toast.error(isEdit ? "Couldn’t update expense" : "Couldn’t log expense"); }
   };
@@ -463,7 +463,7 @@ function ExpensesTab() {
     { key: "propertyId", header: "Property", sortValue: (e) => propertyName(e.propertyId), render: (e) => propertyName(e.propertyId) },
     { key: "category", header: "Category", sortable: true, render: (e) => <span className="capitalize">{e.category}</span> },
     { key: "vendor", header: "Vendor", render: (e) => e.vendor },
-    { key: "amount", header: "Amount", sortable: true, align: "right", render: (e) => formatUGX(e.amount) },
+    { key: "amount", header: "Amount", sortable: true, align: "right", render: (e) => formatCurrency(e.amount) },
     { key: "status", header: "Status", render: (e) => <StatusBadge status={e.status} /> },
     {
       key: "actions", header: "", align: "right",
@@ -492,7 +492,7 @@ function ExpensesTab() {
       <DataTable columns={columns} data={data ?? []} getRowId={(e) => e.id} loading={loading} error={error} onRetry={reload}
         emptyTitle="No expenses" emptyDescription="Logged expenses will appear here." pageSize={10} />
       <ExpenseFormDialog open={formOpen} onOpenChange={setFormOpen} editing={editing} onDone={reload} />
-      <DeleteConfirmation open={!!deleting} onOpenChange={(o) => !o && setDeleting(null)} entityLabel="expense" entityName={deleting ? `${deleting.vendor} — ${formatUGX(deleting.amount)}` : ""}
+      <DeleteConfirmation open={!!deleting} onOpenChange={(o) => !o && setDeleting(null)} entityLabel="expense" entityName={deleting ? `${deleting.vendor} — ${formatCurrency(deleting.amount)}` : ""}
         onConfirm={async () => { if (!deleting) return; try { await deleteExpense(deleting.id); toast.success("Expense deleted"); reload(); } catch { toast.error("Couldn’t delete expense"); } }} />
     </div>
   );
@@ -574,10 +574,10 @@ export default function FinancePage() {
         <EmptyState title="Couldn’t load finance summary" description={summary.error} action={<Button variant="outline" size="sm" onClick={summary.reload}>Try again</Button>} />
       ) : summary.data ? (
         <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-4">
-          <StatCard label="Billed" value={formatUGX(summary.data.billed)} icon={<Receipt size={22} />} />
-          <StatCard label="Collected" value={formatUGX(summary.data.collected)} icon={<Cash size={22} />} />
-          <StatCard label="Outstanding" value={formatUGX(summary.data.outstanding)} icon={<ChartLineUp size={22} />} hint="pending + overdue" />
-          <StatCard label="Expenses" value={formatUGX(summary.data.expenses)} icon={<FileLines size={22} />} />
+          <StatCard label="Billed" value={formatCurrency(summary.data.billed)} icon={<Receipt size={22} />} />
+          <StatCard label="Collected" value={formatCurrency(summary.data.collected)} icon={<Cash size={22} />} />
+          <StatCard label="Outstanding" value={formatCurrency(summary.data.outstanding)} icon={<ChartLineUp size={22} />} hint="pending + overdue" />
+          <StatCard label="Expenses" value={formatCurrency(summary.data.expenses)} icon={<FileLines size={22} />} />
         </div>
       ) : null}
 

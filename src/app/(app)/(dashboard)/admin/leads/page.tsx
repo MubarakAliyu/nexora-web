@@ -23,7 +23,7 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { EmptyState } from "@/components/ui/empty-state";
 import { toast } from "@/components/ui/sonner";
 import { useAsync, debugErrorFlag } from "@/lib/use-async";
-import { formatUGX, formatDate } from "@/lib/format";
+import { formatCurrency, formatDate } from "@/lib/format";
 import { ConvertLeadDialog } from "@/components/admin/convert-lead-dialog";
 import { listLeads, createLead, updateLead, deleteLead, type Lead, type LeadStatus, type Scope } from "@/lib/api/admin";
 import { cn } from "@/lib/utils";
@@ -115,7 +115,7 @@ export default function LeadsPage() {
     { key: "name", header: "Lead", sortable: true, render: (l) => <div><p className="font-medium text-foreground">{l.name}</p><p className="text-caption text-muted">{l.reference ? `${l.reference} · ` : ""}{l.email}</p></div> },
     { key: "source", header: "Source", sortable: true, render: (l) => <span className={cn(l.source.startsWith("Website") || l.source.startsWith("Investor") ? "text-primary" : "text-muted")}>{l.source}</span> },
     { key: "service", header: "Interested in", render: (l) => l.service },
-    { key: "value", header: "Est. value", sortable: true, align: "right", render: (l) => formatUGX(l.value) },
+    { key: "value", header: "Est. value", sortable: true, align: "right", render: (l) => formatCurrency(l.value) },
     { key: "status", header: "Stage", sortable: true, render: (l) => <StatusBadge status={l.status} /> },
     { key: "createdAt", header: "Created", sortable: true, align: "right", render: (l) => formatDate(l.createdAt) },
     {
@@ -198,7 +198,7 @@ export default function LeadsPage() {
                       <p className="text-body font-medium text-foreground">{l.name}</p>
                       <p className="mt-0.5 text-caption text-muted">{l.service}</p>
                       <div className="mt-2 flex items-center justify-between">
-                        <Badge variant="muted">{formatUGX(l.value)}</Badge>
+                        <Badge variant="muted">{formatCurrency(l.value)}</Badge>
                         {(l.source.startsWith("Website") || l.source.startsWith("Investor")) && <span className="text-caption text-primary">web</span>}
                       </div>
                     </button>

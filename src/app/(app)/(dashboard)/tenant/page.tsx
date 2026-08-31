@@ -17,7 +17,7 @@ import { EmptyState } from "@/components/ui/empty-state";
 import { Button } from "@/components/ui/button";
 import { useAsync, debugErrorFlag } from "@/lib/use-async";
 import { useSession } from "@/lib/stores/session";
-import { formatUGX, formatDate, fromNow } from "@/lib/format";
+import { formatCurrency, formatDate, fromNow } from "@/lib/format";
 import { downloadPdf } from "@/lib/pdf/download";
 import { receiptPdf } from "@/lib/pdf/builders";
 import { getTenant, listAnnouncements, propertyName, NOW_ISO, type Payment, type Scope } from "@/lib/api/admin";
@@ -78,7 +78,7 @@ export default function TenantDashboardPage() {
 
   const paymentColumns: Column<Payment>[] = [
     { key: "date", header: "Date", sortable: true, render: (p) => formatDate(p.date) },
-    { key: "amount", header: "Amount", sortable: true, align: "right", render: (p) => formatUGX(p.amount) },
+    { key: "amount", header: "Amount", sortable: true, align: "right", render: (p) => formatCurrency(p.amount) },
     { key: "method", header: "Method", render: (p) => <span className="capitalize">{p.method.replace("_", " ")}</span> },
     { key: "status", header: "Status", render: (p) => <StatusBadge status={p.status} /> },
     { key: "receipt", header: "", align: "right", render: (p) => <Button variant="ghost" size="sm" onClick={() => { const { payload, filename } = receiptPdf(p); downloadPdf(payload, filename); }}>Receipt</Button> },
@@ -94,8 +94,8 @@ export default function TenantDashboardPage() {
 
       {/* KPIs */}
       <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-4">
-        <StatCard label="Monthly rent" value={lease ? formatUGX(lease.rent) : "—"} icon={<Cash size={22} />} />
-        <StatCard label="Outstanding" value={formatUGX(outstanding)} icon={<FileLines size={22} />} hint={outstanding > 0 ? "due now" : "all settled"} />
+        <StatCard label="Monthly rent" value={lease ? formatCurrency(lease.rent) : "—"} icon={<Cash size={22} />} />
+        <StatCard label="Outstanding" value={formatCurrency(outstanding)} icon={<FileLines size={22} />} hint={outstanding > 0 ? "due now" : "all settled"} />
         <StatCard label="Next rent due" value={nextDue ? formatDate(nextDue.due) : "—"} icon={<CalendarMonth size={22} />} hint={nextDue ? fromNow(nextDue.due, NOW_ISO) : "nothing scheduled"} />
         <StatCard label="Open requests" value={openTickets.length} icon={<AdjustmentsHorizontal size={22} />} />
       </div>
@@ -105,7 +105,7 @@ export default function TenantDashboardPage() {
         <Card className="mt-6 flex flex-col items-start justify-between gap-4 border-l-4 border-primary p-6 sm:flex-row sm:items-center">
           <div>
             <p className="text-caption font-medium uppercase tracking-wide text-muted">Next payment due</p>
-            <p className="mt-1 font-heading text-h2 font-semibold text-foreground">{formatUGX(nextDue.amount - nextDue.paid)}</p>
+            <p className="mt-1 font-heading text-h2 font-semibold text-foreground">{formatCurrency(nextDue.amount - nextDue.paid)}</p>
             <p className="mt-1 text-body text-muted">{nextDue.number} · due {formatDate(nextDue.due)} ({fromNow(nextDue.due, NOW_ISO)})</p>
           </div>
           <Button asChild className="gap-2"><Link href="/tenant/payments">Pay now <ArrowRight size={16} /></Link></Button>
@@ -121,7 +121,7 @@ export default function TenantDashboardPage() {
             <span className="flex h-11 w-11 shrink-0 items-center justify-center rounded-md bg-surface-active text-primary"><Tools size={22} /></span>
             <div>
               <p className="text-caption font-medium uppercase tracking-wide text-muted">Maintenance charge</p>
-              <p className="mt-1 font-heading text-h2 font-semibold text-foreground">{formatUGX(maintTotal)}</p>
+              <p className="mt-1 font-heading text-h2 font-semibold text-foreground">{formatCurrency(maintTotal)}</p>
               <p className="mt-1 text-body text-muted">
                 {maintCharges.length === 1
                   ? `${maintCharges[0].title} · ${maintCharges[0].invoiceNumber}`

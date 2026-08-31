@@ -16,7 +16,7 @@ import { Skeleton, SkeletonText } from "@/components/ui/skeleton";
 import { toast } from "@/components/ui/sonner";
 import { ConvertLeadDialog } from "@/components/admin/convert-lead-dialog";
 import { useAsync, debugErrorFlag } from "@/lib/use-async";
-import { formatUGX, formatDate, fromNow } from "@/lib/format";
+import { formatCurrency, formatDate, fromNow } from "@/lib/format";
 import { getLead, addLeadActivity, NOW_ISO, type LeadActivity, type Scope } from "@/lib/api/admin";
 
 export default function LeadDetailPage() {
@@ -81,7 +81,7 @@ export default function LeadDetailPage() {
               <div className="flex items-center gap-2 text-muted"><Phone size={16} /> <span className="text-foreground">{data.phone}</span></div>
               <div className="flex justify-between gap-4"><dt className="text-muted">Source</dt><dd className="text-foreground">{data.source}</dd></div>
               <div className="flex justify-between gap-4"><dt className="text-muted">Owner</dt><dd className="text-foreground">{data.owner}</dd></div>
-              <div className="flex items-center justify-between gap-4"><dt className="inline-flex items-center gap-1.5 text-muted"><Cash size={16} /> Est. value</dt><dd className="font-medium text-foreground">{formatUGX(data.value)}</dd></div>
+              <div className="flex items-center justify-between gap-4"><dt className="inline-flex items-center gap-1.5 text-muted"><Cash size={16} /> Est. value</dt><dd className="font-medium text-foreground">{formatCurrency(data.value)}</dd></div>
             </dl>
           </Card>
 

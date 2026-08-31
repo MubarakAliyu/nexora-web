@@ -11,7 +11,7 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { EmptyState } from "@/components/ui/empty-state";
 import { useAsync, debugErrorFlag } from "@/lib/use-async";
 import { useSession } from "@/lib/stores/session";
-import { formatUGX, formatDate } from "@/lib/format";
+import { formatCurrency, formatDate } from "@/lib/format";
 import { listBookingsForEmail } from "@/lib/api/rentals";
 
 export default function TenantBookingsPage() {
@@ -41,7 +41,7 @@ export default function TenantBookingsPage() {
         </div>
       </div>
       <div className="flex items-center justify-between gap-4 sm:flex-col sm:items-end">
-        <p className="font-heading text-h3 font-semibold text-primary">{formatUGX(b.total)}</p>
+        <p className="font-heading text-h3 font-semibold text-primary">{formatCurrency(b.total)}</p>
         <Link href={`/rentals/${b.propertyId}`} className="inline-flex items-center gap-1 text-caption font-medium text-primary hover:text-accent">
           View rental <ArrowRight size={14} />
         </Link>

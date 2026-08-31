@@ -1,6 +1,7 @@
 "use client";
 
 import * as React from "react";
+import { formatCurrencyFull } from "@/lib/format";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { Button } from "@/components/ui/button";
@@ -13,9 +14,9 @@ import { useSession } from "@/lib/stores/session";
 import { CatalogueStep, type CatalogueSelection } from "@/components/marketing/catalogue-step";
 import { serviceTypesSync, buildQuotation } from "@/lib/api/catalogue";
 import { raiseAdditionalCharge } from "@/lib/api/additional-charges";
-import type { ServiceBooking, AdditionalChargeLine } from "@/lib/mock/types";
+import type { ServiceBooking, AdditionalChargeLine, Currency} from "@/lib/mock/types";
 
-const fmt = (n: number) => `UGX ${Math.round(n).toLocaleString("en-UG")}`;
+const fmt = (n: number, c: Currency = "UGX") => formatCurrencyFull(n, c);
 
 /**
  * Raise an additional charge against an in-progress booking.

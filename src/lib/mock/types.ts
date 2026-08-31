@@ -93,6 +93,11 @@ export interface ManagementAgreement {
 /** A processed owner payout for a period — the record created by the
  *  settlement workflow. Money movement is external; this is the ledger entry. */
 export interface SettlementRecord {
+  /**
+   * F5 — the currency this record was RECORDED in. Never converted for display.
+   * Optional so pre-F5 rows read as UGX; every new record is stamped explicitly.
+   */
+  currency?: Currency;
   id: string;
   ownerId: string;
   ownerName: string;
@@ -291,6 +296,11 @@ export type InvoiceStatus = "paid" | "pending" | "overdue" | "partial";
 export type InvoiceKind = "rent" | "service" | "maintenance" | "deposit" | "utility";
 
 export interface Invoice {
+  /**
+   * F5 — the currency this record was RECORDED in. Never converted for display.
+   * Optional so pre-F5 rows read as UGX; every new record is stamped explicitly.
+   */
+  currency?: Currency;
   id: string;
   number: string; // INV-2026-0001
   leaseId: string;
@@ -315,6 +325,11 @@ export type PaymentMethod = "bank" | "mobile_money" | "cash" | "card";
 export type PaymentStatus = "completed" | "pending" | "failed";
 
 export interface Payment {
+  /**
+   * F5 — the currency this record was RECORDED in. Never converted for display.
+   * Optional so pre-F5 rows read as UGX; every new record is stamped explicitly.
+   */
+  currency?: Currency;
   id: string;
   invoiceId: string;
   tenantId: string;
@@ -336,7 +351,6 @@ export interface Payment {
   stateChangedAt?: string;
   /** Why a payment failed, where the provider tells us. */
   failureReason?: string;
-  currency?: CatalogueCurrency;
   /** What this payment settles, beyond a rent invoice. */
   serviceBookingId?: string;
   maintenanceTicketId?: string;
@@ -352,6 +366,11 @@ export type ExpenseCategory =
   | "insurance";
 
 export interface Expense {
+  /**
+   * F5 — the currency this record was RECORDED in. Never converted for display.
+   * Optional so pre-F5 rows read as UGX; every new record is stamped explicitly.
+   */
+  currency?: Currency;
   id: string;
   propertyId: string;
   category: ExpenseCategory;
@@ -409,6 +428,11 @@ export type TicketCategory =
   | "other";
 
 export interface MaintenanceTicket {
+  /**
+   * F5 — the currency this record was RECORDED in. Never converted for display.
+   * Optional so pre-F5 rows read as UGX; every new record is stamped explicitly.
+   */
+  currency?: Currency;
   /* F4 — the assigned worker's own response (accept/decline), separate from the
      ticket's operational status so the F3 routing lifecycle is untouched. */
   workerResponse?: WorkerJobResponse;
@@ -722,6 +746,11 @@ export type ServiceBookingKind = "cleaning" | "lifestyle";
 
 /** Cleaning / Home & Lifestyle service booking. */
 export interface ServiceBooking {
+  /**
+   * F5 — the currency this record was RECORDED in. Never converted for display.
+   * Optional so pre-F5 rows read as UGX; every new record is stamped explicitly.
+   */
+  currency?: Currency;
   id: string;
   reference: string; // NX-SV-XXXXXX
   kind: ServiceBookingKind;
@@ -822,7 +851,19 @@ export interface Activity {
 /** How the customer chooses from a category. Drives the booking-form widget. */
 export type SelectionMode = "quantity" | "single_choice" | "multi_choice";
 
-export type CatalogueCurrency = "UGX" | "USD";
+/**
+ * The two currencies the platform supports (F5).
+ *
+ * The 27 Aug minutes asked for UGX and USD "especially because short-term rental
+ * customers and property owners may be international", and were explicit that
+ * "automatic exchange-rate behavior was not defined and must not be assumed".
+ * So every financial record STORES the currency it was recorded in, and nothing
+ * is ever converted for display.
+ */
+export type Currency = "UGX" | "USD";
+
+/** Pre-F5 alias — the catalogue had currency first. Same two values. */
+export type CatalogueCurrency = Currency;
 
 /** LEVEL 1 — a top-level bookable service. */
 export interface ServiceType {
@@ -1019,6 +1060,11 @@ export interface AppSettings {
  * balance needs separate stakeholder approval first.
  */
 export interface WorkerEarning {
+  /**
+   * F5 — the currency this record was RECORDED in. Never converted for display.
+   * Optional so pre-F5 rows read as UGX; every new record is stamped explicitly.
+   */
+  currency?: Currency;
   id: string;
   staffId: string;
   /** The job this was earned on. */
@@ -1035,6 +1081,11 @@ export interface WorkerEarning {
 export type PayoutStatus = "requested" | "approved" | "paid" | "rejected";
 
 export interface WorkerPayout {
+  /**
+   * F5 — the currency this record was RECORDED in. Never converted for display.
+   * Optional so pre-F5 rows read as UGX; every new record is stamped explicitly.
+   */
+  currency?: Currency;
   id: string;
   reference: string;
   staffId: string;

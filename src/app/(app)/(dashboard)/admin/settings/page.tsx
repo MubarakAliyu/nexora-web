@@ -22,7 +22,7 @@ import { AuditTab } from "@/components/admin/settings/audit-tab";
 import { SESSION_TIMEOUT_MINUTES, SESSION_WARNING_MINUTES } from "@/components/app/session-timeout";
 import { getOwnerApprovalThreshold, setOwnerApprovalThreshold } from "@/lib/api/maintenance-routing";
 import { useSession } from "@/lib/stores/session";
-import { formatUGX } from "@/lib/format";
+import { formatCurrency, formatCurrencyFull} from "@/lib/format";
 import { SecurityTab } from "@/components/admin/settings/security-tab";
 import { IntegrationsTab } from "@/components/admin/settings/integrations-tab";
 
@@ -138,7 +138,7 @@ function GlobalTab() {
         await setOwnerApprovalThreshold(parsedThreshold, actorName);
         setCommittedThreshold(parsedThreshold);
         toast.success("Approval threshold updated", {
-          description: `Owner approval now required above UGX ${parsedThreshold.toLocaleString("en-UG")}.`,
+          description: `Owner approval now required above ${formatCurrencyFull(parsedThreshold)}.`,
         });
       }
       await saveSettingsSection("global", "Updated global settings");
@@ -175,7 +175,7 @@ function GlobalTab() {
                   key="thresh-dirty"
                   className="mt-1 text-caption font-medium text-primary motion-safe:animate-in motion-safe:fade-in"
                 >
-                  Unsaved — currently {formatUGX(committedThreshold)}. Save changes to apply.
+                  Unsaved — currently {formatCurrency(committedThreshold)}. Save changes to apply.
                 </p>
               )}
             </Field>

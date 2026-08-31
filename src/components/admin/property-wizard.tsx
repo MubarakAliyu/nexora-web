@@ -12,7 +12,7 @@ import { Button } from "@/components/ui/button";
 import { Field, selectClass } from "@/components/forms/field";
 import { toast } from "@/components/ui/sonner";
 import { cn } from "@/lib/utils";
-import { formatUGX } from "@/lib/format";
+import { formatCurrency } from "@/lib/format";
 import { createProperty, updateProperty, ownerOptions, type Property } from "@/lib/api/admin";
 import { categories } from "@/content/portfolio";
 
@@ -315,7 +315,7 @@ export function PropertyWizard({
                 <dl className="space-y-1.5 text-caption">
                   <div className="flex justify-between gap-4"><dt className="text-muted">Property</dt><dd className="text-right text-foreground">{v.name || "—"} · {v.category || "—"} · {v.location || "—"}</dd></div>
                   <div className="flex justify-between gap-4"><dt className="text-muted">Owner</dt><dd className="text-foreground">{owners.find((o) => o.id === v.ownerId)?.name ?? "—"}</dd></div>
-                  <div className="flex justify-between gap-4"><dt className="text-muted">Rental</dt><dd className="text-foreground">{v.rentalType} · {v.rentalType === "short-term" ? `${formatUGX(v.dailyRate)}/night` : `${formatUGX(v.monthlyRent)}/mo`}</dd></div>
+                  <div className="flex justify-between gap-4"><dt className="text-muted">Rental</dt><dd className="text-foreground">{v.rentalType} · {v.rentalType === "short-term" ? `${formatCurrency(v.dailyRate)}/night` : `${formatCurrency(v.monthlyRent)}/mo`}</dd></div>
                   <div className="flex justify-between gap-4"><dt className="text-muted">Structure</dt><dd className="text-foreground">{v.buildings?.length} building(s) · {v.bedrooms} bed / {v.bathrooms} bath default</dd></div>
                   <div className="flex justify-between gap-4"><dt className="text-muted">Amenities</dt><dd className="max-w-[60%] text-right text-foreground">{amenities.length ? amenities.join(", ") : "—"}</dd></div>
                   <div className="flex justify-between gap-4"><dt className="text-muted">Media</dt><dd className="text-foreground">{images.length} images · {videos.length} videos · {floorPlans.length} floor plans</dd></div>

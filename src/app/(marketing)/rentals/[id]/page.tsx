@@ -11,7 +11,7 @@ import { RentalInquiryForm } from "@/components/marketing/rental-inquiry-form";
 import { EmptyState } from "@/components/ui/empty-state";
 import { Button } from "@/components/ui/button";
 import { useAsync } from "@/lib/use-async";
-import { formatUGX } from "@/lib/format";
+import { formatCurrency } from "@/lib/format";
 import { getRentalDetail } from "@/lib/api/rentals";
 
 /** A warm supplementary interior shot for the gallery strip. */
@@ -74,7 +74,7 @@ export default function RentalDetailPage() {
           <p className="mt-1 flex items-center gap-1.5 text-body text-muted"><MapPin size={16} /> {property.location}</p>
         </div>
         <div className="text-right">
-          <p className="font-heading text-hero font-semibold leading-none text-primary">{formatUGX(price)}</p>
+          <p className="font-heading text-hero font-semibold leading-none text-primary">{formatCurrency(price)}</p>
           <p className="text-caption text-muted">per {period}</p>
         </div>
       </div>

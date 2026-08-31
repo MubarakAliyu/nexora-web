@@ -1,12 +1,14 @@
 "use client";
 
 import * as React from "react";
+import { formatCurrencyFull } from "@/lib/format";
+import type { Currency } from "@/lib/mock/types";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Label } from "@/components/ui/label";
 import { buildQuotation } from "@/lib/api/catalogue";
 import type { CatalogueSelection } from "./catalogue-step";
 
-const fmt = (n: number, c: string) => `${c} ${Math.round(n).toLocaleString("en-UG")}`;
+const fmt = (n: number, c: string) => formatCurrencyFull(n, c as Currency);
 
 /**
  * Quotation review + agreement.

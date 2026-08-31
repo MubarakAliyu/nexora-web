@@ -11,13 +11,13 @@ import {
 } from "@/components/ui/dialog";
 import { toast } from "@/components/ui/sonner";
 import { cn } from "@/lib/utils";
-import { formatDate } from "@/lib/format";
+import { formatDate, formatCurrencyFull} from "@/lib/format";
 import {
   chargesForBooking, acceptAdditionalCharge, declineAdditionalCharge,
   payAdditionalCharge, CHARGE_STATUS_LABEL, RESPONSE_METHOD_LABEL,
 } from "@/lib/api/additional-charges";
 import { useSession } from "@/lib/stores/session";
-import type { AdditionalCharge, AdditionalChargeStatus, CustomerResponseMethod } from "@/lib/mock/types";
+import type { AdditionalCharge, AdditionalChargeStatus, CustomerResponseMethod, Currency} from "@/lib/mock/types";
 
 const RESPONSE_METHODS = Object.keys(RESPONSE_METHOD_LABEL) as CustomerResponseMethod[];
 
@@ -39,7 +39,7 @@ function ResponseMethodField({ value, onChange }: {
   );
 }
 
-const fmt = (n: number, c = "UGX") => `${c} ${Math.round(n).toLocaleString("en-UG")}`;
+const fmt = (n: number, c: string = "UGX") => formatCurrencyFull(n, c as Currency);
 
 const STATUS_STYLE: Record<AdditionalChargeStatus, string> = {
   proposed: "border-transparent bg-surface-hover text-muted",

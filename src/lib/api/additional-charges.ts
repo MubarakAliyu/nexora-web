@@ -10,6 +10,7 @@
  * That is what makes "the customer agreed to X" still true after the fact.
  */
 import * as db from "@/lib/mock/db";
+import { formatCurrencyFull } from "@/lib/format";
 import { recordMutation } from "@/lib/api/actions";
 import { pushNotify } from "@/lib/api/admin-mutations";
 import type {
@@ -25,8 +26,8 @@ export const RESPONSE_METHOD_LABEL: Record<CustomerResponseMethod, string> = {
 };
 
 const mDelay = (ms = 420) => new Promise((r) => setTimeout(r, ms));
-const money = (n: number, c: CatalogueCurrency = "UGX") =>
-  `${c} ${Math.round(n).toLocaleString("en-UG")}`;
+/** F5 — delegates to THE formatter. */
+const money = (n: number, c: CatalogueCurrency = "UGX") => formatCurrencyFull(n, c);
 
 export const CHARGE_STATUS_LABEL: Record<AdditionalChargeStatus, string> = {
   proposed: "Proposed",

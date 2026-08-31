@@ -24,7 +24,7 @@ import { Skeleton, SkeletonText } from "@/components/ui/skeleton";
 import { useAsync, debugErrorFlag } from "@/lib/use-async";
 import { downloadPdf } from "@/lib/pdf/download";
 import { statementPdf } from "@/lib/pdf/builders";
-import { formatUGX, formatDate, fromNow } from "@/lib/format";
+import { formatCurrency, formatDate, fromNow } from "@/lib/format";
 import { getOwnerDetail, NOW_ISO, type OwnerDetail, type Property, type Scope } from "@/lib/api/admin";
 
 function initials(name: string) {
@@ -66,15 +66,15 @@ export default function OwnerDetailPage() {
     },
     { key: "units", header: "Units", sortable: true, align: "right" },
     { key: "occupancy", header: "Occupancy", sortable: true, align: "right", render: (p) => `${p.occupancy}%` },
-    { key: "monthlyRevenue", header: "Revenue / mo", sortable: true, align: "right", render: (p) => formatUGX(p.monthlyRevenue) },
+    { key: "monthlyRevenue", header: "Revenue / mo", sortable: true, align: "right", render: (p) => formatCurrency(p.monthlyRevenue) },
     { key: "status", header: "Status", render: (p) => <StatusBadge status={p.status} /> },
   ];
 
   const disbColumns: Column<Disbursement>[] = [
     { key: "period", header: "Period", render: (d) => <span className="font-medium text-foreground">{d.period}</span> },
-    { key: "gross", header: "Gross", align: "right", render: (d) => formatUGX(d.gross) },
-    { key: "fees", header: "Mgmt fee", align: "right", render: (d) => <span className="text-muted">−{formatUGX(d.fees)}</span> },
-    { key: "net", header: "Net payout", align: "right", render: (d) => <span className="font-medium text-foreground">{formatUGX(d.net)}</span> },
+    { key: "gross", header: "Gross", align: "right", render: (d) => formatCurrency(d.gross) },
+    { key: "fees", header: "Mgmt fee", align: "right", render: (d) => <span className="text-muted">−{formatCurrency(d.fees)}</span> },
+    { key: "net", header: "Net payout", align: "right", render: (d) => <span className="font-medium text-foreground">{formatCurrency(d.net)}</span> },
     { key: "date", header: "Date", render: (d) => formatDate(d.date) },
     { key: "status", header: "Status", render: (d) => <StatusBadge status={d.status === "paid" ? "paid" : "pending"} /> },
   ];
@@ -126,15 +126,15 @@ export default function OwnerDetailPage() {
             <StatCard label="Properties" value={properties.length} icon={<Building size={22} />} />
             <StatCard label="Units" value={units} icon={<Home size={22} />} />
             <StatCard label="Occupancy" value={`${occupancy}%`} icon={<ChartLineUp size={22} />} />
-            <StatCard label="Revenue / mo" value={formatUGX(financials.monthlyRevenue)} icon={<Cash size={22} />} />
-            <StatCard label="Disbursed" value={formatUGX(financials.disbursed)} icon={<Cash size={22} />} hint="net YTD" />
-            <StatCard label="Outstanding" value={formatUGX(financials.outstanding)} icon={<Receipt size={22} />} hint={financials.outstanding > 0 ? "in arrears" : "settled"} />
+            <StatCard label="Revenue / mo" value={formatCurrency(financials.monthlyRevenue)} icon={<Cash size={22} />} />
+            <StatCard label="Disbursed" value={formatCurrency(financials.disbursed)} icon={<Cash size={22} />} hint="net YTD" />
+            <StatCard label="Outstanding" value={formatCurrency(financials.outstanding)} icon={<Receipt size={22} />} hint={financials.outstanding > 0 ? "in arrears" : "settled"} />
           </div>
           <Card className="mt-4 p-6">
             <h3 className="font-heading text-h3 font-semibold text-foreground">Portfolio summary</h3>
             <p className="mt-2 text-body leading-relaxed text-muted">
               {owner.name} owns {properties.length} propert{properties.length === 1 ? "y" : "ies"} under Nexora management,
-              generating {formatUGX(financials.monthlyRevenue)} in monthly revenue. Net disbursements are made on the 5th of each month
+              generating {formatCurrency(financials.monthlyRevenue)} in monthly revenue. Net disbursements are made on the 5th of each month
               after the management fee.
             </p>
           </Card>

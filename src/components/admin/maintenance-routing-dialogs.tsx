@@ -14,7 +14,7 @@ import {
 } from "@/components/ui/dialog";
 import { toast } from "@/components/ui/sonner";
 import { cn } from "@/lib/utils";
-import { formatUGX } from "@/lib/format";
+import { formatCurrency } from "@/lib/format";
 import { useSession } from "@/lib/stores/session";
 import { maintenanceStaff, propertyName, unitLabel } from "@/lib/api/admin";
 import {
@@ -75,7 +75,7 @@ export function AssessmentDialog({ ticket, onOpenChange, onDone }: {
         materials: v.materials,
         notes: v.notes,
       });
-      toast.success(`Assessment recorded — ${formatUGX(total)} estimated`, { description: ticket.ref });
+      toast.success(`Assessment recorded — ${formatCurrency(total)} estimated`, { description: ticket.ref });
       onOpenChange(false); onDone();
     } catch { toast.error("Couldn’t record the assessment"); }
   };
@@ -112,7 +112,7 @@ export function AssessmentDialog({ ticket, onOpenChange, onDone }: {
 
               <div className="flex items-center justify-between rounded-xl border border-primary/30 bg-primary/5 p-4">
                 <span className="text-body font-medium text-foreground">Estimated total</span>
-                <span className="font-heading text-h2 font-semibold text-primary">{formatUGX(total)}</span>
+                <span className="font-heading text-h2 font-semibold text-primary">{formatCurrency(total)}</span>
               </div>
 
               <Field label="Assessment notes" htmlFor="as-notes" error={errors.notes?.message}>
@@ -212,7 +212,7 @@ export function RouteChargeDialog({ ticket, onOpenChange, onDone }: {
         toast.success("Charge routed to tenant", { description: `Invoice INV-${ticket.ref} issued — work waits for payment.` });
       } else if (route === "owner") {
         toast.success(needsApproval ? "Sent to owner for approval" : "Charge routed to owner", {
-          description: needsApproval ? `${formatUGX(cost)} exceeds the approval threshold.` : "Below the threshold — scheduled directly.",
+          description: needsApproval ? `${formatCurrency(cost)} exceeds the approval threshold.` : "Below the threshold — scheduled directly.",
         });
       } else {
         toast.success("Cost absorbed by Nexora", { description: "Work scheduled at no cost to either party." });
@@ -237,9 +237,9 @@ export function RouteChargeDialog({ ticket, onOpenChange, onDone }: {
             <div className="space-y-4">
               <div className="rounded-xl border border-primary/30 bg-primary/5 p-4">
                 <p className="text-caption uppercase tracking-wide text-muted">Assessed cost</p>
-                <p className="mt-1 font-heading text-h1 font-semibold text-primary">{formatUGX(cost)}</p>
+                <p className="mt-1 font-heading text-h1 font-semibold text-primary">{formatCurrency(cost)}</p>
                 <p className="mt-1 text-caption text-muted">
-                  Labour {formatUGX(ticket.assessedLabour ?? 0)} · Materials {formatUGX(ticket.assessedMaterials ?? 0)}
+                  Labour {formatCurrency(ticket.assessedLabour ?? 0)} · Materials {formatCurrency(ticket.assessedMaterials ?? 0)}
                 </p>
                 {ticket.assessmentNotes && (
                   <p className="mt-2 text-caption text-muted">{ticket.assessmentNotes}</p>
@@ -273,7 +273,7 @@ export function RouteChargeDialog({ ticket, onOpenChange, onDone }: {
 
               {needsApproval && (
                 <p className="rounded-lg border border-accent/40 bg-surface-active px-3.5 py-2.5 text-caption text-foreground motion-safe:animate-in motion-safe:fade-in">
-                  This exceeds the owner approval threshold of {formatUGX(threshold)}. The owner will be
+                  This exceeds the owner approval threshold of {formatCurrency(threshold)}. The owner will be
                   asked to approve before work proceeds.
                 </p>
               )}

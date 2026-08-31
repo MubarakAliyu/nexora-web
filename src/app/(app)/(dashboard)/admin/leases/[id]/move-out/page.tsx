@@ -15,7 +15,7 @@ import { EmptyState } from "@/components/ui/empty-state";
 import { Skeleton } from "@/components/ui/skeleton";
 import { toast } from "@/components/ui/sonner";
 import { cn } from "@/lib/utils";
-import { formatUGX, formatDate } from "@/lib/format";
+import { formatCurrency, formatDate } from "@/lib/format";
 import { useAsync, debugErrorFlag } from "@/lib/use-async";
 import { downloadPdf } from "@/lib/pdf/download";
 import { depositSettlementPdf } from "@/lib/pdf/builders";
@@ -149,7 +149,7 @@ export default function MoveOutPage() {
             <div><span className="text-muted">Tenant</span><p className="font-medium text-foreground">{tenantName(lease.tenantId)}</p></div>
             <div><span className="text-muted">Unit / property</span><p className="font-medium text-foreground">{unitLabel(lease.unitId)} · {propertyName(lease.propertyId)}</p></div>
             <div><span className="text-muted">Lease dates</span><p className="text-foreground">{formatDate(lease.start)} → {formatDate(lease.end)}</p></div>
-            <div><span className="text-muted">Deposit held</span><p className="font-medium text-foreground">{formatUGX(deposit)}</p></div>
+            <div><span className="text-muted">Deposit held</span><p className="font-medium text-foreground">{formatCurrency(deposit)}</p></div>
           </div>
           <div className="grid gap-4 sm:grid-cols-2">
             <Field label="Move-out date" htmlFor="mo-date"><Input id="mo-date" type="date" value={moveOutDate} onChange={(e) => setMoveOutDate(e.target.value)} /></Field>
@@ -204,7 +204,7 @@ export default function MoveOutPage() {
           </div>
           <div className="flex items-center justify-between rounded-xl border border-primary/30 bg-primary/5 p-4">
             <span className="font-medium text-foreground">Total estimated damage</span>
-            <span className="font-heading text-h3 font-semibold text-primary">{formatUGX(totalDamage)}</span>
+            <span className="font-heading text-h3 font-semibold text-primary">{formatCurrency(totalDamage)}</span>
           </div>
           <Field label="Overall inspector notes" htmlFor="mo-onotes"><Textarea id="mo-onotes" rows={2} value={inspectorNotes} onChange={(e) => setInspectorNotes(e.target.value)} /></Field>
           <div className="flex justify-between">
@@ -218,20 +218,20 @@ export default function MoveOutPage() {
       {step === 2 && (
         <Card key="s2" className="space-y-4 p-6 motion-safe:animate-in motion-safe:fade-in">
           <dl className="divide-y divide-border">
-            <div className="flex justify-between py-2.5"><dt className="text-muted">Security deposit held</dt><dd className="font-medium text-foreground">{formatUGX(deposit)}</dd></div>
-            <div className="flex justify-between py-2.5"><dt className="text-muted">Total damage cost</dt><dd className="text-foreground">−{formatUGX(totalDamage)}</dd></div>
-            <div className="flex justify-between py-2.5"><dt className="text-muted">Outstanding rent</dt><dd className="text-foreground">−{formatUGX(outstandingRent)}</dd></div>
-            <div className="flex justify-between py-2.5"><dt className="font-medium text-foreground">Total deductions</dt><dd className="font-medium text-foreground">−{formatUGX(deductions)}</dd></div>
+            <div className="flex justify-between py-2.5"><dt className="text-muted">Security deposit held</dt><dd className="font-medium text-foreground">{formatCurrency(deposit)}</dd></div>
+            <div className="flex justify-between py-2.5"><dt className="text-muted">Total damage cost</dt><dd className="text-foreground">−{formatCurrency(totalDamage)}</dd></div>
+            <div className="flex justify-between py-2.5"><dt className="text-muted">Outstanding rent</dt><dd className="text-foreground">−{formatCurrency(outstandingRent)}</dd></div>
+            <div className="flex justify-between py-2.5"><dt className="font-medium text-foreground">Total deductions</dt><dd className="font-medium text-foreground">−{formatCurrency(deductions)}</dd></div>
           </dl>
           <div className={cn("rounded-xl border p-4",
             refund > 0 ? "border-border bg-surface-active" : additionalOwed > 0 ? "border-primary/40 bg-primary/10" : "border-primary/30 bg-primary/5")}>
             <p className="text-caption uppercase tracking-wide text-muted">Refund calculation</p>
             <p className={cn("mt-1 font-heading text-h2 font-semibold", additionalOwed > 0 ? "text-primary" : "text-foreground")}>
-              {refund > 0 ? `Refund due to tenant: ${formatUGX(refund)}`
-                : additionalOwed > 0 ? `Tenant owes additional ${formatUGX(additionalOwed)} beyond deposit`
+              {refund > 0 ? `Refund due to tenant: ${formatCurrency(refund)}`
+                : additionalOwed > 0 ? `Tenant owes additional ${formatCurrency(additionalOwed)} beyond deposit`
                 : "Deposit fully applied — no refund due"}
             </p>
-            <p className="mt-1 text-caption text-muted">{formatUGX(deposit)} deposit − {formatUGX(deductions)} deductions = {net >= 0 ? formatUGX(refund) : `−${formatUGX(additionalOwed)}`}</p>
+            <p className="mt-1 text-caption text-muted">{formatCurrency(deposit)} deposit − {formatCurrency(deductions)} deductions = {net >= 0 ? formatCurrency(refund) : `−${formatCurrency(additionalOwed)}`}</p>
           </div>
           <div className="flex justify-between">
             <Button variant="outline" className="gap-1.5" onClick={() => setStep(1)}><AngleLeft size={16} /> Back</Button>
@@ -249,8 +249,8 @@ export default function MoveOutPage() {
               <div className="flex justify-between gap-4"><dt className="text-muted">Tenant · unit</dt><dd className="text-right text-foreground">{tenantName(lease.tenantId)} · {unitLabel(lease.unitId)} · {propertyName(lease.propertyId)}</dd></div>
               <div className="flex justify-between gap-4"><dt className="text-muted">Move-out date</dt><dd className="text-foreground">{formatDate(moveOutDate)}</dd></div>
               <div className="flex justify-between gap-4"><dt className="text-muted">Inspection</dt><dd className="text-foreground">{condCount("Good")} Good · {condCount("Fair")} Fair · {condCount("Damaged")} Damaged</dd></div>
-              <div className="flex justify-between gap-4"><dt className="text-muted">Deposit / deductions</dt><dd className="text-foreground">{formatUGX(deposit)} − {formatUGX(deductions)}</dd></div>
-              <div className="flex justify-between gap-4"><dt className="text-muted">Outcome</dt><dd className="font-medium text-foreground">{refund > 0 ? `Refund ${formatUGX(refund)}` : additionalOwed > 0 ? `Owed ${formatUGX(additionalOwed)}` : "No refund"}</dd></div>
+              <div className="flex justify-between gap-4"><dt className="text-muted">Deposit / deductions</dt><dd className="text-foreground">{formatCurrency(deposit)} − {formatCurrency(deductions)}</dd></div>
+              <div className="flex justify-between gap-4"><dt className="text-muted">Outcome</dt><dd className="font-medium text-foreground">{refund > 0 ? `Refund ${formatCurrency(refund)}` : additionalOwed > 0 ? `Owed ${formatCurrency(additionalOwed)}` : "No refund"}</dd></div>
             </dl>
           </div>
           <Field label="Deposit outcome" htmlFor="mo-outcome">
@@ -282,7 +282,7 @@ export default function MoveOutPage() {
           <div className="mx-auto max-w-sm space-y-1.5 rounded-xl border border-border p-4 text-left text-caption">
             <div className="flex justify-between"><span className="text-muted">Move-out date</span><span className="text-foreground">{formatDate(moveOutDate)}</span></div>
             <div className="flex justify-between"><span className="text-muted">Deposit outcome</span><span className="font-medium text-foreground">{OUTCOME_LABEL[outcome]}</span></div>
-            <div className="flex justify-between"><span className="text-muted">{result.refund > 0 ? "Refund" : result.additionalOwed > 0 ? "Amount owed" : "Settlement"}</span><span className="font-medium text-foreground">{result.refund > 0 ? formatUGX(result.refund) : result.additionalOwed > 0 ? formatUGX(result.additionalOwed) : "—"}</span></div>
+            <div className="flex justify-between"><span className="text-muted">{result.refund > 0 ? "Refund" : result.additionalOwed > 0 ? "Amount owed" : "Settlement"}</span><span className="font-medium text-foreground">{result.refund > 0 ? formatCurrency(result.refund) : result.additionalOwed > 0 ? formatCurrency(result.additionalOwed) : "—"}</span></div>
           </div>
           <div className="flex flex-col justify-center gap-2 sm:flex-row">
             <Button className="gap-2" onClick={downloadStatement}><Download size={18} /> Generate Deposit Settlement Statement</Button>

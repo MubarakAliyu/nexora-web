@@ -16,7 +16,7 @@ import { Button } from "@/components/ui/button";
 import { selectClass } from "@/components/forms/field";
 import { toast } from "@/components/ui/sonner";
 import { useAsync, debugErrorFlag } from "@/lib/use-async";
-import { formatUGX } from "@/lib/format";
+import { formatCurrency } from "@/lib/format";
 import { listProperties, deleteProperty, type Property, type Scope } from "@/lib/api/admin";
 import { categories } from "@/content/portfolio";
 
@@ -66,7 +66,7 @@ export default function PropertiesPage() {
         </div>
       ),
     },
-    { key: "monthlyRevenue", header: "Revenue / mo", sortable: true, align: "right", render: (p) => formatUGX(p.monthlyRevenue) },
+    { key: "monthlyRevenue", header: "Revenue / mo", sortable: true, align: "right", render: (p) => formatCurrency(p.monthlyRevenue) },
     { key: "status", header: "Status", sortable: true, render: (p) => <StatusBadge status={p.status} /> },
     {
       key: "actions", header: "", align: "right",

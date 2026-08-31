@@ -1,11 +1,12 @@
 "use client";
 
 import * as React from "react";
+import type { Currency } from "@/lib/mock/types";
 import { Badge } from "@/components/ui/badge";
-import { formatDate } from "@/lib/format";
+import { formatDate, formatCurrencyFull} from "@/lib/format";
 import { quotationForBooking } from "@/lib/api/catalogue";
 
-const fmt = (n: number, c: string) => `${c} ${Math.round(n).toLocaleString("en-UG")}`;
+const fmt = (n: number, c: string) => formatCurrencyFull(n, c as Currency);
 
 /**
  * The accepted quotation on a service booking, shown at the prices the customer

@@ -15,7 +15,7 @@ import {
 } from "@/components/ui/dialog";
 import { toast } from "@/components/ui/sonner";
 import { useAsync, debugErrorFlag } from "@/lib/use-async";
-import { formatDate, formatUGX } from "@/lib/format";
+import { formatDate, formatCurrency, formatCurrencyFull } from "@/lib/format";
 import {
   listServiceBookings, getServiceBooking, updateServiceBookingStatus, assignServiceBooking,
 } from "@/lib/api/rentals";
@@ -153,7 +153,7 @@ function DetailDialog({ id, onOpenChange, onDone, onWorkflow, refreshKey }: {
                 <p className="mb-2 text-caption font-medium uppercase tracking-wide text-muted">Payment</p>
                 <dl className="space-y-1.5 text-body">
                   <div className="flex items-center justify-between"><dt className="text-muted">Payment status</dt><dd><StatusBadge status={data.paymentStatus ?? "pending"} /></dd></div>
-                  <div className="flex justify-between"><dt className="text-muted">Amount</dt><dd className="text-foreground">{data.amount != null ? formatUGX(data.amount) : "Pending assessment"}</dd></div>
+                  <div className="flex justify-between"><dt className="text-muted">Amount</dt><dd className="text-foreground">{data.amount != null ? formatCurrency(data.amount) : "Pending assessment"}</dd></div>
                   {data.paymentMethod && <div className="flex justify-between"><dt className="text-muted">Method</dt><dd className="capitalize text-foreground">{data.paymentMethod.replace(/_/g, " ")}</dd></div>}
                   {data.paymentReference && <div className="flex justify-between"><dt className="text-muted">Transaction ref</dt><dd className="font-mono text-caption text-foreground">{data.paymentReference}</dd></div>}
                 </dl>
@@ -195,7 +195,7 @@ function DetailDialog({ id, onOpenChange, onDone, onWorkflow, refreshKey }: {
                 // original-plus-extras breakdown.
                 const base = q?.total ?? data.invoiceAmount ?? data.assessedAmount ?? 0;
                 const currency = q?.currency ?? "UGX";
-                const money = (n: number) => `${currency} ${Math.round(n).toLocaleString("en-UG")}`;
+                const money = (n: number) => formatCurrencyFull(n, currency);
                 return (
                   <div className="rounded-xl border border-primary/30 bg-primary/5 p-4">
                     <dl className="space-y-1.5 text-body">
@@ -360,7 +360,7 @@ export default function ServiceBookingsPage() {
         return (
           <span className="inline-flex flex-wrap items-center justify-end gap-1.5">
             {q
-              ? <span className="tabular-nums font-medium text-foreground">{formatUGX(q.total)}</span>
+              ? <span className="tabular-nums font-medium text-foreground">{formatCurrency(q.total)}</span>
               : <span className="text-caption text-muted">—</span>}
             {/* Items needing a separate quote are the ones an admin must chase. */}
             {flagged && <Badge className="border-accent/40 bg-surface-active text-foreground">Quote</Badge>}
@@ -374,7 +374,7 @@ export default function ServiceBookingsPage() {
       key: "amount", header: "Amount", align: "right",
       render: (s) => {
         const amt = s.invoiceAmount ?? s.assessedAmount;
-        return amt ? <span className="tabular-nums text-foreground">{formatUGX(amt)}</span> : <span className="text-caption text-muted">Pending assessment</span>;
+        return amt ? <span className="tabular-nums text-foreground">{formatCurrency(amt)}</span> : <span className="text-caption text-muted">Pending assessment</span>;
       },
     },
     { key: "location", header: "Address", render: (s) => <span className="text-caption text-muted">{s.location}</span> },

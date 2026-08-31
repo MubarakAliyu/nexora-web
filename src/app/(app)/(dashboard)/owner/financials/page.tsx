@@ -19,7 +19,7 @@ import { useLive } from "@/lib/stores/live";
 import { downloadPdf } from "@/lib/pdf/download";
 import { statementPdf, settlementStatementPdf } from "@/lib/pdf/builders";
 import { generateCSV } from "@/lib/csv";
-import { formatUGX, formatUGXFull, formatDate } from "@/lib/format";
+import { formatCurrency, formatCurrencyFull, formatDate } from "@/lib/format";
 import { getOwnerFinancials, listProperties, type Scope } from "@/lib/api/admin";
 import {
   computeOwnerSettlement, listSettlements, defaultSettlementPeriod,
@@ -55,10 +55,10 @@ export default function OwnerFinancialsPage() {
   const settlementCols: Column<SettlementRecord>[] = [
     { key: "processedAt", header: "Date", sortable: true, render: (s) => formatDate(s.processedAt) },
     { key: "period", header: "Period", render: (s) => s.period },
-    { key: "grossRevenue", header: "Gross", align: "right", render: (s) => formatUGX(s.grossRevenue) },
-    { key: "managementFee", header: "Mgmt fee", align: "right", render: (s) => <span className="text-muted">−{formatUGX(s.managementFee)}</span> },
-    { key: "expenses", header: "Expenses", align: "right", render: (s) => <span className="text-muted">−{formatUGX(s.expenses)}</span> },
-    { key: "netPayout", header: "Net payout", align: "right", render: (s) => <span className="font-medium text-foreground">{formatUGX(s.netPayout)}</span> },
+    { key: "grossRevenue", header: "Gross", align: "right", render: (s) => formatCurrency(s.grossRevenue) },
+    { key: "managementFee", header: "Mgmt fee", align: "right", render: (s) => <span className="text-muted">−{formatCurrency(s.managementFee)}</span> },
+    { key: "expenses", header: "Expenses", align: "right", render: (s) => <span className="text-muted">−{formatCurrency(s.expenses)}</span> },
+    { key: "netPayout", header: "Net payout", align: "right", render: (s) => <span className="font-medium text-foreground">{formatCurrency(s.netPayout)}</span> },
     { key: "status", header: "Status", render: (s) => <StatusBadge status={s.status === "completed" ? "paid" : "pending"} /> },
     { key: "dl", header: "", align: "right", render: (s) => <Button size="sm" variant="outline" onClick={() => { const { payload, filename } = settlementStatementPdf(s); downloadPdf(payload, filename); }}>Statement</Button> },
   ];
@@ -105,9 +105,9 @@ export default function OwnerFinancialsPage() {
       <section>
         <h2 className="mb-3 font-heading text-h3 font-semibold text-foreground">Revenue</h2>
         <div className="grid grid-cols-1 gap-4 sm:grid-cols-3">
-          <StatCard label="Gross revenue" value={formatUGX(calc?.grossRevenue ?? 0)} icon={<Cash size={22} />} hint="rent + service" />
-          <StatCard label="Collected rent" value={formatUGX(calc?.grossRent ?? 0)} icon={<ChartLineUp size={22} />} hint="confirmed payments" />
-          <StatCard label="Pending payments" value={formatUGX(pendingRent)} icon={<Receipt size={22} />} hint="invoiced, unpaid" />
+          <StatCard label="Gross revenue" value={formatCurrency(calc?.grossRevenue ?? 0)} icon={<Cash size={22} />} hint="rent + service" />
+          <StatCard label="Collected rent" value={formatCurrency(calc?.grossRent ?? 0)} icon={<ChartLineUp size={22} />} hint="confirmed payments" />
+          <StatCard label="Pending payments" value={formatCurrency(pendingRent)} icon={<Receipt size={22} />} hint="invoiced, unpaid" />
         </div>
         <div className="mt-4 grid gap-4 lg:grid-cols-2">
           <Card className="p-6">
@@ -128,12 +128,12 @@ export default function OwnerFinancialsPage() {
           <dl className="divide-y divide-border">
             <div className="flex items-center justify-between py-3">
               <dt className="text-body text-muted">Management fee <span className="ml-2 rounded-full bg-primary/10 px-2 py-0.5 text-caption font-medium text-primary">{calc?.agreementTypeLabel} — {calc?.rateLabel}</span></dt>
-              <dd className="font-medium text-foreground">−{formatUGXFull(calc?.managementFee ?? 0)}</dd>
+              <dd className="font-medium text-foreground">−{formatCurrencyFull(calc?.managementFee ?? 0)}</dd>
             </div>
-            <div className="flex items-center justify-between py-3"><dt className="text-body text-muted">Property expenses</dt><dd className="text-foreground">−{formatUGXFull(calc?.expenses ?? 0)}</dd></div>
+            <div className="flex items-center justify-between py-3"><dt className="text-body text-muted">Property expenses</dt><dd className="text-foreground">−{formatCurrencyFull(calc?.expenses ?? 0)}</dd></div>
             <div className="flex items-center justify-between py-3"><dt className="text-body text-muted">Taxes</dt><dd className="text-muted">UGX 0 <span className="text-caption">(Phase 2)</span></dd></div>
-            <div className="flex items-center justify-between py-3"><dt className="text-body text-muted">Other charges</dt><dd className="text-foreground">{calc && calc.depositDeductions > 0 ? `−${formatUGXFull(calc.depositDeductions)}` : "None"}</dd></div>
-            <div className="flex items-center justify-between py-3"><dt className="font-semibold text-foreground">Total deductions</dt><dd className="font-semibold text-foreground">−{formatUGXFull(calc?.totalDeductions ?? 0)}</dd></div>
+            <div className="flex items-center justify-between py-3"><dt className="text-body text-muted">Other charges</dt><dd className="text-foreground">{calc && calc.depositDeductions > 0 ? `−${formatCurrencyFull(calc.depositDeductions)}` : "None"}</dd></div>
+            <div className="flex items-center justify-between py-3"><dt className="font-semibold text-foreground">Total deductions</dt><dd className="font-semibold text-foreground">−{formatCurrencyFull(calc?.totalDeductions ?? 0)}</dd></div>
           </dl>
         </Card>
       </section>
@@ -145,7 +145,7 @@ export default function OwnerFinancialsPage() {
           <div className="flex flex-col justify-between gap-4 sm:flex-row sm:items-center">
             <div>
               <p className="text-caption uppercase tracking-wide text-muted">Amount payable</p>
-              <p className="mt-1 font-heading text-h1 font-semibold text-primary">{formatUGX(Math.max(0, calc?.netPayout ?? 0))}</p>
+              <p className="mt-1 font-heading text-h1 font-semibold text-primary">{formatCurrency(Math.max(0, calc?.netPayout ?? 0))}</p>
             </div>
             <div className="space-y-1 text-caption sm:text-right">
               <div className="flex items-center gap-2 sm:justify-end"><span className="text-muted">Payment status</span><StatusBadge status={status} /></div>

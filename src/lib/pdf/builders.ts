@@ -10,7 +10,7 @@ import { computeOwnerSettlement } from "@/lib/api/settlement";
 import { quotationForBooking } from "@/lib/api/catalogue";
 import type { SettlementRecord } from "@/lib/mock/types";
 import { slugFile } from "./download";
-import { formatDate, formatUGX } from "@/lib/format";
+import { formatDate, formatCurrency } from "@/lib/format";
 import { commissionForAgreement, agreementRateLabel, CONTRACT_TYPE_LABEL } from "@/lib/api/agreements";
 
 const cap = (s: string) => s.charAt(0).toUpperCase() + s.slice(1);
@@ -204,7 +204,7 @@ export function statementPdf(ownerId: string, period?: string): { payload: PdfPa
       ? {
           ref: `AGR-${agreement.id.replace(/\D/g, "").slice(-6).padStart(6, "0") || agreement.id.slice(-6).toUpperCase()}`,
           basis: `${CONTRACT_TYPE_LABEL[agreement.contractType]} — ${agreementRateLabel(agreement)}`,
-          commissionCalc: `${CONTRACT_TYPE_LABEL[agreement.contractType]} (${agreementRateLabel(agreement)}) on ${formatUGX(totalCollected)} = ${formatUGX(totalCommission)}`,
+          commissionCalc: `${CONTRACT_TYPE_LABEL[agreement.contractType]} (${agreementRateLabel(agreement)}) on ${formatCurrency(totalCollected)} = ${formatCurrency(totalCommission)}`,
         }
       : undefined,
   };

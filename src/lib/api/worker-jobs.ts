@@ -9,16 +9,19 @@
  * survives untouched.
  */
 import * as db from "@/lib/mock/db";
+import { formatCurrencyFull } from "@/lib/format";
 import { recordMutation } from "@/lib/api/actions";
 import { isAssignedTo } from "@/lib/api/worker";
 import { startServiceWork, markServiceCompleted } from "@/lib/api/service-lifecycle";
 import { quotationForBooking } from "@/lib/api/catalogue";
 import type {
   Staff, ServiceBooking, MaintenanceTicket, WorkerJobResponse, Quotation, WorkerPayout,
+  Currency,
 } from "@/lib/mock/types";
 
 const mDelay = (ms = 400) => new Promise((r) => setTimeout(r, ms));
-const money = (n: number) => `UGX ${Math.round(n).toLocaleString("en-UG")}`;
+/** F5 — delegates to THE formatter. Currency defaults to the record's own. */
+const money = (n: number, c: Currency = "UGX") => formatCurrencyFull(n, c);
 
 export type WorkerJobKind = "service" | "maintenance";
 

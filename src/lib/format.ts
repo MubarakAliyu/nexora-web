@@ -1,19 +1,46 @@
-/** Shared formatting helpers for the dashboard (UGX currency, dates, etc.). */
+/** Shared formatting helpers for the dashboard (currency, dates, etc.). */
+import type { Currency } from "@/lib/mock/types";
 
-/** Compact UGX, e.g. 2,800,000 → "UGX 2.8M". */
-export function formatUGX(n: number, opts?: { compact?: boolean }): string {
+/**
+ * THE money formatter. Every amount displayed anywhere in the app goes through
+ * this — there is deliberately no second way to render money.
+ *
+ * ⚠️ NO CONVERSION. It formats the number it is given IN THE CURRENCY IT IS
+ * GIVEN. The 27 Aug minutes were explicit that exchange-rate behaviour "was not
+ * defined and must not be assumed", so an amount recorded in UGX renders as UGX
+ * even for a user whose preference is USD. Passing a record's own `currency` is
+ * therefore not optional politeness — it is the correctness requirement.
+ *
+ * `compact` (the default) abbreviates for dense UI: "UGX 2.8M", "USD 1.2K".
+ * Pass `{ compact: false }` for invoices, receipts and anywhere an exact figure
+ * matters.
+ */
+export function formatCurrency(
+  n: number,
+  currency: Currency = "UGX",
+  opts?: { compact?: boolean },
+): string {
+  // USD conventionally shows cents; UGX has no minor unit in practice.
+  const locale = currency === "USD" ? "en-US" : "en-UG";
   if (opts?.compact ?? true) {
-    if (Math.abs(n) >= 1_000_000_000) return `UGX ${(n / 1_000_000_000).toFixed(1)}B`;
-    if (Math.abs(n) >= 1_000_000) return `UGX ${(n / 1_000_000).toFixed(n % 1_000_000 === 0 ? 0 : 1)}M`;
-    if (Math.abs(n) >= 1_000) return `UGX ${(n / 1_000).toFixed(0)}K`;
+    if (Math.abs(n) >= 1_000_000_000) return `${currency} ${(n / 1_000_000_000).toFixed(1)}B`;
+    if (Math.abs(n) >= 1_000_000) return `${currency} ${(n / 1_000_000).toFixed(n % 1_000_000 === 0 ? 0 : 1)}M`;
+    if (Math.abs(n) >= 1_000) return `${currency} ${(n / 1_000).toFixed(0)}K`;
   }
-  return `UGX ${n.toLocaleString("en-UG")}`;
+  const rounded = currency === "USD" ? n : Math.round(n);
+  return `${currency} ${rounded.toLocaleString(locale, {
+    minimumFractionDigits: currency === "USD" ? 2 : 0,
+    maximumFractionDigits: currency === "USD" ? 2 : 0,
+  })}`;
 }
 
-/** Full UGX with thousands separators, e.g. "UGX 2,800,000". */
-export function formatUGXFull(n: number): string {
-  return `UGX ${Math.round(n).toLocaleString("en-UG")}`;
+/** Exact figure, never abbreviated — invoices, receipts, quotation lines. */
+export function formatCurrencyFull(n: number, currency: Currency = "UGX"): string {
+  return formatCurrency(n, currency, { compact: false });
 }
+
+/** The symbol/code shown beside an input. */
+export const currencyLabel = (c: Currency) => (c === "USD" ? "USD ($)" : "UGX (Sh)");
 
 /** "10 Jul 2026". Stable formatting (en-GB) to avoid locale drift. */
 export function formatDate(iso: string): string {

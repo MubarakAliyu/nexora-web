@@ -11,12 +11,14 @@
  * and adds client/staff notifications via `pushNotify`.
  */
 import * as db from "@/lib/mock/db";
+import { formatCurrencyFull } from "@/lib/format";
 import { recordMutation } from "@/lib/api/actions";
 import { pushNotify, decrementStaffJobs } from "@/lib/api/admin-mutations";
-import type { Invoice, ServiceBooking, ServiceBookingStatus } from "@/lib/mock/types";
+import type { Invoice, ServiceBooking, ServiceBookingStatus, Currency } from "@/lib/mock/types";
 
 const mDelay = (ms = 400) => new Promise((r) => setTimeout(r, ms));
-const money = (n: number) => `UGX ${Math.round(n).toLocaleString("en-UG")}`;
+/** F5 — delegates to THE formatter. Currency defaults to the record's own. */
+const money = (n: number, c: Currency = "UGX") => formatCurrencyFull(n, c);
 const dateShort = (iso: string) => new Date(iso).toLocaleDateString("en-GB", { day: "numeric", month: "short", year: "numeric" });
 
 const find = (id: string): ServiceBooking => {

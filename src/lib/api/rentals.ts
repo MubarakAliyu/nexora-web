@@ -6,6 +6,7 @@
  */
 
 import * as db from "@/lib/mock/db";
+import { formatCurrencyFull } from "@/lib/format";
 import { recordMutation } from "@/lib/api/actions";
 import { incrementStaffJobs, decrementStaffJobs, staffRef } from "@/lib/api/admin-mutations";
 import { useNotifications } from "@/lib/stores/notifications";
@@ -16,6 +17,7 @@ import type {
   ServiceBooking,
   ServiceBookingKind,
   Unit,
+  Currency,
 } from "@/lib/mock/types";
 
 export type { Booking, RentalListing, ServiceBooking, ServiceBookingKind } from "@/lib/mock/types";
@@ -32,7 +34,8 @@ const mDelay = (ms = 450) => new Promise((r) => setTimeout(r, ms));
 function notify(title: string, body: string, entityType: string, entityId: string) {
   useNotifications.getState().pushSystem({ type: "system", title, body, entityType, entityId, action: "created" });
 }
-const money = (n: number) => `UGX ${new Intl.NumberFormat("en-UG").format(n)}`;
+/** F5 — delegates to THE formatter. Currency defaults to the record's own. */
+const money = (n: number, c: Currency = "UGX") => formatCurrencyFull(n, c);
 const dateShort = (iso: string) => new Date(iso).toLocaleDateString("en-GB", { day: "numeric", month: "short" });
 
 /** Monthly-equivalent price used for filtering/sorting either rental type. */

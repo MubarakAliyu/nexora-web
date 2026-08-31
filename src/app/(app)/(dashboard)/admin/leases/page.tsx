@@ -24,7 +24,7 @@ import { toast } from "@/components/ui/sonner";
 import { useAsync, debugErrorFlag } from "@/lib/use-async";
 import { downloadPdf } from "@/lib/pdf/download";
 import { leasePdf } from "@/lib/pdf/builders";
-import { formatUGX, formatDate } from "@/lib/format";
+import { formatCurrency, formatDate } from "@/lib/format";
 import { leaseView, depositSummary } from "@/lib/lease";
 import {
   listLeases, createLease, updateLease, renewLease, terminateLease, sendRenewalReminder, deleteLease,
@@ -210,7 +210,7 @@ function TerminateDialog({ lease, onOpenChange, onDone }: { lease: Lease | null;
 
               {/* Deposit outcome */}
               <div className="rounded-xl border border-border p-4">
-                <p className="mb-3 text-caption font-semibold uppercase tracking-wide text-muted">Deposit outcome — {formatUGX(deposit)} held</p>
+                <p className="mb-3 text-caption font-semibold uppercase tracking-wide text-muted">Deposit outcome — {formatCurrency(deposit)} held</p>
                 <div className="grid grid-cols-2 gap-2">
                   {OUTCOMES.map((o) => (
                     <label key={o.v} className={`flex cursor-pointer items-center gap-2 rounded-lg border p-2.5 text-body transition-colors ${outcome === o.v ? "border-primary bg-primary/5" : "border-border hover:border-primary/50"}`}>
@@ -221,7 +221,7 @@ function TerminateDialog({ lease, onOpenChange, onDone }: { lease: Lease | null;
                 </div>
 
                 {outcome === "full_refund" && (
-                  <p className="mt-3 rounded-lg bg-surface-hover p-3 text-caption text-muted motion-safe:animate-in motion-safe:fade-in">The full deposit of <span className="font-medium text-foreground">{formatUGX(deposit)}</span> will be returned to {tenantName(lease.tenantId)}.</p>
+                  <p className="mt-3 rounded-lg bg-surface-hover p-3 text-caption text-muted motion-safe:animate-in motion-safe:fade-in">The full deposit of <span className="font-medium text-foreground">{formatCurrency(deposit)}</span> will be returned to {tenantName(lease.tenantId)}.</p>
                 )}
 
                 {outcome === "partial_refund" && (
@@ -230,18 +230,18 @@ function TerminateDialog({ lease, onOpenChange, onDone }: { lease: Lease | null;
                       <Field label="Refund amount (UGX)" htmlFor="tm-refund" error={refundAmount <= 0 || refundAmount >= deposit ? "Must be between 0 and the deposit" : undefined}>
                         <Input id="tm-refund" type="number" value={refundAmount} onChange={(e) => setRefundAmount(Number(e.target.value))} />
                       </Field>
-                      <Field label="Deduction (auto)" htmlFor="tm-deduct"><Input id="tm-deduct" value={formatUGX(deduction)} readOnly disabled /></Field>
+                      <Field label="Deduction (auto)" htmlFor="tm-deduct"><Input id="tm-deduct" value={formatCurrency(deduction)} readOnly disabled /></Field>
                     </div>
                     <Field label="Deduction reason" htmlFor="tm-dreason" error={!depReason.trim() ? "Required" : undefined}>
                       <Textarea id="tm-dreason" rows={2} value={depReason} onChange={(e) => setDepReason(e.target.value)} placeholder="e.g. Kitchen cabinet damage repair" />
                     </Field>
-                    <p className="rounded-lg bg-surface-hover p-3 text-caption text-muted"><span className="font-medium text-foreground">{formatUGX(refundAmount)}</span> will be returned. <span className="font-medium text-foreground">{formatUGX(deduction)}</span> retained{depReason ? ` for: ${depReason}` : ""}.</p>
+                    <p className="rounded-lg bg-surface-hover p-3 text-caption text-muted"><span className="font-medium text-foreground">{formatCurrency(refundAmount)}</span> will be returned. <span className="font-medium text-foreground">{formatCurrency(deduction)}</span> retained{depReason ? ` for: ${depReason}` : ""}.</p>
                   </div>
                 )}
 
                 {outcome === "deduct" && (
                   <div className="mt-3 space-y-3 motion-safe:animate-in motion-safe:fade-in">
-                    <p className="text-body text-foreground">Deducted: <span className="font-medium">{formatUGX(deposit)}</span></p>
+                    <p className="text-body text-foreground">Deducted: <span className="font-medium">{formatCurrency(deposit)}</span></p>
                     <Field label="Deduction reason" htmlFor="tm-dreason2" error={!depReason.trim() ? "Required" : undefined}>
                       <Textarea id="tm-dreason2" rows={2} value={depReason} onChange={(e) => setDepReason(e.target.value)} placeholder="e.g. 3 months unpaid rent / extensive property damage" />
                     </Field>
@@ -254,7 +254,7 @@ function TerminateDialog({ lease, onOpenChange, onDone }: { lease: Lease | null;
                         <Field label="Additional amount (UGX)" htmlFor="tm-add" error={additional <= 0 ? "Enter an amount" : undefined}>
                           <Input id="tm-add" type="number" value={additional} onChange={(e) => setAdditional(Number(e.target.value))} />
                         </Field>
-                        {additional > 0 && <p className="mt-1 text-caption text-muted">The tenant owes an additional {formatUGX(additional)} beyond the security deposit.</p>}
+                        {additional > 0 && <p className="mt-1 text-caption text-muted">The tenant owes an additional {formatCurrency(additional)} beyond the security deposit.</p>}
                       </div>
                     )}
                   </div>
@@ -265,7 +265,7 @@ function TerminateDialog({ lease, onOpenChange, onDone }: { lease: Lease | null;
                     <Field label="Forfeiture reason" htmlFor="tm-dreason3" error={!depReason.trim() ? "Required" : undefined}>
                       <Textarea id="tm-dreason3" rows={2} value={depReason} onChange={(e) => setDepReason(e.target.value)} placeholder="e.g. Unauthorized lease termination" />
                     </Field>
-                    <p className="rounded-lg bg-surface-hover p-3 text-caption text-muted">The full deposit of <span className="font-medium text-foreground">{formatUGX(deposit)}</span> will be retained by Nexora.</p>
+                    <p className="rounded-lg bg-surface-hover p-3 text-caption text-muted">The full deposit of <span className="font-medium text-foreground">{formatCurrency(deposit)}</span> will be retained by Nexora.</p>
                   </div>
                 )}
               </div>
@@ -327,7 +327,7 @@ export default function LeasesPage() {
     { key: "tenant", header: "Tenant", sortable: true, sortValue: (l) => tenantName(l.tenantId), render: (l) => <span className="font-medium text-foreground">{tenantName(l.tenantId)}</span> },
     { key: "property", header: "Property", sortable: true, sortValue: (l) => propertyName(l.propertyId), render: (l) => propertyName(l.propertyId) },
     { key: "unit", header: "Unit", render: (l) => unitLabel(l.unitId) },
-    { key: "rent", header: "Rent / mo", sortable: true, align: "right", render: (l) => formatUGX(l.rent) },
+    { key: "rent", header: "Rent / mo", sortable: true, align: "right", render: (l) => formatCurrency(l.rent) },
     {
       key: "end", header: "Ends", sortable: true,
       render: (l) => {
@@ -443,8 +443,8 @@ export default function LeasesPage() {
                 );
               })()}
               <dl className="space-y-3 text-body">
-                <div className="flex justify-between gap-4"><dt className="text-muted">Rent / mo</dt><dd className="font-medium text-foreground">{formatUGX(manage.rent)}</dd></div>
-                <div className="flex justify-between gap-4"><dt className="text-muted">Deposit</dt><dd className="text-right text-foreground">{depositSummary(manage, formatUGX).label} — {depositSummary(manage, formatUGX).detail}</dd></div>
+                <div className="flex justify-between gap-4"><dt className="text-muted">Rent / mo</dt><dd className="font-medium text-foreground">{formatCurrency(manage.rent)}</dd></div>
+                <div className="flex justify-between gap-4"><dt className="text-muted">Deposit</dt><dd className="text-right text-foreground">{depositSummary(manage, formatCurrency).label} — {depositSummary(manage, formatCurrency).detail}</dd></div>
                 <div className="flex justify-between gap-4"><dt className="text-muted">Start</dt><dd className="text-foreground">{formatDate(manage.start)}</dd></div>
                 <div className="flex justify-between gap-4"><dt className="text-muted">End</dt><dd className="text-foreground">{formatDate(manage.end)}</dd></div>
                 <div className="flex justify-between gap-4"><dt className="text-muted">Frequency</dt><dd className="capitalize text-foreground">{manage.frequency}</dd></div>

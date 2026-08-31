@@ -27,7 +27,7 @@ import { CheckCircle, Download, ArrowRight, ExclamationCircle } from "flowbite-r
 import { toast } from "@/components/ui/sonner";
 import { cn } from "@/lib/utils";
 import { useAsync, debugErrorFlag } from "@/lib/use-async";
-import { formatUGX, formatDate } from "@/lib/format";
+import { formatCurrency, formatDate } from "@/lib/format";
 import { ownerOptions } from "@/lib/api/admin";
 import { downloadPdf } from "@/lib/pdf/download";
 import { settlementStatementPdf } from "@/lib/pdf/builders";
@@ -63,7 +63,7 @@ function TxDetailDialog({ tx, onOpenChange }: { tx: FinanceTxRow | null; onOpenC
               <DialogDescription>{tx.description}</DialogDescription>
             </DialogHeader>
             <dl className="space-y-2 text-body">
-              <div className="flex justify-between"><dt className="text-muted">Amount</dt><dd className={cn("font-semibold", tx.direction === "in" ? "text-primary" : "text-muted")}>{tx.direction === "in" ? "+" : "−"}{formatUGX(tx.amount)}</dd></div>
+              <div className="flex justify-between"><dt className="text-muted">Amount</dt><dd className={cn("font-semibold", tx.direction === "in" ? "text-primary" : "text-muted")}>{tx.direction === "in" ? "+" : "−"}{formatCurrency(tx.amount)}</dd></div>
               <div className="flex justify-between"><dt className="text-muted">Date</dt><dd className="text-foreground">{formatDate(tx.date)}</dd></div>
               <div className="flex justify-between"><dt className="text-muted">Status</dt><dd><StatusBadge status={tx.status} /></dd></div>
               {tx.entity && <div className="flex justify-between"><dt className="text-muted">Linked</dt><dd><Link href={tx.entity.href} className="text-primary hover:text-accent">{tx.entity.label}</Link></dd></div>}
@@ -105,7 +105,7 @@ function ProcessSettlementDialog({ settlement, onOpenChange, onDone }: { settlem
     try {
       const rec = await processSettlement({ ownerId: settlement.ownerId, from, to, note });
       setResult(rec);
-      toast.success("Settlement processed", { description: `${formatUGX(rec.netPayout)} to ${rec.ownerName}` });
+      toast.success("Settlement processed", { description: `${formatCurrency(rec.netPayout)} to ${rec.ownerName}` });
       setStep(3); onDone();
     } catch { toast.error("Couldn’t process settlement"); }
     finally { setBusy(false); }
@@ -136,7 +136,7 @@ function ProcessSettlementDialog({ settlement, onOpenChange, onDone }: { settlem
                   <Field label="Period end" htmlFor="st-to"><Input id="st-to" type="date" value={to} onChange={(e) => setTo(e.target.value)} /></Field>
                 </div>
                 <p className="rounded-lg border border-border p-3 text-body text-foreground">
-                  Found <span className="font-semibold">{calc.rentPayments.length}</span> payment{calc.rentPayments.length === 1 ? "" : "s"} totaling <span className="font-semibold text-primary">{formatUGX(calc.grossRent)}</span> in this period.
+                  Found <span className="font-semibold">{calc.rentPayments.length}</span> payment{calc.rentPayments.length === 1 ? "" : "s"} totaling <span className="font-semibold text-primary">{formatCurrency(calc.grossRent)}</span> in this period.
                 </p>
                 <div className="flex justify-end"><Button onClick={() => setStep(1)}>Next</Button></div>
               </div>
@@ -151,24 +151,24 @@ function ProcessSettlementDialog({ settlement, onOpenChange, onDone }: { settlem
                     {calc.rentPayments.length === 0 ? <p className="p-3 text-caption text-muted">No rent collected in this period.</p> : calc.rentPayments.map((r, i) => (
                       <div key={i} className="flex items-center justify-between border-b border-border px-3 py-2 text-caption last:border-0">
                         <span className="text-foreground">{r.label} <span className="text-muted">· {r.sub}</span></span>
-                        <span className="text-foreground">{formatUGX(r.amount)}</span>
+                        <span className="text-foreground">{formatCurrency(r.amount)}</span>
                       </div>
                     ))}
-                    <div className="flex justify-between px-3 py-2 text-body font-medium"><span className="text-muted">Total gross revenue</span><span className="text-foreground">{formatUGX(calc.grossRevenue)}</span></div>
+                    <div className="flex justify-between px-3 py-2 text-body font-medium"><span className="text-muted">Total gross revenue</span><span className="text-foreground">{formatCurrency(calc.grossRevenue)}</span></div>
                   </div>
                 </section>
                 <section>
                   <p className="mb-1 text-caption font-semibold uppercase tracking-wide text-muted">Deductions</p>
                   <div className="space-y-1.5 rounded-xl border border-border p-3 text-caption">
-                    <div className="flex justify-between"><span className="text-muted">Management fee — {calc.feeMath}</span><span className="text-foreground">−{formatUGX(calc.managementFee)}</span></div>
-                    <div className="flex justify-between"><span className="text-muted">Property expenses</span><span className="text-foreground">−{formatUGX(calc.expenses)}</span></div>
-                    {calc.depositDeductions > 0 && <div className="flex justify-between"><span className="text-muted">Deposit deductions</span><span className="text-foreground">−{formatUGX(calc.depositDeductions)}</span></div>}
-                    <div className="flex justify-between border-t border-border pt-1.5 font-medium"><span className="text-foreground">Total deductions</span><span className="text-foreground">−{formatUGX(calc.totalDeductions)}</span></div>
+                    <div className="flex justify-between"><span className="text-muted">Management fee — {calc.feeMath}</span><span className="text-foreground">−{formatCurrency(calc.managementFee)}</span></div>
+                    <div className="flex justify-between"><span className="text-muted">Property expenses</span><span className="text-foreground">−{formatCurrency(calc.expenses)}</span></div>
+                    {calc.depositDeductions > 0 && <div className="flex justify-between"><span className="text-muted">Deposit deductions</span><span className="text-foreground">−{formatCurrency(calc.depositDeductions)}</span></div>}
+                    <div className="flex justify-between border-t border-border pt-1.5 font-medium"><span className="text-foreground">Total deductions</span><span className="text-foreground">−{formatCurrency(calc.totalDeductions)}</span></div>
                   </div>
                 </section>
                 <div className={cn("rounded-xl border p-4", calc.netPayout > 0 ? "border-primary/30 bg-primary/5" : "border-primary/40 bg-primary/10")}>
                   <p className="text-caption uppercase tracking-wide text-muted">Net owner earnings</p>
-                  <p className="mt-1 font-heading text-h1 font-semibold text-primary">{formatUGX(Math.max(0, calc.netPayout))}</p>
+                  <p className="mt-1 font-heading text-h1 font-semibold text-primary">{formatCurrency(Math.max(0, calc.netPayout))}</p>
                   {calc.netPayout < 0 && <p className="mt-1 text-caption text-primary">Expenses exceeded revenue this period. No settlement is due.</p>}
                   {calc.netPayout === 0 && <p className="mt-1 text-caption text-muted">No settlement due for this period.</p>}
                 </div>
@@ -181,10 +181,10 @@ function ProcessSettlementDialog({ settlement, onOpenChange, onDone }: { settlem
               <div className="space-y-4 py-2 motion-safe:animate-in motion-safe:fade-in">
                 <dl className="space-y-1.5 rounded-xl border border-border p-4 text-caption">
                   <div className="flex justify-between"><dt className="text-muted">Settlement period</dt><dd className="text-foreground">{calc.periodLabel}</dd></div>
-                  <div className="flex justify-between"><dt className="text-muted">Gross revenue</dt><dd className="text-foreground">{formatUGX(calc.grossRevenue)}</dd></div>
-                  <div className="flex justify-between"><dt className="text-muted">Management fee ({calc.agreementTypeLabel}, {calc.rateLabel})</dt><dd className="text-foreground">−{formatUGX(calc.managementFee)}</dd></div>
-                  <div className="flex justify-between"><dt className="text-muted">Expenses</dt><dd className="text-foreground">−{formatUGX(calc.expenses)}</dd></div>
-                  <div className="flex justify-between border-t border-border pt-1.5"><dt className="font-semibold text-foreground">Net payout</dt><dd className="font-heading text-h3 font-semibold text-primary">{formatUGX(Math.max(0, calc.netPayout))}</dd></div>
+                  <div className="flex justify-between"><dt className="text-muted">Gross revenue</dt><dd className="text-foreground">{formatCurrency(calc.grossRevenue)}</dd></div>
+                  <div className="flex justify-between"><dt className="text-muted">Management fee ({calc.agreementTypeLabel}, {calc.rateLabel})</dt><dd className="text-foreground">−{formatCurrency(calc.managementFee)}</dd></div>
+                  <div className="flex justify-between"><dt className="text-muted">Expenses</dt><dd className="text-foreground">−{formatCurrency(calc.expenses)}</dd></div>
+                  <div className="flex justify-between border-t border-border pt-1.5"><dt className="font-semibold text-foreground">Net payout</dt><dd className="font-heading text-h3 font-semibold text-primary">{formatCurrency(Math.max(0, calc.netPayout))}</dd></div>
                 </dl>
                 {calc.hasBankDetails ? (
                   <div className="rounded-xl border border-border p-4 text-caption">
@@ -212,7 +212,7 @@ function ProcessSettlementDialog({ settlement, onOpenChange, onDone }: { settlem
             {step === 3 && result && (
               <div className="space-y-5 py-4 text-center motion-safe:animate-in motion-safe:fade-in">
                 <div className="mx-auto flex h-16 w-16 items-center justify-center rounded-full bg-primary/10 text-primary motion-safe:animate-in motion-safe:zoom-in"><CheckCircle size={40} /></div>
-                <p className="font-heading text-h3 font-semibold text-foreground">Settlement of {formatUGX(result.netPayout)} has been processed for {result.ownerName}</p>
+                <p className="font-heading text-h3 font-semibold text-foreground">Settlement of {formatCurrency(result.netPayout)} has been processed for {result.ownerName}</p>
                 <div className="flex flex-col justify-center gap-2 sm:flex-row">
                   <Button className="gap-2" onClick={() => { const { payload, filename } = settlementStatementPdf(result); downloadPdf(payload, filename); }}><Download size={18} /> Download Settlement Statement</Button>
                   <Button variant="outline" onClick={() => { const p = defaultSettlementPeriod(); setResult(null); setStep(0); setFrom(p.from); setTo(p.to); setNote(""); }}>Process Another Settlement</Button>
@@ -226,7 +226,7 @@ function ProcessSettlementDialog({ settlement, onOpenChange, onDone }: { settlem
               <DialogContent className="max-w-sm">
                 <DialogHeader>
                   <DialogTitle>Process settlement?</DialogTitle>
-                  <DialogDescription>Process settlement of {formatUGX(Math.max(0, calc.netPayout))} to {calc.ownerName}? This will be recorded as a completed transaction.</DialogDescription>
+                  <DialogDescription>Process settlement of {formatCurrency(Math.max(0, calc.netPayout))} to {calc.ownerName}? This will be recorded as a completed transaction.</DialogDescription>
                 </DialogHeader>
                 <DialogFooter>
                   <DialogClose asChild><Button variant="outline">Cancel</Button></DialogClose>
@@ -266,7 +266,7 @@ export default function FinancialOverviewPage() {
     { key: "date", header: "Date", sortable: true, render: (r) => formatDate(r.date) },
     { key: "kind", header: "Type", render: (r) => <Badge variant={KIND_TONE[r.kind]}>{r.kind}</Badge> },
     { key: "description", header: "Description", render: (r) => <span className="text-foreground">{r.description}</span> },
-    { key: "amount", header: "Amount", align: "right", sortable: true, render: (r) => <span className={cn("font-medium", r.direction === "in" ? "text-primary" : "text-muted")}>{r.direction === "in" ? "+" : "−"}{formatUGX(r.amount)}</span> },
+    { key: "amount", header: "Amount", align: "right", sortable: true, render: (r) => <span className={cn("font-medium", r.direction === "in" ? "text-primary" : "text-muted")}>{r.direction === "in" ? "+" : "−"}{formatCurrency(r.amount)}</span> },
     { key: "status", header: "Status", render: (r) => <StatusBadge status={r.status} /> },
     { key: "reference", header: "Reference", render: (r) => <span className="text-caption text-muted">{r.reference}</span> },
     { key: "entity", header: "Linked", render: (r) => r.entity ? <Link href={r.entity.href} onClick={(e) => e.stopPropagation()} className="text-primary hover:text-accent">{r.entity.label}</Link> : "—" },
@@ -276,10 +276,10 @@ export default function FinancialOverviewPage() {
     { key: "ownerName", header: "Owner", sortable: true, render: (s) => <Link href={`/admin/owners/${s.ownerId}`} onClick={(e) => e.stopPropagation()} className="font-medium text-foreground hover:text-primary">{s.ownerName}</Link> },
     { key: "agreementTypeLabel", header: "Agreement", render: (s) => s.hasAgreement ? <Badge variant="muted">{s.agreementTypeLabel}</Badge> : <span className="text-caption text-primary">No agreement</span> },
     { key: "rateLabel", header: "Rate", render: (s) => s.rateLabel ?? "—" },
-    { key: "gross", header: "Gross", align: "right", render: (s) => formatUGX(s.gross) },
-    { key: "commission", header: "Nexora commission", align: "right", render: (s) => s.hasAgreement ? <span title={s.commissionMath}>{formatUGX(s.commission)}</span> : "—" },
-    { key: "expenses", header: "Expenses", align: "right", render: (s) => s.hasAgreement ? <span className="text-muted">−{formatUGX(s.expenses)}</span> : "—" },
-    { key: "net", header: "Net to owner", align: "right", render: (s) => <span className="font-medium text-foreground">{formatUGX(s.net)}</span> },
+    { key: "gross", header: "Gross", align: "right", render: (s) => formatCurrency(s.gross) },
+    { key: "commission", header: "Nexora commission", align: "right", render: (s) => s.hasAgreement ? <span title={s.commissionMath}>{formatCurrency(s.commission)}</span> : "—" },
+    { key: "expenses", header: "Expenses", align: "right", render: (s) => s.hasAgreement ? <span className="text-muted">−{formatCurrency(s.expenses)}</span> : "—" },
+    { key: "net", header: "Net to owner", align: "right", render: (s) => <span className="font-medium text-foreground">{formatCurrency(s.net)}</span> },
     { key: "nextSettlement", header: "Next", render: (s) => s.nextSettlement === "On demand" ? "On demand" : s.nextSettlement ? formatDate(s.nextSettlement) : "—" },
     { key: "status", header: "Status", render: (s) => s.hasAgreement ? <StatusBadge status={s.status === "settled" ? "paid" : s.status} /> : <span className="text-caption text-muted">—</span> },
     {

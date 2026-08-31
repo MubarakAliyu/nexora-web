@@ -15,7 +15,7 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { EmptyState } from "@/components/ui/empty-state";
 import { useAsync, debugErrorFlag } from "@/lib/use-async";
 import { useSession } from "@/lib/stores/session";
-import { formatUGX, formatDate } from "@/lib/format";
+import { formatCurrency, formatDate } from "@/lib/format";
 import { downloadPdf } from "@/lib/pdf/download";
 import { receiptPdf, maintenanceInvoicePdf } from "@/lib/pdf/builders";
 import { getTenant, type Invoice, type Payment, type Scope } from "@/lib/api/admin";
@@ -49,7 +49,7 @@ export default function TenantPaymentsPage() {
   const invoiceColumns: Column<Invoice>[] = [
     { key: "number", header: "Invoice", sortable: true, render: (i) => <span className="font-medium text-foreground">{i.number}</span> },
     { key: "due", header: "Due", sortable: true, render: (i) => formatDate(i.due) },
-    { key: "amount", header: "Amount", align: "right", render: (i) => formatUGX(i.amount - i.paid) },
+    { key: "amount", header: "Amount", align: "right", render: (i) => formatCurrency(i.amount - i.paid) },
     { key: "status", header: "Status", render: (i) => <StatusBadge status={i.status} /> },
     { key: "pay", header: "", align: "right", render: (i) => <Button size="sm" onClick={() => setPaying(i)}>Pay</Button> },
   ];
@@ -59,7 +59,7 @@ export default function TenantPaymentsPage() {
     { key: "invoiceNumber", header: "Invoice", sortable: true, render: (t) => <span className="font-medium text-foreground">{t.invoiceNumber}</span> },
     { key: "title", header: "Work", render: (t) => t.title },
     { key: "invoiceDueDate", header: "Due", sortable: true, render: (t) => (t.invoiceDueDate ? formatDate(t.invoiceDueDate) : "—") },
-    { key: "invoiceAmount", header: "Amount", align: "right", render: (t) => formatUGX(t.invoiceAmount ?? t.cost ?? 0) },
+    { key: "invoiceAmount", header: "Amount", align: "right", render: (t) => formatCurrency(t.invoiceAmount ?? t.cost ?? 0) },
     { key: "paymentStatus", header: "Status", render: (t) => <StatusBadge status={t.paymentStatus === "paid" ? "paid" : "awaiting_payment"} /> },
     {
       key: "act", header: "", align: "right",
@@ -71,7 +71,7 @@ export default function TenantPaymentsPage() {
 
   const paymentColumns: Column<Payment>[] = [
     { key: "date", header: "Date", sortable: true, render: (p) => formatDate(p.date) },
-    { key: "amount", header: "Amount", sortable: true, align: "right", render: (p) => formatUGX(p.amount) },
+    { key: "amount", header: "Amount", sortable: true, align: "right", render: (p) => formatCurrency(p.amount) },
     { key: "method", header: "Method", render: (p) => <span className="capitalize">{p.method.replace("_", " ")}</span> },
     { key: "reference", header: "Reference", render: (p) => <span className="text-caption text-muted">{p.reference}</span> },
     { key: "status", header: "Status", render: (p) => <StatusBadge status={p.status} /> },
@@ -87,10 +87,10 @@ export default function TenantPaymentsPage() {
       />
 
       <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-4">
-        <StatCard label="Current balance" value={formatUGX(outstanding)} icon={<Receipt size={22} />} hint={outstanding > 0 ? "due now" : "all settled"} />
+        <StatCard label="Current balance" value={formatCurrency(outstanding)} icon={<Receipt size={22} />} hint={outstanding > 0 ? "due now" : "all settled"} />
         <StatCard label="Next due" value={nextDue ? formatDate(nextDue.due) : "—"} icon={<Cash size={22} />} />
-        <StatCard label="Monthly rent" value={lease ? formatUGX(lease.rent) : "—"} icon={<Cash size={22} />} />
-        <StatCard label="Total paid" value={formatUGX(totalPaid)} icon={<CheckCircle size={22} />} hint="to date" />
+        <StatCard label="Monthly rent" value={lease ? formatCurrency(lease.rent) : "—"} icon={<Cash size={22} />} />
+        <StatCard label="Total paid" value={formatCurrency(totalPaid)} icon={<CheckCircle size={22} />} hint="to date" />
       </div>
 
       {/* Pay banner */}
@@ -98,7 +98,7 @@ export default function TenantPaymentsPage() {
         <Card className="mt-6 flex flex-col items-start justify-between gap-4 border-l-4 border-primary p-6 sm:flex-row sm:items-center">
           <div>
             <p className="text-caption font-medium uppercase tracking-wide text-muted">Outstanding balance</p>
-            <p className="mt-1 font-heading text-h1 font-semibold text-foreground">{formatUGX(outstanding)}</p>
+            <p className="mt-1 font-heading text-h1 font-semibold text-foreground">{formatCurrency(outstanding)}</p>
             <p className="mt-1 text-body text-muted">{unpaid.length} unpaid invoice{unpaid.length === 1 ? "" : "s"} · next due {formatDate(nextDue.due)}</p>
           </div>
           <Button className="gap-2" onClick={() => setPaying(nextDue)}>Pay now <ArrowRight size={16} /></Button>

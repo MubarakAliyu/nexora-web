@@ -10,15 +10,18 @@
  * decision is made, and what has to happen before a technician is dispatched.
  */
 import * as db from "@/lib/mock/db";
+import { formatCurrencyFull } from "@/lib/format";
 import { recordMutation } from "@/lib/api/actions";
 import { pushNotify, resolveStaff } from "@/lib/api/admin-mutations";
 import type {
   MaintenanceTicket, TicketStatus, ChargeTo, Invoice,
+  Currency,
 } from "@/lib/mock/types";
 import type { NotificationAudience } from "@/lib/api/notifications";
 
 const mDelay = (ms = 450) => new Promise((r) => setTimeout(r, ms));
-const money = (n: number) => `UGX ${Math.round(n).toLocaleString("en-UG")}`;
+/** F5 — delegates to THE formatter. Currency defaults to the record's own. */
+const money = (n: number, c: Currency = "UGX") => formatCurrencyFull(n, c);
 
 const pName = (id: string) => db.properties.find((p) => p.id === id)?.name ?? "the property";
 const uLabel = (id?: string) => db.units.find((u) => u.id === id)?.label ?? "the unit";

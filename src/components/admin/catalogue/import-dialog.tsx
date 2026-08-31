@@ -1,6 +1,8 @@
 "use client";
 
 import * as React from "react";
+import { formatCurrencyFull } from "@/lib/format";
+import type { Currency } from "@/lib/mock/types";
 import { Upload, CheckCircle, ExclamationCircle } from "flowbite-react-icons/outline";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -18,7 +20,7 @@ const KIND_STYLE: Record<ImportPreviewRow["kind"], string> = {
   error: "border-accent bg-surface-active text-foreground",
 };
 
-const fmt = (n: number, c: string) => `${c} ${Math.round(n).toLocaleString("en-UG")}`;
+const fmt = (n: number, c: string) => formatCurrencyFull(n, c as Currency);
 
 /**
  * Catalogue CSV import. This is how the stakeholder's price list gets in quickly
