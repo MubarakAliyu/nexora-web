@@ -11,6 +11,7 @@
  * and adds client/staff notifications via `pushNotify`.
  */
 import * as db from "@/lib/mock/db";
+import { activeCurrency } from "@/lib/stores/preferences";
 import { formatCurrencyFull } from "@/lib/format";
 import { recordMutation } from "@/lib/api/actions";
 import { pushNotify, decrementStaffJobs } from "@/lib/api/admin-mutations";
@@ -138,6 +139,8 @@ export async function generateServiceInvoice(id: string, input: ServiceInvoiceIn
   const invoiceId = `inv_sv_${Date.now()}`;
   const tenant = db.tenants.find((t) => t.email === sb.email);
   const invoice: Invoice = {
+    // F5 — stamped with the currency it is being created in.
+    currency: activeCurrency(),
     id: invoiceId,
     number,
     leaseId: "",

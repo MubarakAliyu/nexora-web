@@ -21,6 +21,7 @@
  * records only carry that.
  */
 import * as db from "@/lib/mock/db";
+import { activeCurrency } from "@/lib/stores/preferences";
 import { recordMutation } from "@/lib/api/actions";
 import { pushNotify, genTempPassword } from "@/lib/api/admin-mutations";
 import type {
@@ -336,6 +337,7 @@ export function backfillEarnings(member: Staff): number {
       amount,
       earnedAt: sb.date ?? db.NOW_ISO,
       payoutId: null,
+      currency: activeCurrency(),
     });
     added += 1;
   }
@@ -357,6 +359,7 @@ export function backfillEarnings(member: Staff): number {
       amount,
       earnedAt: t.closedAt ?? t.updatedAt ?? db.NOW_ISO,
       payoutId: null,
+      currency: activeCurrency(),
     });
     added += 1;
   }

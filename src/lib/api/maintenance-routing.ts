@@ -10,6 +10,7 @@
  * decision is made, and what has to happen before a technician is dispatched.
  */
 import * as db from "@/lib/mock/db";
+import { activeCurrency } from "@/lib/stores/preferences";
 import { formatCurrencyFull } from "@/lib/format";
 import { recordMutation } from "@/lib/api/actions";
 import { pushNotify, resolveStaff } from "@/lib/api/admin-mutations";
@@ -231,6 +232,8 @@ export async function routeCharge(id: string, input: RouteChargeInput): Promise<
       : new Date(Date.now() + 14 * 86_400_000).toISOString();
     const tenantRec = db.tenants.find((x) => x.id === t.tenantId);
     const invoice: Invoice = {
+      // F5 — stamped with the currency it is being created in.
+      currency: activeCurrency(),
       id: `inv_mt_${Date.now()}`,
       number,
       leaseId: tenantRec?.leaseId ?? "",

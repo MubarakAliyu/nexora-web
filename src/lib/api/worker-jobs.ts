@@ -9,6 +9,7 @@
  * survives untouched.
  */
 import * as db from "@/lib/mock/db";
+import { activeCurrency } from "@/lib/stores/preferences";
 import { formatCurrencyFull } from "@/lib/format";
 import { recordMutation } from "@/lib/api/actions";
 import { isAssignedTo } from "@/lib/api/worker";
@@ -405,6 +406,8 @@ export async function requestPayout(
   if (amount <= 0 || amount > available) throw new Error("Amount exceeds the available balance");
 
   const payout: WorkerPayout = {
+    // F5 — stamped with the currency it is being created in.
+    currency: activeCurrency(),
     id: `wpo_${Date.now()}`,
     reference: `NX-PO-${Math.floor(1000 + Math.random() * 9000)}`,
     staffId: member.id,

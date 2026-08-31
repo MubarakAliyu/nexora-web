@@ -10,6 +10,7 @@
  * That is what makes "the customer agreed to X" still true after the fact.
  */
 import * as db from "@/lib/mock/db";
+import { activeCurrency } from "@/lib/stores/preferences";
 import { formatCurrencyFull } from "@/lib/format";
 import { recordMutation } from "@/lib/api/actions";
 import { pushNotify } from "@/lib/api/admin-mutations";
@@ -164,6 +165,8 @@ export async function acceptAdditionalCharge(id: string, response: CustomerRespo
 
   // Invoice numbered from the charge reference so the money traces straight back.
   const invoice: Invoice = {
+    // F5 — stamped with the currency it is being created in.
+    currency: activeCurrency(),
     id: `inv_ac_${Date.now()}`,
     number: `INV-${charge.reference}`,
     leaseId: "",

@@ -5,6 +5,7 @@ import { PageHeader } from "@/components/app/page-header";
 import { Switch } from "@/components/ui/switch";
 import { Button } from "@/components/ui/button";
 import { toast } from "@/components/ui/sonner";
+import { GlobalPreferences } from "@/components/app/global-preferences";
 
 const notifTypes = [
   { key: "payment", label: "Payments", desc: "Rent, disbursements and receipts" },
@@ -45,7 +46,12 @@ export default function SettingsPage() {
 
   return (
     <div className="mx-auto max-w-3xl">
-      <PageHeader title="Settings" subtitle="Choose how you'd like to be notified" />
+      <PageHeader title="Settings" subtitle="Preferences and notifications" />
+
+      {/* F5.2 — same component, same store, in every portal. */}
+      <div className="mb-6">
+        <GlobalPreferences />
+      </div>
 
       <div className="rounded-xl border border-border bg-surface-elevated shadow-sm">
         <div className="hidden items-center justify-between border-b border-border p-5 sm:flex">

@@ -71,7 +71,7 @@ export default function TenantPaymentsPage() {
 
   const paymentColumns: Column<Payment>[] = [
     { key: "date", header: "Date", sortable: true, render: (p) => formatDate(p.date) },
-    { key: "amount", header: "Amount", sortable: true, align: "right", render: (p) => formatCurrency(p.amount) },
+    { key: "amount", header: "Amount", sortable: true, align: "right", render: (p) => formatCurrency(p.amount, p.currency) },
     { key: "method", header: "Method", render: (p) => <span className="capitalize">{p.method.replace("_", " ")}</span> },
     { key: "reference", header: "Reference", render: (p) => <span className="text-caption text-muted">{p.reference}</span> },
     { key: "status", header: "Status", render: (p) => <StatusBadge status={p.status} /> },

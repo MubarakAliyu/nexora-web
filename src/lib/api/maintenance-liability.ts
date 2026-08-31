@@ -10,6 +10,7 @@
  *   nexora → operational cost  → absorbed; neither party is charged
  */
 import * as db from "@/lib/mock/db";
+import { activeCurrency } from "@/lib/stores/preferences";
 import { formatCurrencyFull } from "@/lib/format";
 import { recordMutation } from "@/lib/api/actions";
 import { pushNotify } from "@/lib/api/admin-mutations";
@@ -91,6 +92,7 @@ export async function closeTicketWithLiability(
   if (input.liability === "owner") {
     /* ---- BRANCH A: the owner pays, via a property expense ---- */
     const expense: Expense = {
+      currency: activeCurrency(),
       id: `exp_mt_${Date.now()}`,
       propertyId: t.propertyId,
       category: "maintenance",
@@ -171,6 +173,8 @@ export async function closeTicketWithLiability(
     }
 
     const invoice: Invoice = {
+      // F5 — stamped with the currency it is being created in.
+      currency: activeCurrency(),
       id: `inv_mt_${Date.now()}`,
       number,
       leaseId: tenantRec?.leaseId ?? "",
@@ -208,6 +212,7 @@ export async function closeTicketWithLiability(
 
   /* ---- BRANCH C: Nexora absorbs it ---- */
   const expense: Expense = {
+    currency: activeCurrency(),
     id: `exp_nx_${Date.now()}`,
     /* ⚠️ propertyId IS DELIBERATELY EMPTY — DO NOT "FIX" THIS.
      *

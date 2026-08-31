@@ -5,10 +5,12 @@ import { PageHeader } from "@/components/app/page-header";
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Switch } from "@/components/ui/switch";
-import { ThemeToggle } from "@/components/app/theme-toggle";
 import { selectClass } from "@/components/forms/field";
 import { Label } from "@/components/ui/label";
 import { toast } from "@/components/ui/sonner";
+import { GlobalPreferences } from "@/components/app/global-preferences";
+import { usePreferences } from "@/lib/stores/preferences";
+import { recordMutation } from "@/lib/api/actions";
 
 interface Toggle { id: string; label: string; desc: string }
 
@@ -29,8 +31,21 @@ export default function OwnerSettingsPage() {
     report: true, disbursement: true, lease: true, maintenance: false,
     email: true, sms: false, in_app: true,
   });
-  const [currency, setCurrency] = React.useState("UGX");
   const set = (id: string, v: boolean) => setState((s) => ({ ...s, [id]: v }));
+  const approvalNotice = usePreferences((st) => st.approvalNotice);
+  const setApprovalNotice = usePreferences((st) => st.setApprovalNotice);
+  const changeApprovalNotice = (v: typeof approvalNotice) => {
+    const before = approvalNotice;
+    setApprovalNotice(v);
+    recordMutation({
+      entityType: "settings", entityId: "approval_notice", entityName: "Maintenance approval notices",
+      action: "updated",
+      summary: `Owner maintenance-approval notice preference changed from ${before} to ${v}`,
+      before: { approvalNotice: before }, after: { approvalNotice: v },
+      notify: false,
+    });
+    toast.success("Approval notice preference saved");
+  };
 
   const save = async () => {
     await new Promise((r) => setTimeout(r, 500));
@@ -67,23 +82,31 @@ export default function OwnerSettingsPage() {
 
       <Card className="p-6">
         <h2 className="font-heading text-h3 font-semibold text-foreground">Display</h2>
-        <div className="mt-4 flex items-center justify-between gap-4 border-b border-border pb-4">
-          <div>
-            <p className="text-body font-medium text-foreground">Appearance</p>
-            <p className="text-caption text-muted">Switch between light and dark mode.</p>
-          </div>
-          <ThemeToggle variant="icon" />
-        </div>
-        <div className="mt-4 grid gap-4 sm:grid-cols-2">
-          <div>
-            <Label htmlFor="cur" className="mb-1.5 block text-body font-medium text-foreground">Currency</Label>
-            <select id="cur" className={selectClass} value={currency} onChange={(e) => setCurrency(e.target.value)}>
-              <option value="UGX">UGX — Ugandan Shilling</option>
-              <option value="USD">USD — US Dollar</option>
-            </select>
-          </div>
-        </div>
       </Card>
+
+      {/* F5.2 — the SAME preferences component every portal mounts, reading the
+          same store. The owner's local currency <select> here was its own
+          isolated useState: it looked like a preference and changed nothing. */}
+      <GlobalPreferences description="These apply to you across Nexora.">
+        <div className="border-t border-border pt-5">
+          <Label htmlFor="appr" className="mb-1.5 block text-body font-medium text-foreground">
+            Maintenance approvals
+          </Label>
+          <select
+            id="appr"
+            className={selectClass}
+            value={approvalNotice}
+            onChange={(e) => changeApprovalNotice(e.target.value as typeof approvalNotice)}
+          >
+            <option value="immediate">Tell me straight away</option>
+            <option value="daily_digest">Once a day, digested</option>
+            <option value="email_only">Email only</option>
+          </select>
+          <p className="mt-1 text-caption text-muted">
+            How you hear about repairs on your properties that need your decision.
+          </p>
+        </div>
+      </GlobalPreferences>
 
       <div className="flex justify-end">
         <Button onClick={save}>Save preferences</Button>

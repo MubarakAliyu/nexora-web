@@ -116,7 +116,7 @@ function TicketDetailDialog({ ticket, onOpenChange, onPay }: {
                   <p className="text-caption font-medium uppercase tracking-wide text-muted">Maintenance charge</p>
                   <StatusBadge status={ticket.paymentStatus === "paid" ? "paid" : "awaiting_payment"} />
                 </div>
-                <p className="mt-1 font-heading text-h2 font-semibold text-foreground">{formatCurrency(ticket.invoiceAmount ?? ticket.cost ?? 0)}</p>
+                <p className="mt-1 font-heading text-h2 font-semibold text-foreground">{formatCurrency(ticket.invoiceAmount ?? ticket.cost ?? 0, ticket.currency)}</p>
                 <dl className="mt-2 space-y-1 text-caption">
                   <div className="flex justify-between"><dt className="text-muted">Invoice</dt><dd className="font-medium text-foreground">{ticket.invoiceNumber}</dd></div>
                   {ticket.invoiceDueDate && <div className="flex justify-between"><dt className="text-muted">Due</dt><dd className="text-foreground">{formatDate(ticket.invoiceDueDate)}</dd></div>}
@@ -206,7 +206,7 @@ export default function TenantMaintenancePage() {
       key: "charge", header: "Charge", align: "right",
       render: (t) => billedToTenant(t) && t.invoiceNumber
         ? (t.paymentStatus === "awaiting_payment"
-          ? <Button size="sm" onClick={(e) => { e.stopPropagation(); setPayingCharge(t); }}>Pay {formatCurrency(t.invoiceAmount ?? 0)}</Button>
+          ? <Button size="sm" onClick={(e) => { e.stopPropagation(); setPayingCharge(t); }}>Pay {formatCurrency(t.invoiceAmount ?? 0, t.currency)}</Button>
           : <span className="text-caption text-muted">Paid</span>)
         : <span className="text-caption text-muted">—</span>,
     },
@@ -228,7 +228,7 @@ export default function TenantMaintenancePage() {
             <Card key={t.id} className="flex flex-col items-start justify-between gap-4 border-l-4 border-accent p-5 sm:flex-row sm:items-center">
               <div>
                 <p className="text-caption font-medium uppercase tracking-wide text-muted">Maintenance charge · {t.invoiceNumber}</p>
-                <p className="mt-1 font-heading text-h3 font-semibold text-foreground">{formatCurrency(t.invoiceAmount ?? t.cost ?? 0)}</p>
+                <p className="mt-1 font-heading text-h3 font-semibold text-foreground">{formatCurrency(t.invoiceAmount ?? t.cost ?? 0, t.currency)}</p>
                 <p className="mt-0.5 text-caption text-muted">{t.title}{t.invoiceDueDate ? ` · due ${formatDate(t.invoiceDueDate)}` : ""}</p>
               </div>
               <div className="flex gap-2">

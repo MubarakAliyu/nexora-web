@@ -199,7 +199,7 @@ export default function WorkerProfilePage() {
         <Link href="/change-password" className="flex min-h-[56px] items-center gap-3 p-4 text-body font-medium text-foreground">
           <LockOpen size={18} className="text-muted" /> Change password
         </Link>
-        <Link href="/settings" className="flex min-h-[56px] items-center gap-3 p-4 text-body font-medium text-foreground">
+        <Link href="/worker/settings" className="flex min-h-[56px] items-center gap-3 p-4 text-body font-medium text-foreground">
           <Cog size={18} className="text-muted" /> Settings
         </Link>
         <button

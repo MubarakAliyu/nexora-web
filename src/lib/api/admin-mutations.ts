@@ -5,6 +5,7 @@
  * revision bump + audit entry + system notification. Toasts fired by callers.
  */
 import * as db from "@/lib/mock/db";
+import { activeCurrency } from "@/lib/stores/preferences";
 import { formatCurrencyFull } from "@/lib/format";
 import { recordMutation } from "@/lib/api/actions";
 import { useNotifications } from "@/lib/stores/notifications";
@@ -356,6 +357,8 @@ export async function payInvoice(input: PayInput): Promise<Payment> {
   const due = invoice.amount - invoice.paid;
   const amount = input.amount != null ? Math.min(input.amount, due) : due;
   const payment: Payment = {
+    // F5 — stamped with the currency it is being created in.
+    currency: activeCurrency(),
     id: `pay_${Date.now()}`,
     invoiceId: invoice.id,
     tenantId: invoice.tenantId,
@@ -398,6 +401,8 @@ export async function createTicket(input: TicketInput): Promise<MaintenanceTicke
   await mDelay();
   const unit = db.units.find((u) => u.id === input.unitId);
   const ticket: MaintenanceTicket = {
+    // F5 — stamped with the currency it is being created in.
+    currency: activeCurrency(),
     id: `tkt_${Date.now()}`,
     ref: `TKT-${String(db.tickets.length + 1).padStart(4, "0")}`,
     title: input.title,

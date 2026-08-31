@@ -85,7 +85,7 @@ export default function WorkerEarningsPage() {
     setBusy(true);
     try {
       const p = await requestPayout(member, parsed, method);
-      toast.success("Payout requested", { description: `${p.reference} — ${formatCurrency(p.amount)}. The office has been notified.` });
+      toast.success("Payout requested", { description: `${p.reference} — ${formatCurrency(p.amount, p.currency)}. The office has been notified.` });
       setOpen(false); setAmount(""); bump();
     } catch (e) {
       toast.error(e instanceof Error ? e.message : "Couldn't request a payout");
@@ -138,7 +138,7 @@ export default function WorkerEarningsPage() {
                     {e.payoutId ? " · paid out" : " · awaiting payout"}
                   </p>
                 </div>
-                <p className="shrink-0 font-heading text-h3 font-semibold text-foreground">{formatCurrency(e.amount)}</p>
+                <p className="shrink-0 font-heading text-h3 font-semibold text-foreground">{formatCurrency(e.amount, e.currency)}</p>
               </div>
             ))}
           </Card>
@@ -154,7 +154,7 @@ export default function WorkerEarningsPage() {
             {payouts.map((p) => (
               <div key={p.id} className="flex items-start justify-between gap-3 p-4">
                 <div className="min-w-0">
-                  <p className="text-body font-medium text-foreground">{formatCurrency(p.amount)}</p>
+                  <p className="text-body font-medium text-foreground">{formatCurrency(p.amount, p.currency)}</p>
                   <p className="text-caption text-muted">
                     {p.reference} · {formatDate(p.processedAt ?? p.requestedAt)}
                     {p.methodNote ? ` · ${p.methodNote}` : ""}

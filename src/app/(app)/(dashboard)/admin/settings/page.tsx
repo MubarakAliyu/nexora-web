@@ -22,7 +22,10 @@ import { AuditTab } from "@/components/admin/settings/audit-tab";
 import { SESSION_TIMEOUT_MINUTES, SESSION_WARNING_MINUTES } from "@/components/app/session-timeout";
 import { getOwnerApprovalThreshold, setOwnerApprovalThreshold } from "@/lib/api/maintenance-routing";
 import { useSession } from "@/lib/stores/session";
-import { formatCurrency, formatCurrencyFull} from "@/lib/format";
+import { formatCurrency, formatCurrencyFull, currencyLabel } from "@/lib/format";
+import { usePreferences } from "@/lib/stores/preferences";
+import { recordMutation } from "@/lib/api/actions";
+import type { Currency } from "@/lib/mock/types";
 import { SecurityTab } from "@/components/admin/settings/security-tab";
 import { IntegrationsTab } from "@/components/admin/settings/integrations-tab";
 
@@ -102,6 +105,30 @@ function GlobalTab() {
     setState((s) => ({ ...s, approvalThreshold: String(live) }));
   }, []);
 
+  /* F5.2 — currency lives in the shared preferences store so all four portals
+     agree; it is deliberately NOT part of this tab's local `state`. */
+  const prefCurrency = usePreferences((st) => st.currency);
+  const setPrefCurrency = usePreferences((st) => st.setCurrency);
+  const changeCurrency = (next: Currency) => {
+    if (next === prefCurrency) return;
+    const before = prefCurrency;
+    setPrefCurrency(next);
+    recordMutation({
+      entityType: "settings", entityId: "currency", entityName: "Default currency",
+      action: "updated",
+      summary: `Default currency changed from ${before} to ${next} by ${actorName}`,
+      before: { currency: before }, after: { currency: next },
+      notify: {
+        type: "system", title: "Currency preference updated",
+        body: `New records will be created in ${next}. Existing records keep the currency they were recorded in.`,
+        audiences: ["admin"],
+      },
+    });
+    toast.success(`Default currency is now ${next}`, {
+      description: "Existing records keep the currency they were recorded in.",
+    });
+  };
+
   const parsedThreshold = Number(state.approvalThreshold);
   const thresholdValid = Number.isFinite(parsedThreshold) && parsedThreshold >= 0;
   const thresholdDirty = thresholdValid && parsedThreshold !== committedThreshold;
@@ -153,7 +180,21 @@ function GlobalTab() {
         <div>
           <h3 className="mb-3 font-heading text-h3 font-semibold text-foreground">Regional</h3>
           <div className="grid gap-4 sm:grid-cols-3">
-            <Field label="Currency" htmlFor="g-cur"><select id="g-cur" className={selectClass} value={state.currency} onChange={(e) => set("currency", e.target.value)}><option value="UGX">UGX</option><option value="USD">USD</option><option value="KES">KES</option></select></Field>
+            {/* F5.2 — bound to the SHARED preferences store, not local state; the
+                other three portals read the same value. KES dropped: the minutes
+                asked for UGX and USD, and an unsupported option in a list that now
+                drives real record currency would be a trap. */}
+            <Field label="Default currency" htmlFor="g-cur">
+              <select id="g-cur" className={selectClass} value={prefCurrency}
+                onChange={(e) => changeCurrency(e.target.value as Currency)}>
+                <option value="UGX">{currencyLabel("UGX")}</option>
+                <option value="USD">{currencyLabel("USD")}</option>
+              </select>
+              <p className="mt-1 text-caption text-muted">
+                Amounts are displayed in the currency in which they were recorded.
+                Automatic conversion is not enabled.
+              </p>
+            </Field>
             <Field label="Timezone" htmlFor="g-tz"><select id="g-tz" className={selectClass} value={state.timezone} onChange={(e) => set("timezone", e.target.value)}><option>Africa/Kampala</option><option>Africa/Nairobi</option><option>UTC</option></select></Field>
             <Field label="Date format" htmlFor="g-df"><select id="g-df" className={selectClass} value={state.dateFormat} onChange={(e) => set("dateFormat", e.target.value)}><option>DD MMM YYYY</option><option>MM/DD/YYYY</option><option>YYYY-MM-DD</option></select></Field>
           </div>

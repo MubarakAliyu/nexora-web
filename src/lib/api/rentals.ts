@@ -6,6 +6,7 @@
  */
 
 import * as db from "@/lib/mock/db";
+import { activeCurrency } from "@/lib/stores/preferences";
 import { formatCurrencyFull } from "@/lib/format";
 import { recordMutation } from "@/lib/api/actions";
 import { incrementStaffJobs, decrementStaffJobs, staffRef } from "@/lib/api/admin-mutations";
@@ -270,6 +271,8 @@ export interface ServiceBookingInput {
 export async function createServiceBooking(input: ServiceBookingInput): Promise<ServiceBooking> {
   await mDelay(600);
   const booking: ServiceBooking = {
+    // F5 — stamped with the currency it is being created in.
+    currency: activeCurrency(),
     id: `svb_web_${Date.now()}`,
     reference: ref("NX-SV"),
     kind: input.kind,
