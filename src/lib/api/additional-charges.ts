@@ -180,6 +180,8 @@ export async function acceptAdditionalCharge(id: string, response: CustomerRespo
     status: "pending",
     clientName: booking?.name,
     serviceBookingId: charge.bookingId,
+    // F5.3 — the back-link, so the invoice traces to its originating charge.
+    additionalChargeId: charge.id,
   };
   db.invoices.unshift(invoice);
   charge.invoiceId = invoice.id;

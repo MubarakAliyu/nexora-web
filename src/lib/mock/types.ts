@@ -316,6 +316,15 @@ export interface Invoice {
   maintenanceTicketId?: string;
   /** E3: set when this invoice was raised from a service booking. */
   serviceBookingId?: string;
+  /**
+   * F5.3 — the additional charge this invoice was raised for.
+   *
+   * AdditionalCharge already stored `invoiceId`, so the link existed one way
+   * only: from an invoice row there was no way back to the charge that caused
+   * it, which broke "every financial event traceable to its originating
+   * record" for exactly the rows most likely to be queried.
+   */
+  additionalChargeId?: string;
   /** Display name when there is no tenant record (walk-in service client). */
   clientName?: string;
   dueDate?: string;

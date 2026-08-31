@@ -17,7 +17,7 @@ import { startServiceWork, markServiceCompleted } from "@/lib/api/service-lifecy
 import { quotationForBooking } from "@/lib/api/catalogue";
 import type {
   Staff, ServiceBooking, MaintenanceTicket, WorkerJobResponse, Quotation, WorkerPayout,
-  Currency,
+  Currency, WorkerEarning,
 } from "@/lib/mock/types";
 
 const mDelay = (ms = 400) => new Promise((r) => setTimeout(r, ms));
@@ -431,4 +431,16 @@ export async function requestPayout(
     },
   });
   return payout;
+}
+
+/**
+ * The completed jobs a payout covers (F5.3).
+ *
+ * Deliberately derived from `WorkerEarning.payoutId` rather than duplicated as
+ * an `earningIds` array on the payout: one direction of the link is enough, and
+ * two would eventually disagree. This is the accessor that makes the payout row
+ * traceable to the work behind it.
+ */
+export function earningsForPayout(payoutId: string): WorkerEarning[] {
+  return db.workerEarnings.filter((e) => e.payoutId === payoutId);
 }
