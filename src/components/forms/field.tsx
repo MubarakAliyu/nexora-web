@@ -10,7 +10,8 @@ export function Field({
   className,
   children,
 }: {
-  label: string;
+  /** F5 — ReactNode so a label can carry the live currency code. */
+  label: React.ReactNode;
   htmlFor: string;
   error?: string;
   className?: string;

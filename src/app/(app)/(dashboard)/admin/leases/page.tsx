@@ -31,6 +31,7 @@ import {
   propertyOptions, propertyName, tenantName, unitLabel, tenantOptions, unitOptions, NOW_ISO,
   type Lease, type Scope, type DepositOutcome,
 } from "@/lib/api/admin";
+import { CurrencyCode } from "@/components/app/currency-code";
 
 const TERMS = [{ v: "6", l: "6 months" }, { v: "12", l: "12 months" }, { v: "24", l: "24 months" }];
 const addMonths = (iso: string, months: number) => { const d = new Date(iso); d.setMonth(d.getMonth() + months); return d.toISOString(); };
@@ -120,10 +121,10 @@ function LeaseFormDialog({ open, onOpenChange, editing, onDone }: {
             <Field label="Grace period (days)" htmlFor="cl-grace" error={errors.gracePeriod?.message}>
               <Input id="cl-grace" type="number" {...register("gracePeriod", { valueAsNumber: true })} />
             </Field>
-            <Field label="Rent / mo (UGX)" htmlFor="cl-rent" error={errors.rent?.message}>
+            <Field label={<>Rent / mo (<CurrencyCode />)</>} htmlFor="cl-rent" error={errors.rent?.message}>
               <Input id="cl-rent" type="number" {...register("rent", { valueAsNumber: true })} aria-invalid={!!errors.rent} />
             </Field>
-            <Field label="Deposit (UGX)" htmlFor="cl-dep" error={errors.deposit?.message}>
+            <Field label={<>Deposit (<CurrencyCode />)</>} htmlFor="cl-dep" error={errors.deposit?.message}>
               <Input id="cl-dep" type="number" {...register("deposit", { valueAsNumber: true })} aria-invalid={!!errors.deposit} />
             </Field>
           </div>
@@ -227,7 +228,7 @@ function TerminateDialog({ lease, onOpenChange, onDone }: { lease: Lease | null;
                 {outcome === "partial_refund" && (
                   <div className="mt-3 space-y-3 motion-safe:animate-in motion-safe:fade-in">
                     <div className="grid gap-3 sm:grid-cols-2">
-                      <Field label="Refund amount (UGX)" htmlFor="tm-refund" error={refundAmount <= 0 || refundAmount >= deposit ? "Must be between 0 and the deposit" : undefined}>
+                      <Field label={<>Refund amount (<CurrencyCode />)</>} htmlFor="tm-refund" error={refundAmount <= 0 || refundAmount >= deposit ? "Must be between 0 and the deposit" : undefined}>
                         <Input id="tm-refund" type="number" value={refundAmount} onChange={(e) => setRefundAmount(Number(e.target.value))} />
                       </Field>
                       <Field label="Deduction (auto)" htmlFor="tm-deduct"><Input id="tm-deduct" value={formatCurrency(deduction)} readOnly disabled /></Field>
@@ -251,7 +252,7 @@ function TerminateDialog({ lease, onOpenChange, onDone }: { lease: Lease | null;
                     </label>
                     {owesMore && (
                       <div className="motion-safe:animate-in motion-safe:fade-in">
-                        <Field label="Additional amount (UGX)" htmlFor="tm-add" error={additional <= 0 ? "Enter an amount" : undefined}>
+                        <Field label={<>Additional amount (<CurrencyCode />)</>} htmlFor="tm-add" error={additional <= 0 ? "Enter an amount" : undefined}>
                           <Input id="tm-add" type="number" value={additional} onChange={(e) => setAdditional(Number(e.target.value))} />
                         </Field>
                         {additional > 0 && <p className="mt-1 text-caption text-muted">The tenant owes an additional {formatCurrency(additional)} beyond the security deposit.</p>}

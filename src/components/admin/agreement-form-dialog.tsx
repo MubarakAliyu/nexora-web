@@ -18,6 +18,7 @@ import {
   createAgreement, updateAgreement, getAgreementForOwner, agreementRateLabel, CONTRACT_TYPE_LABEL,
   type ManagementAgreement, type AgreementInput,
 } from "@/lib/api/agreements";
+import { CurrencyCode } from "@/components/app/currency-code";
 
 const schema = z
   .object({
@@ -168,7 +169,7 @@ export function AgreementFormDialog({
 
             {contractType === "fixed_fee" && (
               <div className="grid gap-3 sm:grid-cols-2 motion-safe:animate-in motion-safe:fade-in motion-safe:slide-in-from-top-1">
-                <Field label="Fixed amount (UGX)" htmlFor="ag-fixed" error={errors.fixedAmount?.message}>
+                <Field label={<>Fixed amount (<CurrencyCode />)</>} htmlFor="ag-fixed" error={errors.fixedAmount?.message}>
                   <Input id="ag-fixed" type="number" {...register("fixedAmount", { valueAsNumber: true })} aria-invalid={!!errors.fixedAmount} />
                 </Field>
                 <Field label="Frequency" htmlFor="ag-freq">
@@ -190,7 +191,7 @@ export function AgreementFormDialog({
             {contractType === "hybrid" && (
               <div className="space-y-3 motion-safe:animate-in motion-safe:fade-in motion-safe:slide-in-from-top-1">
                 <div className="grid gap-3 sm:grid-cols-2">
-                  <Field label="Base fee (UGX)" htmlFor="ag-hfixed" error={errors.hybridFixedAmount?.message}>
+                  <Field label={<>Base fee (<CurrencyCode />)</>} htmlFor="ag-hfixed" error={errors.hybridFixedAmount?.message}>
                     <Input id="ag-hfixed" type="number" {...register("hybridFixedAmount", { valueAsNumber: true })} aria-invalid={!!errors.hybridFixedAmount} />
                   </Field>
                   <Field label="Frequency" htmlFor="ag-hfreq">

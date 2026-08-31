@@ -30,6 +30,7 @@ import {
   earningsFor, payoutsFor, earningsSummary, availableBalance, canRequestPayout, requestPayout,
 } from "@/lib/api/worker-jobs";
 import type { PayoutStatus } from "@/lib/mock/types";
+import { CurrencyCode } from "@/components/app/currency-code";
 
 const PAYOUT_LABEL: Record<PayoutStatus, string> = {
   requested: "Requested",
@@ -173,7 +174,7 @@ export default function WorkerEarningsPage() {
             <DialogTitle>Request a payout</DialogTitle>
             <DialogDescription>Up to {formatCurrency(available)} available.</DialogDescription>
           </DialogHeader>
-          <Field label="Amount (UGX)" htmlFor="po-amt" error={valid ? undefined : `Enter an amount up to ${formatCurrency(available)}`}>
+          <Field label={<>Amount (<CurrencyCode />)</>} htmlFor="po-amt" error={valid ? undefined : `Enter an amount up to ${formatCurrency(available)}`}>
             <Input id="po-amt" type="number" min={0} max={available} value={amount} onChange={(e) => setAmount(e.target.value)} />
           </Field>
           <Field label="How would you like to be paid?" htmlFor="po-method">

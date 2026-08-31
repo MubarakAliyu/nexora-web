@@ -23,6 +23,7 @@ import {
   getLeaseDetail, initiateMoveOut, settleMoveOut, maintenanceStaff, tenantName, unitLabel, propertyName,
   type DepositOutcome, type Scope,
 } from "@/lib/api/admin";
+import { CurrencyCode } from "@/components/app/currency-code";
 
 const STEPS = ["Initiate", "Inspection", "Financial Assessment", "Approve Settlement", "Complete"];
 
@@ -192,7 +193,7 @@ export default function MoveOutPage() {
                   <Input value={c.notes} onChange={(e) => setCat(i, { notes: e.target.value })} placeholder="Notes — e.g. scratches on counter" />
                 </div>
                 <div className="mt-3 grid gap-3 sm:grid-cols-2">
-                  <Field label="Estimated repair cost (UGX)" htmlFor={`cost-${c.key}`}>
+                  <Field label={<>Estimated repair cost (<CurrencyCode />)</>} htmlFor={`cost-${c.key}`}>
                     <Input id={`cost-${c.key}`} type="number" value={c.cost} disabled={c.condition !== "Damaged"} onChange={(e) => setCat(i, { cost: Number(e.target.value) })} />
                   </Field>
                   <Field label="Photo" htmlFor={`photo-${c.key}`}>

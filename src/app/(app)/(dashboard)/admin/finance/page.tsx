@@ -42,6 +42,7 @@ import {
   propertyName, tenantName, tenantOptions, propertyOptions,
   type Invoice, type InvoiceStatus, type Payment, type Expense, type ExpenseCategory, type Scope,
 } from "@/lib/api/admin";
+import { CurrencyCode } from "@/components/app/currency-code";
 
 const EXPENSE_CATS: ExpenseCategory[] = ["maintenance", "utilities", "security", "cleaning", "admin", "insurance"];
 
@@ -85,7 +86,7 @@ function GenerateInvoiceDialog({ onDone }: { onDone: () => void }) {
                 <option value="deposit">Deposit</option><option value="utility">Utility</option>
               </select>
             </Field>
-            <Field label="Amount (UGX)" htmlFor="gi-amount" error={errors.amount?.message}>
+            <Field label={<>Amount (<CurrencyCode />)</>} htmlFor="gi-amount" error={errors.amount?.message}>
               <Input id="gi-amount" type="number" {...register("amount", { valueAsNumber: true })} aria-invalid={!!errors.amount} />
             </Field>
           </div>
@@ -432,7 +433,7 @@ function ExpenseFormDialog({ open, onOpenChange, editing, onDone }: {
                 {EXPENSE_CATS.map((c) => <option key={c} value={c}>{c}</option>)}
               </select>
             </Field>
-            <Field label="Amount (UGX)" htmlFor="le-amount" error={errors.amount?.message}>
+            <Field label={<>Amount (<CurrencyCode />)</>} htmlFor="le-amount" error={errors.amount?.message}>
               <Input id="le-amount" type="number" {...register("amount", { valueAsNumber: true })} aria-invalid={!!errors.amount} />
             </Field>
           </div>

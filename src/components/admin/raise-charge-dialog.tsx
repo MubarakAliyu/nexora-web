@@ -15,6 +15,7 @@ import { CatalogueStep, type CatalogueSelection } from "@/components/marketing/c
 import { serviceTypesSync, buildQuotation } from "@/lib/api/catalogue";
 import { raiseAdditionalCharge } from "@/lib/api/additional-charges";
 import type { ServiceBooking, AdditionalChargeLine, Currency} from "@/lib/mock/types";
+import { CurrencyCode } from "@/components/app/currency-code";
 
 const fmt = (n: number, c: Currency = "UGX") => formatCurrencyFull(n, c);
 
@@ -138,7 +139,7 @@ export function RaiseChargeDialog({ booking, onOpenChange, onDone }: {
                 <p className="mb-3 text-body font-medium text-foreground">Custom amount</p>
                 <p className="mb-3 text-caption text-muted">For work that isn’t in the catalogue.</p>
                 <div className="grid gap-4 sm:grid-cols-2">
-                  <Field label="Amount (UGX)" htmlFor="ac-amt">
+                  <Field label={<>Amount (<CurrencyCode />)</>} htmlFor="ac-amt">
                     <Input id="ac-amt" type="number" min={0} value={customAmount}
                       onChange={(e) => setCustomAmount(e.target.value)} placeholder="0" />
                   </Field>

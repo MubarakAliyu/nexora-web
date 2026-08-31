@@ -21,6 +21,7 @@ import {
   recordAssessment, routeCharge, suggestedRoute, getOwnerApprovalThreshold,
 } from "@/lib/api/maintenance-routing";
 import type { MaintenanceTicket, ChargeTo } from "@/lib/mock/types";
+import { CurrencyCode } from "@/components/app/currency-code";
 
 /* ------------------------------------------------------------- assessment */
 
@@ -102,10 +103,10 @@ export function AssessmentDialog({ ticket, onOpenChange, onDone }: {
               </div>
 
               <div className="grid gap-4 sm:grid-cols-2">
-                <Field label="Estimated labour (UGX)" htmlFor="as-labour" error={errors.labour?.message}>
+                <Field label={<>Estimated labour (<CurrencyCode />)</>} htmlFor="as-labour" error={errors.labour?.message}>
                   <Input id="as-labour" type="number" min={0} step={1000} {...register("labour", { valueAsNumber: true })} />
                 </Field>
-                <Field label="Estimated materials (UGX)" htmlFor="as-mat" error={errors.materials?.message}>
+                <Field label={<>Estimated materials (<CurrencyCode />)</>} htmlFor="as-mat" error={errors.materials?.message}>
                   <Input id="as-mat" type="number" min={0} step={1000} {...register("materials", { valueAsNumber: true })} />
                 </Field>
               </div>

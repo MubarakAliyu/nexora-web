@@ -20,6 +20,7 @@ import {
 import { toast } from "@/components/ui/sonner";
 import { formatCurrency } from "@/lib/format";
 import { raiseAdditionalCharge } from "@/lib/api/additional-charges";
+import { CurrencyCode } from "@/components/app/currency-code";
 
 export function RaiseChargeSheet({
   open, onOpenChange, bookingId, raisedBy, onDone,
@@ -90,7 +91,7 @@ export function RaiseChargeSheet({
             placeholder="What you found, and what happens if it isn't done" />
         </Field>
 
-        <Field label="Amount (UGX)" htmlFor="wc-amt" error={Number.isFinite(parsed) && parsed > 0 ? undefined : "Required"}>
+        <Field label={<>Amount (<CurrencyCode />)</>} htmlFor="wc-amt" error={Number.isFinite(parsed) && parsed > 0 ? undefined : "Required"}>
           <Input id="wc-amt" type="number" min={0} step={1000} value={amount}
             onChange={(e) => setAmount(e.target.value)} />
           <p className="mt-1 text-caption text-muted">

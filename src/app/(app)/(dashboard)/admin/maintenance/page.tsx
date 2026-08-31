@@ -43,6 +43,7 @@ import {
   TICKET_STATUS_LABEL, canTransitionTicket, ticketTransitionHint,
   waitingLabel, hoursAwaiting, sendApprovalReminder,
 } from "@/lib/api/maintenance-routing";
+import { CurrencyCode } from "@/components/app/currency-code";
 
 /**
  * Board columns (F3). The three routing branches share one "Awaiting" column —
@@ -461,7 +462,7 @@ function TicketDialog({ ticket, onClose, onSaved, onDelete, onClose2, onRecordPa
                   </p>
                 )}
               </Field>
-              <Field label="Cost (UGX)" htmlFor="tk-cost">
+              <Field label={<>Cost (<CurrencyCode />)</>} htmlFor="tk-cost">
                 <Input id="tk-cost" type="number" value={cost} onChange={(e) => setCost(e.target.value)} placeholder="0" />
               </Field>
             </div>

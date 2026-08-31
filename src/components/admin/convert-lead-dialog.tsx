@@ -15,6 +15,7 @@ import { toast } from "@/components/ui/sonner";
 import { cn } from "@/lib/utils";
 import { convertLeadToOwner, convertLeadToTenant, genTempPassword, type Lead } from "@/lib/api/admin";
 import type { AgreementInput } from "@/lib/api/agreements";
+import { CurrencyCode } from "@/components/app/currency-code";
 
 const schema = z.object({
   name: z.string().min(2, "Name required"),
@@ -165,7 +166,7 @@ export function ConvertLeadDialog({
                     {contractType === "revenue_sharing" ? (
                       <Field label="Commission (%)" htmlFor="cv-pct"><Input id="cv-pct" type="number" {...register("commissionPercentage", { valueAsNumber: true })} /></Field>
                     ) : (
-                      <Field label="Fixed amount (UGX)" htmlFor="cv-fx"><Input id="cv-fx" type="number" {...register("fixedAmount", { valueAsNumber: true })} /></Field>
+                      <Field label={<>Fixed amount (<CurrencyCode />)</>} htmlFor="cv-fx"><Input id="cv-fx" type="number" {...register("fixedAmount", { valueAsNumber: true })} /></Field>
                     )}
                     <Field label="Effective date" htmlFor="cv-eff"><Input id="cv-eff" type="date" {...register("effectiveDate")} /></Field>
                     <Field label="Settlement schedule" htmlFor="cv-sched">

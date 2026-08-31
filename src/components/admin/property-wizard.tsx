@@ -15,6 +15,7 @@ import { cn } from "@/lib/utils";
 import { formatCurrency } from "@/lib/format";
 import { createProperty, updateProperty, ownerOptions, type Property } from "@/lib/api/admin";
 import { categories } from "@/content/portfolio";
+import { CurrencyCode } from "@/components/app/currency-code";
 
 const AMENITIES = [
   "Parking", "Wi-Fi", "Security", "Generator", "Swimming Pool", "CCTV", "Gym", "Elevator",
@@ -246,14 +247,14 @@ export function PropertyWizard({
             <div key="s3" className="space-y-4 motion-safe:animate-in motion-safe:fade-in">
               {rentalType === "short-term" ? (
                 <div className="grid gap-4 sm:grid-cols-3">
-                  <Field label="Daily rate (UGX)" htmlFor="pw-daily"><Input id="pw-daily" type="number" {...register("dailyRate", { valueAsNumber: true })} /></Field>
-                  <Field label="Weekly rate (UGX)" htmlFor="pw-weekly"><Input id="pw-weekly" type="number" {...register("weeklyRate", { valueAsNumber: true })} /></Field>
-                  <Field label="Monthly rate (UGX)" htmlFor="pw-monthly"><Input id="pw-monthly" type="number" {...register("monthlyRate", { valueAsNumber: true })} /></Field>
+                  <Field label={<>Daily rate (<CurrencyCode />)</>} htmlFor="pw-daily"><Input id="pw-daily" type="number" {...register("dailyRate", { valueAsNumber: true })} /></Field>
+                  <Field label={<>Weekly rate (<CurrencyCode />)</>} htmlFor="pw-weekly"><Input id="pw-weekly" type="number" {...register("weeklyRate", { valueAsNumber: true })} /></Field>
+                  <Field label={<>Monthly rate (<CurrencyCode />)</>} htmlFor="pw-monthly"><Input id="pw-monthly" type="number" {...register("monthlyRate", { valueAsNumber: true })} /></Field>
                 </div>
               ) : (
                 <div className="grid gap-4 sm:grid-cols-2">
-                  <Field label="Monthly rent (UGX)" htmlFor="pw-mrent"><Input id="pw-mrent" type="number" {...register("monthlyRent", { valueAsNumber: true })} /></Field>
-                  <Field label="Annual rent (UGX) — auto ×12" htmlFor="pw-arent"><Input id="pw-arent" type="number" {...register("annualRent", { valueAsNumber: true })} /></Field>
+                  <Field label={<>Monthly rent (<CurrencyCode />)</>} htmlFor="pw-mrent"><Input id="pw-mrent" type="number" {...register("monthlyRent", { valueAsNumber: true })} /></Field>
+                  <Field label={<>Annual rent (<CurrencyCode />) — auto ×12</>} htmlFor="pw-arent"><Input id="pw-arent" type="number" {...register("annualRent", { valueAsNumber: true })} /></Field>
                 </div>
               )}
             </div>

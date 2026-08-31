@@ -19,6 +19,7 @@ import {
   markServiceCompleted, confirmServiceCompletion, rejectServiceCompletion, cancelServiceBooking,
 } from "@/lib/api/service-lifecycle";
 import type { ServiceBooking } from "@/lib/mock/types";
+import { CurrencyCode } from "@/components/app/currency-code";
 
 const today = () => new Date().toISOString().slice(0, 10);
 const plusDays = (n: number) => new Date(Date.now() + n * 86_400_000).toISOString().slice(0, 10);
@@ -90,7 +91,7 @@ export function AssessmentDialog({ booking, onOpenChange, onDone }: {
                   placeholder="e.g. 5-bedroom bungalow, deep clean including kitchen and 3 bathrooms, 2 floors"
                   {...register("scope")} aria-invalid={!!errors.scope} />
               </Field>
-              <Field label="Quoted amount (UGX)" htmlFor="as-amt" error={errors.amount?.message}>
+              <Field label={<>Quoted amount (<CurrencyCode />)</>} htmlFor="as-amt" error={errors.amount?.message}>
                 <Input id="as-amt" type="number" min={1} {...register("amount")} aria-invalid={!!errors.amount} />
               </Field>
               <Field label="Assessment notes (optional)" htmlFor="as-notes">
@@ -161,7 +162,7 @@ export function InvoiceDialog({ booking, onOpenChange, onDone }: {
                 <div className="flex justify-between gap-4"><dt className="text-muted">Assessed scope</dt><dd className="max-w-[62%] text-right text-foreground">{booking.assessmentScope ?? "—"}</dd></div>
                 <div className="flex justify-between gap-4"><dt className="text-muted">Assessed amount</dt><dd className="font-medium text-foreground">{formatCurrency(assessed)}</dd></div>
               </dl>
-              <Field label="Invoice amount (UGX)" htmlFor="iv-amt">
+              <Field label={<>Invoice amount (<CurrencyCode />)</>} htmlFor="iv-amt">
                 <Input id="iv-amt" type="number" value={amount} onChange={(e) => setAmount(Number(e.target.value))} />
               </Field>
               {adjusted && (
@@ -236,7 +237,7 @@ export function PaymentDialog({ booking, onOpenChange, onDone }: {
             </DialogHeader>
             <div className="space-y-4">
               <div className="grid gap-4 sm:grid-cols-2">
-                <Field label="Amount (UGX)" htmlFor="pm-amt" error={tooMuch ? `Cannot exceed the outstanding ${formatCurrency(outstanding)}` : undefined}>
+                <Field label={<>Amount (<CurrencyCode />)</>} htmlFor="pm-amt" error={tooMuch ? `Cannot exceed the outstanding ${formatCurrency(outstanding)}` : undefined}>
                   <Input id="pm-amt" type="number" value={amount} onChange={(e) => setAmount(Number(e.target.value))} aria-invalid={tooMuch} />
                 </Field>
                 <Field label="Payment method" htmlFor="pm-method">

@@ -28,6 +28,7 @@ import { recordMutation } from "@/lib/api/actions";
 import type { Currency } from "@/lib/mock/types";
 import { SecurityTab } from "@/components/admin/settings/security-tab";
 import { IntegrationsTab } from "@/components/admin/settings/integrations-tab";
+import { CurrencyCode } from "@/components/app/currency-code";
 
 /* ------------------------------------------------------- company */
 
@@ -202,7 +203,7 @@ function GlobalTab() {
         <div>
           <h3 className="mb-3 font-heading text-h3 font-semibold text-foreground">Maintenance</h3>
           <div className="grid gap-4 sm:grid-cols-2">
-            <Field label="Owner approval threshold (UGX)" htmlFor="g-thresh">
+            <Field label={<>Owner approval threshold (<CurrencyCode />)</>} htmlFor="g-thresh">
               <Input id="g-thresh" type="number" min={0} step={50000} value={state.approvalThreshold}
                 disabled={!isSuperAdmin}
                 title={isSuperAdmin ? undefined : "Only a Super Admin may change the approval threshold"}

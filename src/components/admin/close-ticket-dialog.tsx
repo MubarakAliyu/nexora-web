@@ -14,6 +14,7 @@ import { formatCurrency } from "@/lib/format";
 import { closeTicketWithLiability } from "@/lib/api/maintenance-liability";
 import { tenantName } from "@/lib/api/admin";
 import type { MaintenanceTicket, TicketLiability } from "@/lib/mock/types";
+import { CurrencyCode } from "@/components/app/currency-code";
 
 const OPTIONS: { value: TicketLiability; label: string; help: string }[] = [
   {
@@ -133,10 +134,10 @@ export function CloseTicketDialog({
               </Field>
 
               <div className="grid gap-4 sm:grid-cols-2">
-                <Field label="Labour cost (UGX)" htmlFor="cl-labour">
+                <Field label={<>Labour cost (<CurrencyCode />)</>} htmlFor="cl-labour">
                   <Input id="cl-labour" type="number" value={labour} onChange={(e) => setLabour(Number(e.target.value))} />
                 </Field>
-                <Field label="Materials cost (UGX)" htmlFor="cl-materials">
+                <Field label={<>Materials cost (<CurrencyCode />)</>} htmlFor="cl-materials">
                   <Input id="cl-materials" type="number" value={materials} onChange={(e) => setMaterials(Number(e.target.value))} />
                 </Field>
               </div>

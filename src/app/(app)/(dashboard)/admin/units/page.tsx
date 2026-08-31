@@ -29,6 +29,7 @@ import {
   propertyOptions, propertyName, tenantName,
   type Unit, type UnitType, type UnitStatus, type Scope,
 } from "@/lib/api/admin";
+import { CurrencyCode } from "@/components/app/currency-code";
 
 const UNIT_TYPES: UnitType[] = ["Studio", "1 Bedroom", "2 Bedroom", "3 Bedroom", "Penthouse", "Office", "Retail"];
 const AMENITIES = ["Parking", "Balcony", "Furnished", "AC", "Backup power", "Water tank", "Lift", "Security"];
@@ -107,7 +108,7 @@ function UnitFormDialog({
             <Field label="Size (m²)" htmlFor="au-size" error={errors.sizeSqm?.message}>
               <Input id="au-size" type="number" {...register("sizeSqm", { valueAsNumber: true })} aria-invalid={!!errors.sizeSqm} />
             </Field>
-            <Field label="Rent / mo (UGX)" htmlFor="au-rent" error={errors.rent?.message}>
+            <Field label={<>Rent / mo (<CurrencyCode />)</>} htmlFor="au-rent" error={errors.rent?.message}>
               <Input id="au-rent" type="number" {...register("rent", { valueAsNumber: true })} aria-invalid={!!errors.rent} />
             </Field>
             <Field label="Status" htmlFor="au-status">
