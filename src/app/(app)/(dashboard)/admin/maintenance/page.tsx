@@ -36,7 +36,6 @@ import { maintenanceInvoicePdf } from "@/lib/pdf/builders";
 import { downloadPdf } from "@/lib/pdf/download";
 import { StatCard } from "@/components/ui/stat-card";
 import { Badge } from "@/components/ui/badge";
-import { CountUp } from "@/components/motion/count-up";
 import type { TicketLiability, TicketPaymentStatus } from "@/lib/mock/types";
 import { AssessmentDialog, RouteChargeDialog } from "@/components/admin/maintenance-routing-dialogs";
 import {
@@ -44,6 +43,7 @@ import {
   waitingLabel, hoursAwaiting, sendApprovalReminder,
 } from "@/lib/api/maintenance-routing";
 import { CurrencyCode } from "@/components/app/currency-code";
+import { MoneyStat } from "@/components/app/money";
 
 /**
  * Board columns (F3). The three routing branches share one "Awaiting" column —
@@ -140,7 +140,7 @@ function TicketCard({ t, onClick }: { t: MaintenanceTicket; onClick: () => void 
       {(t.liability || t.chargeTo) && (
         <div className="mt-2 flex flex-wrap items-center gap-1.5 border-t border-border pt-2">
           <LiabilityBadge liability={t.liability ?? t.chargeTo} />
-          <span className="text-caption text-muted">{formatCurrency(t.cost ?? 0, t.currency)}</span>
+          <span className="text-caption text-muted">{formatCurrency(t.cost ?? 0, t.currency, { rateAtCreation: t.exchangeRateAtCreation })}</span>
           {t.paymentStatus === "awaiting_payment" && <span className="text-caption font-medium text-primary">· Awaiting payment</span>}
         </div>
       )}
@@ -210,7 +210,7 @@ export default function MaintenancePage() {
       ),
     },
     { key: "assignee", header: "Technician", render: (t) => t.assignee ?? <span className="text-muted">Unassigned</span> },
-    { key: "cost", header: "Cost", align: "right", render: (t) => (t.cost ? formatCurrency(t.cost, t.currency) : "—") },
+    { key: "cost", header: "Cost", align: "right", render: (t) => (t.cost ? formatCurrency(t.cost, t.currency, { rateAtCreation: t.exchangeRateAtCreation }) : "—") },
     { key: "liability", header: "Liability", sortable: true, sortValue: (t) => t.liability ?? t.chargeTo ?? "", render: (t) => <LiabilityBadge liability={t.liability ?? t.chargeTo} /> },
     {
       key: "paymentStatus", header: "Payment", sortable: true, sortValue: (t) => t.paymentStatus ?? "",
@@ -293,16 +293,16 @@ export default function MaintenancePage() {
       {/* E4 — where the maintenance money actually lands. */}
       <div className="mb-5 grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
         <StatCard label="Total maintenance cost" icon={<ChartMixed size={20} />}
-          value={<CountUp to={summary.totalCost} prefix="UGX " immediate />}
+          value={<MoneyStat value={summary.totalCost} />}
           hint={`${summary.owner.count + summary.tenant.count + summary.nexora.count} costed tickets`} />
         <StatCard label="Owner-liable" icon={<UserCircle size={20} />}
-          value={<CountUp to={summary.owner.amount} prefix="UGX " immediate />}
+          value={<MoneyStat value={summary.owner.amount} />}
           hint={`${summary.owner.count} tickets · deducted from settlements`} />
         <StatCard label="Tenant-liable" icon={<FileLines size={20} />}
-          value={<CountUp to={summary.tenant.amount} prefix="UGX " immediate />}
+          value={<MoneyStat value={summary.tenant.amount} />}
           hint={`${summary.tenant.count} tickets · ${summary.tenant.awaiting} awaiting payment`} />
         <StatCard label="Nexora-absorbed" icon={<CashRegister size={20} />}
-          value={<CountUp to={summary.nexora.amount} prefix="UGX " immediate />}
+          value={<MoneyStat value={summary.nexora.amount} />}
           hint={`${summary.nexora.count} tickets · not charged to owners`} />
       </div>
 
@@ -475,8 +475,8 @@ function TicketDialog({ ticket, onClose, onSaved, onDelete, onClose2, onRecordPa
               <div className="rounded-xl border border-border p-4">
                 <p className="mb-2 text-caption font-medium uppercase tracking-wide text-muted">Assessment</p>
                 <dl className="space-y-1.5 text-body">
-                  <div className="flex justify-between gap-4"><dt className="text-muted">Estimated labour · materials</dt><dd className="text-foreground">{formatCurrency(ticket.assessedLabour ?? 0, ticket.currency)} · {formatCurrency(ticket.assessedMaterials ?? 0, ticket.currency)}</dd></div>
-                  <div className="flex justify-between gap-4"><dt className="text-muted">Estimated total</dt><dd className="font-medium text-foreground">{formatCurrency(ticket.assessedCost, ticket.currency)}</dd></div>
+                  <div className="flex justify-between gap-4"><dt className="text-muted">Estimated labour · materials</dt><dd className="text-foreground">{formatCurrency(ticket.assessedLabour ?? 0, ticket.currency, { rateAtCreation: ticket.exchangeRateAtCreation })} · {formatCurrency(ticket.assessedMaterials ?? 0, ticket.currency, { rateAtCreation: ticket.exchangeRateAtCreation })}</dd></div>
+                  <div className="flex justify-between gap-4"><dt className="text-muted">Estimated total</dt><dd className="font-medium text-foreground">{formatCurrency(ticket.assessedCost, ticket.currency, { rateAtCreation: ticket.exchangeRateAtCreation })}</dd></div>
                   {ticket.assessedAt && <div className="flex justify-between gap-4"><dt className="text-muted">Assessed</dt><dd className="text-foreground">{formatDate(ticket.assessedAt)}</dd></div>}
                   {ticket.assessmentNotes && <div className="gap-4"><dt className="text-muted">Notes</dt><dd className="mt-0.5 text-foreground">{ticket.assessmentNotes}</dd></div>}
                 </dl>
@@ -538,12 +538,12 @@ function TicketDialog({ ticket, onClose, onSaved, onDelete, onClose2, onRecordPa
                 </div>
                 <dl className="space-y-1.5 text-body">
                   <div className="flex justify-between gap-4"><dt className="text-muted">Labour · materials</dt><dd className="text-foreground">{formatCurrency(ticket.labourCost ?? 0)} · {formatCurrency(ticket.materialsCost ?? 0)}</dd></div>
-                  <div className="flex justify-between gap-4"><dt className="text-muted">Total</dt><dd className="font-medium text-foreground">{formatCurrency(ticket.cost ?? 0, ticket.currency)}</dd></div>
+                  <div className="flex justify-between gap-4"><dt className="text-muted">Total</dt><dd className="font-medium text-foreground">{formatCurrency(ticket.cost ?? 0, ticket.currency, { rateAtCreation: ticket.exchangeRateAtCreation })}</dd></div>
                   {ticket.assessedCost != null && ticket.costVariance != null && (
                     <div className="flex justify-between gap-4">
                       <dt className="text-muted">Assessed vs actual</dt>
                       <dd className="text-foreground">
-                        {formatCurrency(ticket.assessedCost, ticket.currency)} → {formatCurrency(ticket.actualCost ?? ticket.cost ?? 0, ticket.currency)}
+                        {formatCurrency(ticket.assessedCost, ticket.currency, { rateAtCreation: ticket.exchangeRateAtCreation })} → {formatCurrency(ticket.actualCost ?? ticket.cost ?? 0, ticket.currency, { rateAtCreation: ticket.exchangeRateAtCreation })}
                         <span className="ml-1 text-muted">({ticket.costVariance >= 0 ? "+" : "−"}{formatCurrency(Math.abs(ticket.costVariance))})</span>
                       </dd>
                     </div>
@@ -561,7 +561,7 @@ function TicketDialog({ ticket, onClose, onSaved, onDelete, onClose2, onRecordPa
                       <StatusBadge status={ticket.paymentStatus === "paid" ? "paid" : "awaiting_payment"} />
                     </div>
                     <dl className="space-y-1 text-caption">
-                      <div className="flex justify-between"><dt className="text-muted">Amount</dt><dd className="text-foreground">{formatCurrency(ticket.invoiceAmount ?? 0, ticket.currency)}</dd></div>
+                      <div className="flex justify-between"><dt className="text-muted">Amount</dt><dd className="text-foreground">{formatCurrency(ticket.invoiceAmount ?? 0, ticket.currency, { rateAtCreation: ticket.exchangeRateAtCreation })}</dd></div>
                       {ticket.invoiceGeneratedAt && <div className="flex justify-between"><dt className="text-muted">Issued</dt><dd className="text-foreground">{formatDate(ticket.invoiceGeneratedAt)}</dd></div>}
                       {ticket.invoiceDueDate && <div className="flex justify-between"><dt className="text-muted">Due</dt><dd className="text-foreground">{formatDate(ticket.invoiceDueDate)}</dd></div>}
                       {ticket.paymentReference && <div className="flex justify-between"><dt className="text-muted">Payment ref</dt><dd className="font-mono text-foreground">{ticket.paymentReference}</dd></div>}
@@ -581,7 +581,7 @@ function TicketDialog({ ticket, onClose, onSaved, onDelete, onClose2, onRecordPa
                       Recorded as {ticket.liability === "owner" ? "Owner Property Expense" : "Nexora Operational Cost"}
                     </p>
                     <p className="mt-0.5 text-muted">
-                      {formatCurrency(ticket.cost ?? 0, ticket.currency)}{ticket.closedAt ? ` · ${formatDate(ticket.closedAt)}` : ""}
+                      {formatCurrency(ticket.cost ?? 0, ticket.currency, { rateAtCreation: ticket.exchangeRateAtCreation })}{ticket.closedAt ? ` · ${formatDate(ticket.closedAt)}` : ""}
                       {ticket.liability === "nexora" ? " · not charged to any owner" : ""}
                     </p>
                     <Link href="/admin/finance" className="mt-1.5 inline-block font-medium text-primary hover:text-accent">View in Finance →</Link>
@@ -666,7 +666,7 @@ function RecordMaintenancePaymentDialog({ ticket, onOpenChange, onDone }: {
             <div className="space-y-4">
               <div className="flex items-center justify-between rounded-xl border border-primary/30 bg-primary/5 p-4">
                 <span className="text-body font-medium text-foreground">Amount due</span>
-                <span className="font-heading text-h3 font-semibold text-primary">{formatCurrency(ticket.invoiceAmount ?? ticket.cost ?? 0, ticket.currency)}</span>
+                <span className="font-heading text-h3 font-semibold text-primary">{formatCurrency(ticket.invoiceAmount ?? ticket.cost ?? 0, ticket.currency, { rateAtCreation: ticket.exchangeRateAtCreation })}</span>
               </div>
               <Field label="Payment method" htmlFor="mp-method">
                 <select id="mp-method" className={selectClass} value={method} onChange={(e) => setMethod(e.target.value)}>

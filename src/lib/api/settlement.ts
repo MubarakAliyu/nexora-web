@@ -5,18 +5,18 @@
  * moves here — this is the ledger entry a real payout would reference.
  */
 import * as db from "@/lib/mock/db";
-import { formatCurrencyFull } from "@/lib/format";
+import { formatCurrencyRecordedFull } from "@/lib/format";
 import { recordMutation } from "@/lib/api/actions";
 import { pushNotify } from "@/lib/api/admin-mutations";
 import {
-  getAgreementForOwner, commissionForAgreement, agreementRateLabel, CONTRACT_TYPE_LABEL,
+  getAgreementForOwner, commissionForAgreement, agreementRateLabel, agreementRateLabelDisplay, CONTRACT_TYPE_LABEL,
 } from "@/lib/api/agreements";
 import type { SettlementRecord, Currency } from "@/lib/mock/types";
 export type { SettlementRecord } from "@/lib/mock/types";
 
 const mDelay = (ms = 400) => new Promise((r) => setTimeout(r, ms));
 /** F5 — delegates to THE formatter. Currency defaults to the record's own. */
-const money = (n: number, c: Currency = "UGX") => formatCurrencyFull(n, c);
+const money = (n: number, c: Currency = "UGX") => formatCurrencyRecordedFull(n, c);
 
 export interface SettlementLineItem { label: string; sub: string; amount: number; date?: string }
 
@@ -27,6 +27,8 @@ export interface SettlementComputation {
   agreementId?: string;
   agreementTypeLabel?: string;
   rateLabel?: string;
+  /** G1/A5 — the same rate in the active display currency; `rateLabel` stays recorded because it is stamped onto the settlement record. */
+  rateLabelDisplay?: string;
   settlementSchedule?: string;
   periodStart: string;
   periodEnd: string;
@@ -98,7 +100,8 @@ export function computeOwnerSettlement(ownerId: string, from: string, to: string
   return {
     ownerId, ownerName: owner?.name ?? "Owner", hasAgreement: !!a,
     agreementId: a?.id, agreementTypeLabel: a ? CONTRACT_TYPE_LABEL[a.contractType] : undefined,
-    rateLabel: a ? agreementRateLabel(a) : undefined, settlementSchedule: a?.settlementSchedule,
+    rateLabel: a ? agreementRateLabel(a) : undefined,
+    rateLabelDisplay: a ? agreementRateLabelDisplay(a) : undefined, settlementSchedule: a?.settlementSchedule,
     periodStart: from, periodEnd: to, periodLabel: periodLabelOf(from, to),
     rentPayments, grossRent, serviceRevenue, grossRevenue,
     managementFee, feeMath, expenseItems, expenses, depositDeductions, totalDeductions, netPayout,

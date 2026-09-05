@@ -7,6 +7,7 @@
 
 import * as db from "@/lib/mock/db";
 import { recordMutation } from "@/lib/api/actions";
+import { formatCurrency } from "@/lib/format";
 import type {
   ManagementAgreement, ContractType, SettlementSchedule,
 } from "@/lib/mock/types";
@@ -99,6 +100,24 @@ export function agreementRateLabel(a: ManagementAgreement): string {
     case "revenue_sharing": return `${a.commissionPercentage ?? 0}%`;
     case "fixed_fee": return `UGX ${money(a.fixedAmount ?? 0)}/${freqShort(a.fixedFrequency)}`;
     case "hybrid": return `UGX ${money(a.hybridFixedAmount ?? 0)}/${freqShort(a.fixedFrequency)} + ${a.hybridPercentage ?? 0}%`;
+  }
+}
+
+/**
+ * G1/A5 — the DISPLAY twin of `agreementRateLabel`.
+ *
+ * The recorded label is stamped onto settlement records and printed on owner
+ * statements, so it must never convert. Tables, badges and detail headers show
+ * this one instead, which follows the active display currency. Keeping the two
+ * apart is the same recorded-vs-display split `format.ts` makes.
+ */
+export function agreementRateLabelDisplay(a: ManagementAgreement): string {
+  const money = (n: number) => formatCurrency(n, "UGX", { compact: false });
+  const freqShort = (f?: string) => (f === "annual" ? "yr" : f === "quarterly" ? "qtr" : "mo");
+  switch (a.contractType) {
+    case "revenue_sharing": return `${a.commissionPercentage ?? 0}%`;
+    case "fixed_fee": return `${money(a.fixedAmount ?? 0)}/${freqShort(a.fixedFrequency)}`;
+    case "hybrid": return `${money(a.hybridFixedAmount ?? 0)}/${freqShort(a.fixedFrequency)} + ${a.hybridPercentage ?? 0}%`;
   }
 }
 

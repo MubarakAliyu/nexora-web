@@ -25,8 +25,10 @@ import {
   computeOwnerSettlement, listSettlements, defaultSettlementPeriod,
   type SettlementRecord,
 } from "@/lib/api/settlement";
+import { useMoneyChartUnit } from "@/components/app/money";
 
 export default function OwnerFinancialsPage() {
+  const chartUnit = useMoneyChartUnit();
   const ownerId = useSession((s) => s.user?.ownerId) ?? "";
   const rev = useLive((s) => s.revision);
   const period0 = React.useMemo(() => defaultSettlementPeriod(), []);
@@ -111,12 +113,12 @@ export default function OwnerFinancialsPage() {
         </div>
         <div className="mt-4 grid gap-4 lg:grid-cols-2">
           <Card className="p-6">
-            <div className="mb-4 flex items-center justify-between"><h3 className="font-heading text-h3 font-semibold text-foreground">Revenue by property</h3><span className="text-caption text-muted">UGX M</span></div>
-            {fin.loading ? <SkeletonChart className="border-0 p-0" /> : <BarChart data={byProperty} xKey="name" series={[{ key: "revenue", label: "Revenue" }]} height={260} />}
+            <div className="mb-4 flex items-center justify-between"><h3 className="font-heading text-h3 font-semibold text-foreground">Revenue by property</h3><span className="text-caption text-muted">{chartUnit.label}</span></div>
+            {fin.loading ? <SkeletonChart className="border-0 p-0" /> : <BarChart data={byProperty.map((d) => ({ ...d, revenue: d.revenue / chartUnit.divisor }))} xKey="name" series={[{ key: "revenue", label: "Revenue" }]} height={260} />}
           </Card>
           <Card className="p-6">
-            <div className="mb-4 flex items-center justify-between"><h3 className="font-heading text-h3 font-semibold text-foreground">Revenue over time</h3><span className="text-caption text-muted">UGX M · 6 months</span></div>
-            {fin.loading ? <SkeletonChart className="border-0 p-0" /> : <AreaChart data={overTime} xKey="month" series={[{ key: "revenue", label: "Revenue" }]} height={260} />}
+            <div className="mb-4 flex items-center justify-between"><h3 className="font-heading text-h3 font-semibold text-foreground">Revenue over time</h3><span className="text-caption text-muted">{chartUnit.label} · 6 months</span></div>
+            {fin.loading ? <SkeletonChart className="border-0 p-0" /> : <AreaChart data={overTime.map((d) => ({ ...d, revenue: d.revenue / chartUnit.divisor }))} xKey="month" series={[{ key: "revenue", label: "Revenue" }]} height={260} />}
           </Card>
         </div>
       </section>
@@ -127,11 +129,11 @@ export default function OwnerFinancialsPage() {
         <Card className="p-6">
           <dl className="divide-y divide-border">
             <div className="flex items-center justify-between py-3">
-              <dt className="text-body text-muted">Management fee <span className="ml-2 rounded-full bg-primary/10 px-2 py-0.5 text-caption font-medium text-primary">{calc?.agreementTypeLabel} — {calc?.rateLabel}</span></dt>
+              <dt className="text-body text-muted">Management fee <span className="ml-2 rounded-full bg-primary/10 px-2 py-0.5 text-caption font-medium text-primary">{calc?.agreementTypeLabel} — {calc?.rateLabelDisplay ?? calc?.rateLabel}</span></dt>
               <dd className="font-medium text-foreground">−{formatCurrencyFull(calc?.managementFee ?? 0)}</dd>
             </div>
             <div className="flex items-center justify-between py-3"><dt className="text-body text-muted">Property expenses</dt><dd className="text-foreground">−{formatCurrencyFull(calc?.expenses ?? 0)}</dd></div>
-            <div className="flex items-center justify-between py-3"><dt className="text-body text-muted">Taxes</dt><dd className="text-muted">UGX 0 <span className="text-caption">(Phase 2)</span></dd></div>
+            <div className="flex items-center justify-between py-3"><dt className="text-body text-muted">Taxes</dt><dd className="text-muted">{formatCurrency(0)} <span className="text-caption">(Phase 2)</span></dd></div>
             <div className="flex items-center justify-between py-3"><dt className="text-body text-muted">Other charges</dt><dd className="text-foreground">{calc && calc.depositDeductions > 0 ? `−${formatCurrencyFull(calc.depositDeductions)}` : "None"}</dd></div>
             <div className="flex items-center justify-between py-3"><dt className="font-semibold text-foreground">Total deductions</dt><dd className="font-semibold text-foreground">−{formatCurrencyFull(calc?.totalDeductions ?? 0)}</dd></div>
           </dl>

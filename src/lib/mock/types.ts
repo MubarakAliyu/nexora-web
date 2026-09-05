@@ -94,6 +94,15 @@ export interface ManagementAgreement {
  *  settlement workflow. Money movement is external; this is the ledger entry. */
 export interface SettlementRecord {
   /**
+   * G1/A4 — the exchange rate in force when this record was created.
+   *
+   * Snapshotted for the same reason F1 snapshots a quotation's price: without
+   * it every historical transaction silently revalues the moment someone
+   * updates the rate. Null on pre-G1 rows, which fall back to the current rate
+   * and are marked as such in the UI.
+   */
+  exchangeRateAtCreation?: number | null;
+  /**
    * F5 — the currency this record was RECORDED in. Never converted for display.
    * Optional so pre-F5 rows read as UGX; every new record is stamped explicitly.
    */
@@ -297,6 +306,15 @@ export type InvoiceKind = "rent" | "service" | "maintenance" | "deposit" | "util
 
 export interface Invoice {
   /**
+   * G1/A4 — the exchange rate in force when this record was created.
+   *
+   * Snapshotted for the same reason F1 snapshots a quotation's price: without
+   * it every historical transaction silently revalues the moment someone
+   * updates the rate. Null on pre-G1 rows, which fall back to the current rate
+   * and are marked as such in the UI.
+   */
+  exchangeRateAtCreation?: number | null;
+  /**
    * F5 — the currency this record was RECORDED in. Never converted for display.
    * Optional so pre-F5 rows read as UGX; every new record is stamped explicitly.
    */
@@ -334,6 +352,15 @@ export type PaymentMethod = "bank" | "mobile_money" | "cash" | "card";
 export type PaymentStatus = "completed" | "pending" | "failed";
 
 export interface Payment {
+  /**
+   * G1/A4 — the exchange rate in force when this record was created.
+   *
+   * Snapshotted for the same reason F1 snapshots a quotation's price: without
+   * it every historical transaction silently revalues the moment someone
+   * updates the rate. Null on pre-G1 rows, which fall back to the current rate
+   * and are marked as such in the UI.
+   */
+  exchangeRateAtCreation?: number | null;
   /**
    * F5 — the currency this record was RECORDED in. Never converted for display.
    * Optional so pre-F5 rows read as UGX; every new record is stamped explicitly.
@@ -375,6 +402,15 @@ export type ExpenseCategory =
   | "insurance";
 
 export interface Expense {
+  /**
+   * G1/A4 — the exchange rate in force when this record was created.
+   *
+   * Snapshotted for the same reason F1 snapshots a quotation's price: without
+   * it every historical transaction silently revalues the moment someone
+   * updates the rate. Null on pre-G1 rows, which fall back to the current rate
+   * and are marked as such in the UI.
+   */
+  exchangeRateAtCreation?: number | null;
   /**
    * F5 — the currency this record was RECORDED in. Never converted for display.
    * Optional so pre-F5 rows read as UGX; every new record is stamped explicitly.
@@ -437,6 +473,15 @@ export type TicketCategory =
   | "other";
 
 export interface MaintenanceTicket {
+  /**
+   * G1/A4 — the exchange rate in force when this record was created.
+   *
+   * Snapshotted for the same reason F1 snapshots a quotation's price: without
+   * it every historical transaction silently revalues the moment someone
+   * updates the rate. Null on pre-G1 rows, which fall back to the current rate
+   * and are marked as such in the UI.
+   */
+  exchangeRateAtCreation?: number | null;
   /**
    * F5 — the currency this record was RECORDED in. Never converted for display.
    * Optional so pre-F5 rows read as UGX; every new record is stamped explicitly.
@@ -756,6 +801,15 @@ export type ServiceBookingKind = "cleaning" | "lifestyle";
 /** Cleaning / Home & Lifestyle service booking. */
 export interface ServiceBooking {
   /**
+   * G1/A4 — the exchange rate in force when this record was created.
+   *
+   * Snapshotted for the same reason F1 snapshots a quotation's price: without
+   * it every historical transaction silently revalues the moment someone
+   * updates the rate. Null on pre-G1 rows, which fall back to the current rate
+   * and are marked as such in the UI.
+   */
+  exchangeRateAtCreation?: number | null;
+  /**
    * F5 — the currency this record was RECORDED in. Never converted for display.
    * Optional so pre-F5 rows read as UGX; every new record is stamped explicitly.
    */
@@ -957,6 +1011,15 @@ export type QuotationStatus = "accepted" | "superseded" | "cancelled";
  * accepted at, and nothing here is ever recalculated from the live catalogue.
  */
 export interface Quotation {
+  /**
+   * G1/A4 — the exchange rate in force when this record was created.
+   *
+   * Snapshotted for the same reason F1 snapshots a quotation's price: without
+   * it every historical transaction silently revalues the moment someone
+   * updates the rate. Null on pre-G1 rows, which fall back to the current rate
+   * and are marked as such in the UI.
+   */
+  exchangeRateAtCreation?: number | null;
   id: string;
   bookingId: string;
   serviceTypeId: string;
@@ -1000,6 +1063,15 @@ export interface AdditionalChargeLine {
 }
 
 export interface AdditionalCharge {
+  /**
+   * G1/A4 — the exchange rate in force when this record was created.
+   *
+   * Snapshotted for the same reason F1 snapshots a quotation's price: without
+   * it every historical transaction silently revalues the moment someone
+   * updates the rate. Null on pre-G1 rows, which fall back to the current rate
+   * and are marked as such in the UI.
+   */
+  exchangeRateAtCreation?: number | null;
   id: string;
   /** Derived from the booking, e.g. NX-SV-562735-AC1. */
   reference: string;
@@ -1070,6 +1142,15 @@ export interface AppSettings {
  */
 export interface WorkerEarning {
   /**
+   * G1/A4 — the exchange rate in force when this record was created.
+   *
+   * Snapshotted for the same reason F1 snapshots a quotation's price: without
+   * it every historical transaction silently revalues the moment someone
+   * updates the rate. Null on pre-G1 rows, which fall back to the current rate
+   * and are marked as such in the UI.
+   */
+  exchangeRateAtCreation?: number | null;
+  /**
    * F5 — the currency this record was RECORDED in. Never converted for display.
    * Optional so pre-F5 rows read as UGX; every new record is stamped explicitly.
    */
@@ -1090,6 +1171,15 @@ export interface WorkerEarning {
 export type PayoutStatus = "requested" | "approved" | "paid" | "rejected";
 
 export interface WorkerPayout {
+  /**
+   * G1/A4 — the exchange rate in force when this record was created.
+   *
+   * Snapshotted for the same reason F1 snapshots a quotation's price: without
+   * it every historical transaction silently revalues the moment someone
+   * updates the rate. Null on pre-G1 rows, which fall back to the current rate
+   * and are marked as such in the UI.
+   */
+  exchangeRateAtCreation?: number | null;
   /**
    * F5 — the currency this record was RECORDED in. Never converted for display.
    * Optional so pre-F5 rows read as UGX; every new record is stamped explicitly.

@@ -12,14 +12,14 @@
  * money that has not been confirmed is not money.
  */
 import * as db from "@/lib/mock/db";
-import { formatCurrencyFull } from "@/lib/format";
+import { formatCurrencyRecordedFull } from "@/lib/format";
 import { recordMutation } from "@/lib/api/actions";
 import { pushNotify } from "@/lib/api/admin-mutations";
 import type { Payment, PaymentState, Currency } from "@/lib/mock/types";
 
 const mDelay = (ms = 450) => new Promise((r) => setTimeout(r, ms));
 /** F5 — delegates to THE formatter. Currency defaults to the record's own. */
-const money = (n: number, c: Currency = "UGX") => formatCurrencyFull(n, c);
+const money = (n: number, c: Currency = "UGX") => formatCurrencyRecordedFull(n, c);
 
 export const PAYMENT_STATE_LABEL: Record<PaymentState, string> = {
   pending: "Pending",

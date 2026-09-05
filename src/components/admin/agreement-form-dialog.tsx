@@ -15,7 +15,7 @@ import { Field, selectClass } from "@/components/forms/field";
 import { toast } from "@/components/ui/sonner";
 import { ownerOptions } from "@/lib/api/admin";
 import {
-  createAgreement, updateAgreement, getAgreementForOwner, agreementRateLabel, CONTRACT_TYPE_LABEL,
+  createAgreement, updateAgreement, getAgreementForOwner, agreementRateLabelDisplay, CONTRACT_TYPE_LABEL,
   type ManagementAgreement, type AgreementInput,
 } from "@/lib/api/agreements";
 import { CurrencyCode } from "@/components/app/currency-code";
@@ -151,7 +151,7 @@ export function AgreementFormDialog({
             {showWarning && existingActive && (
               <div className="flex items-start gap-2 rounded-lg border border-primary/30 bg-primary/10 p-3 text-caption text-foreground motion-safe:animate-in motion-safe:fade-in">
                 <ExclamationCircle size={16} className="mt-0.5 shrink-0 text-primary" />
-                <span>This owner already has an active agreement ({CONTRACT_TYPE_LABEL[existingActive.contractType]}, {agreementRateLabel(existingActive)}). Creating a new one will require terminating the existing agreement first.</span>
+                <span>This owner already has an active agreement ({CONTRACT_TYPE_LABEL[existingActive.contractType]}, {agreementRateLabelDisplay(existingActive)}). Creating a new one will require terminating the existing agreement first.</span>
               </div>
             )}
           </section>

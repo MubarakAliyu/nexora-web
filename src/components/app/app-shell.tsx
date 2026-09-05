@@ -46,6 +46,7 @@ import { useNotifications } from "@/lib/stores/notifications";
 import { SessionTimeout } from "@/components/app/session-timeout";
 import { portalForRole, roleLabels } from "@/lib/roles";
 import type { NotificationAudience } from "@/lib/api/notifications";
+import { useCurrencyKey } from "@/components/app/currency-bridge";
 import { cn } from "@/lib/utils";
 
 function titleCase(seg: string) {
@@ -83,6 +84,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
   const [drawerOpen, setDrawerOpen] = React.useState(false);
   const [logoutOpen, setLogoutOpen] = React.useState(false);
   const [searchOpen, setSearchOpen] = React.useState(false);
+  const currencyKey = useCurrencyKey();
 
   React.useEffect(() => setMounted(true), []);
 
@@ -296,7 +298,9 @@ export function AppShell({ children }: { children: React.ReactNode }) {
           </div>
         </header>
 
-        <main id="main-content" className="flex-1 px-4 py-6 md:px-8 md:py-8">{children}</main>
+        {/* G1 — keyed on the display currency + rate so a change re-renders the
+            whole portal and every amount re-formats. */}
+        <main id="main-content" key={currencyKey} className="flex-1 px-4 py-6 md:px-8 md:py-8">{children}</main>
       </div>
 
       {/* Mobile search */}

@@ -29,6 +29,7 @@ import { useNotifications } from "@/lib/stores/notifications";
 import { ROLE_SERVICE_WORKER } from "@/lib/roles";
 import { staffForUser, AVAILABILITY_LABEL } from "@/lib/api/worker";
 import { AvailabilityPill } from "@/components/worker/availability-control";
+import { useCurrencyKey } from "@/components/app/currency-bridge";
 import { cn } from "@/lib/utils";
 
 const TABS = [
@@ -49,6 +50,7 @@ export function WorkerShell({ children }: { children: React.ReactNode }) {
   const revision = useLive((s) => s.revision);
   const setAudience = useNotifications((s) => s.setAudience);
   const [mounted, setMounted] = React.useState(false);
+  const currencyKey = useCurrencyKey();
   React.useEffect(() => setMounted(true), []);
 
   React.useEffect(() => {
@@ -150,8 +152,10 @@ export function WorkerShell({ children }: { children: React.ReactNode }) {
           </div>
         </header>
 
+        {/* G1 — keyed on currency + rate; see AppShell. */}
         <main
           id="main"
+          key={currencyKey}
           className="flex-1 px-4 pb-24 pt-5 sm:px-6 lg:pb-8"
         >
           {children}

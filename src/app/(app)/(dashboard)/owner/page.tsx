@@ -22,13 +22,12 @@ import {
   getDashboardStats, getRevenueSeries, getOccupancySeries, getOwnerActivity, getOwnerSnapshot, listProperties, NOW_ISO, type Scope,
 } from "@/lib/api/admin";
 import { listBookings } from "@/lib/api/rentals";
+import { MoneyStat, useMoneyChartUnit } from "@/components/app/money";
 
-function MoneyStat({ value }: { value: number }) {
-  const m = value / 1_000_000;
-  return <span>UGX <CountUp to={m} decimals={m < 100 ? 1 : 0} duration={1.2} immediate />M</span>;
-}
+/* G1/A5 — the local UGX-hardcoded MoneyStat is gone; the shared one converts. */
 
 export default function OwnerDashboardPage() {
+  const chartUnit = useMoneyChartUnit();
   const user = useSession((s) => s.user);
   const ownerId = user?.ownerId;
   const pendingApprovals = React.useMemo(() => (ownerId ? ticketsAwaitingOwnerApproval(ownerId) : []), [ownerId]);
@@ -62,8 +61,8 @@ export default function OwnerDashboardPage() {
           <StatCard label="Properties" value={<CountUp to={stats.data.properties} immediate />} icon={<Building size={22} />} hint="you own" />
           <StatCard label="Units" value={<CountUp to={stats.data.units} immediate />} icon={<Home size={22} />} />
           <StatCard label="Occupancy" value={<CountUp to={stats.data.occupancy} suffix="%" immediate />} icon={<ChartLineUp size={22} />} trend={{ value: "2.4%", direction: "up" }} />
-          <StatCard label="This month" value={<MoneyStat value={stats.data.monthlyRevenue} />} icon={<Cash size={22} />} hint="gross revenue" />
-          <StatCard label="Outstanding" value={<MoneyStat value={stats.data.outstanding} />} icon={<Receipt size={22} />} hint="across portfolio" />
+          <StatCard label="This month" value={<MoneyStat value={stats.data.monthlyRevenue} compact />} icon={<Cash size={22} />} hint="gross revenue" />
+          <StatCard label="Outstanding" value={<MoneyStat value={stats.data.outstanding} compact />} icon={<Receipt size={22} />} hint="across portfolio" />
         </div>
       ) : null}
 
@@ -164,12 +163,12 @@ export default function OwnerDashboardPage() {
         <Card className="p-6">
           <div className="mb-4 flex items-center justify-between">
             <h2 className="font-heading text-h3 font-semibold text-foreground">Revenue trend</h2>
-            <span className="text-caption text-muted">UGX M · last 6 months</span>
+            <span className="text-caption text-muted">{chartUnit.label} · last 6 months</span>
           </div>
           {revenue.loading ? <SkeletonChart className="border-0 p-0" /> : revenue.error ? (
             <EmptyState title="Couldn’t load chart" description={revenue.error} action={<Button variant="outline" size="sm" onClick={revenue.reload}>Try again</Button>} />
           ) : (
-            <BarChart data={(revenue.data ?? []).map((d) => ({ month: d.label, revenue: d.value }))} xKey="month" series={[{ key: "revenue", label: "Revenue" }]} height={260} />
+            <BarChart data={(revenue.data ?? []).map((d) => ({ month: d.label, revenue: d.value / chartUnit.divisor }))} xKey="month" series={[{ key: "revenue", label: "Revenue" }]} height={260} />
           )}
         </Card>
         <Card className="p-6">

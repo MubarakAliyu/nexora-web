@@ -10,8 +10,8 @@
  * That is what makes "the customer agreed to X" still true after the fact.
  */
 import * as db from "@/lib/mock/db";
-import { activeCurrency } from "@/lib/stores/preferences";
-import { formatCurrencyFull } from "@/lib/format";
+import { activeCurrency, activeExchangeRate } from "@/lib/stores/preferences";
+import { formatCurrencyRecordedFull } from "@/lib/format";
 import { recordMutation } from "@/lib/api/actions";
 import { pushNotify } from "@/lib/api/admin-mutations";
 import type {
@@ -28,7 +28,7 @@ export const RESPONSE_METHOD_LABEL: Record<CustomerResponseMethod, string> = {
 
 const mDelay = (ms = 420) => new Promise((r) => setTimeout(r, ms));
 /** F5 — delegates to THE formatter. */
-const money = (n: number, c: CatalogueCurrency = "UGX") => formatCurrencyFull(n, c);
+const money = (n: number, c: CatalogueCurrency = "UGX") => formatCurrencyRecordedFull(n, c);
 
 export const CHARGE_STATUS_LABEL: Record<AdditionalChargeStatus, string> = {
   proposed: "Proposed",
@@ -167,6 +167,7 @@ export async function acceptAdditionalCharge(id: string, response: CustomerRespo
   const invoice: Invoice = {
     // F5 — stamped with the currency it is being created in.
     currency: activeCurrency(),
+    exchangeRateAtCreation: activeExchangeRate(),
     id: `inv_ac_${Date.now()}`,
     number: `INV-${charge.reference}`,
     leaseId: "",

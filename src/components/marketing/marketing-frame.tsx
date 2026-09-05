@@ -8,6 +8,7 @@ import { SiteHeader } from "./site-header";
 import { SiteFooter } from "./site-footer";
 import { WhatsAppButton } from "./whatsapp-button";
 import { Toaster } from "@/components/ui/sonner";
+import { useRecordedCurrencyBoundary } from "@/components/app/currency-bridge";
 
 /**
  * Marketing chrome wrapper. Reads the pathname (SSR-stable, no flash) to decide
@@ -18,6 +19,7 @@ import { Toaster } from "@/components/ui/sonner";
 export function MarketingFrame({ children }: { children: ReactNode }) {
   const pathname = usePathname();
   const hasHero = pageHasHero(pathname);
+  useRecordedCurrencyBoundary();
 
   return (
     <div className="flex min-h-screen flex-col overflow-x-hidden">

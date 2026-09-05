@@ -15,7 +15,7 @@ import { useAsync, debugErrorFlag } from "@/lib/use-async";
 import { useSession } from "@/lib/stores/session";
 import { formatDate } from "@/lib/format";
 import { whatsappHref } from "@/content/site";
-import { fetchAgreementByOwner, agreementRateLabel, CONTRACT_TYPE_LABEL } from "@/lib/api/agreements";
+import { fetchAgreementByOwner, agreementRateLabelDisplay, CONTRACT_TYPE_LABEL } from "@/lib/api/agreements";
 
 const SCHED_LABEL: Record<string, string> = { monthly: "Monthly", quarterly: "Quarterly", on_demand: "On Demand" };
 const mask = (acc?: string) => (acc && acc.length > 4 ? `•••• ${acc.slice(-4)}` : acc ?? "—");
@@ -66,7 +66,7 @@ export default function OwnerAgreementPage() {
               <StatusBadge status={data.status} />
             </div>
 
-            <p className="mt-5 font-heading text-hero font-semibold leading-none text-primary">{agreementRateLabel(data)}</p>
+            <p className="mt-5 font-heading text-hero font-semibold leading-none text-primary">{agreementRateLabelDisplay(data)}</p>
             <p className="mt-1 text-caption text-muted">Your commission / fee rate</p>
 
             <dl className="mt-6 divide-y divide-border border-t border-border">

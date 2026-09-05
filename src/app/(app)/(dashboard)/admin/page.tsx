@@ -39,17 +39,12 @@ import {
 import { getRecentBookings, getActiveBookingCount } from "@/lib/api/rentals";
 import { StatusBadge } from "@/components/app/status";
 import { CalendarMonth } from "flowbite-react-icons/outline";
+import { MoneyStat, useMoneyChartUnit } from "@/components/app/money";
 
-function MoneyStat({ value }: { value: number }) {
-  const m = value / 1_000_000;
-  return (
-    <span>
-      UGX <CountUp to={m} decimals={m < 100 ? 1 : 0} duration={1.2} immediate />M
-    </span>
-  );
-}
+/* G1/A5 — the local UGX-hardcoded MoneyStat is gone; the shared one converts. */
 
 export default function AdminDashboardPage() {
+  const chartUnit = useMoneyChartUnit();
   const user = useSession((s) => s.user);
   const role = user?.role ?? "super_admin";
   const scope: Scope = React.useMemo(() => ({ forceError: debugErrorFlag() }), []);
@@ -102,8 +97,8 @@ export default function AdminDashboardPage() {
           <StatCard label="Properties" value={<CountUp to={stats.data.properties} duration={1.2} immediate />} icon={<Building size={22} />} hint="under management" />
           <StatCard label="Units" value={<CountUp to={stats.data.units} duration={1.4} immediate />} icon={<Home size={22} />} hint="across the portfolio" />
           <StatCard label="Occupancy" value={<CountUp to={stats.data.occupancy} duration={1.4} suffix="%" immediate />} icon={<ChartLineUp size={22} />} trend={{ value: "3.2%", direction: "up" }} hint="vs last quarter" />
-          <StatCard label="Monthly revenue" value={<MoneyStat value={stats.data.monthlyRevenue} />} icon={<Cash size={22} />} trend={{ value: "4.1%", direction: "up" }} />
-          <StatCard label="Outstanding rent" value={<MoneyStat value={stats.data.outstanding} />} icon={<Receipt size={22} />} hint="pending + overdue" />
+          <StatCard label="Monthly revenue" value={<MoneyStat value={stats.data.monthlyRevenue} compact />} icon={<Cash size={22} />} trend={{ value: "4.1%", direction: "up" }} />
+          <StatCard label="Outstanding rent" value={<MoneyStat value={stats.data.outstanding} compact />} icon={<Receipt size={22} />} hint="pending + overdue" />
           <StatCard label="Open tickets" value={<CountUp to={stats.data.openTickets} duration={1.2} immediate />} icon={<AdjustmentsHorizontal size={22} />} hint="needing attention" />
           <StatCard label="Active bookings" value={<CountUp to={activeBookings.data ?? 0} duration={1.2} immediate />} icon={<CalendarMonth size={22} />} hint="confirmed + checked-in" />
         </div>
@@ -134,7 +129,7 @@ export default function AdminDashboardPage() {
         {showRevenue && (
           <Card className="p-6">
             <div className="mb-4 flex items-center justify-between">
-              <h2 className="font-heading text-h3 font-semibold text-foreground">Revenue (UGX M)</h2>
+              <h2 className="font-heading text-h3 font-semibold text-foreground">Revenue ({chartUnit.label})</h2>
               <span className="text-caption text-muted">Last 6 months</span>
             </div>
             {revenue.loading ? (
@@ -143,7 +138,7 @@ export default function AdminDashboardPage() {
               <EmptyState title="Couldn’t load chart" description={revenue.error} action={<Button variant="outline" size="sm" onClick={revenue.reload}>Try again</Button>} />
             ) : (
               <BarChart
-                data={(revenue.data ?? []).map((d) => ({ month: d.label, revenue: d.value }))}
+                data={(revenue.data ?? []).map((d) => ({ month: d.label, revenue: d.value / chartUnit.divisor }))}
                 xKey="month"
                 series={[{ key: "revenue", label: "Revenue" }]}
                 height={260}

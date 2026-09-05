@@ -11,15 +11,15 @@
  * and adds client/staff notifications via `pushNotify`.
  */
 import * as db from "@/lib/mock/db";
-import { activeCurrency } from "@/lib/stores/preferences";
-import { formatCurrencyFull } from "@/lib/format";
+import { activeCurrency, activeExchangeRate } from "@/lib/stores/preferences";
+import { formatCurrencyRecordedFull } from "@/lib/format";
 import { recordMutation } from "@/lib/api/actions";
 import { pushNotify, decrementStaffJobs } from "@/lib/api/admin-mutations";
 import type { Invoice, ServiceBooking, ServiceBookingStatus, Currency } from "@/lib/mock/types";
 
 const mDelay = (ms = 400) => new Promise((r) => setTimeout(r, ms));
 /** F5 — delegates to THE formatter. Currency defaults to the record's own. */
-const money = (n: number, c: Currency = "UGX") => formatCurrencyFull(n, c);
+const money = (n: number, c: Currency = "UGX") => formatCurrencyRecordedFull(n, c);
 const dateShort = (iso: string) => new Date(iso).toLocaleDateString("en-GB", { day: "numeric", month: "short", year: "numeric" });
 
 const find = (id: string): ServiceBooking => {
@@ -141,6 +141,7 @@ export async function generateServiceInvoice(id: string, input: ServiceInvoiceIn
   const invoice: Invoice = {
     // F5 — stamped with the currency it is being created in.
     currency: activeCurrency(),
+    exchangeRateAtCreation: activeExchangeRate(),
     id: invoiceId,
     number,
     leaseId: "",

@@ -19,7 +19,7 @@ import { useAsync, debugErrorFlag } from "@/lib/use-async";
 import { formatCurrency, formatDate, fromNow } from "@/lib/format";
 import { NOW_ISO } from "@/lib/api/admin";
 import {
-  fetchAgreementById, fetchAgreementFinancials, agreementRateLabel, CONTRACT_TYPE_LABEL,
+  fetchAgreementById, fetchAgreementFinancials, agreementRateLabelDisplay, CONTRACT_TYPE_LABEL,
   type ManagementAgreement,
 } from "@/lib/api/agreements";
 
@@ -73,7 +73,7 @@ export default function AgreementDetailPage() {
             <Badge variant={a.contractType === "revenue_sharing" ? "default" : a.contractType === "fixed_fee" ? "accent" : "muted"}>{CONTRACT_TYPE_LABEL[a.contractType]}</Badge>
             <StatusBadge status={a.status} />
           </div>
-          <p className="font-heading text-hero font-semibold leading-none text-primary">{agreementRateLabel(a)}</p>
+          <p className="font-heading text-hero font-semibold leading-none text-primary">{agreementRateLabelDisplay(a)}</p>
           <p className="mt-1 text-caption text-muted">Commission / fee rate</p>
 
           <dl className="mt-4 divide-y divide-border border-t border-border">
@@ -93,7 +93,7 @@ export default function AgreementDetailPage() {
           <h2 className="mb-4 font-heading text-h3 font-semibold text-foreground">Agreement events</h2>
           <Timeline>
             <TimelineItem title="Agreement created" time={fromNow(a.createdAt, NOW_ISO)} icon={<CheckCircle size={11} />}>
-              <span className="text-caption text-muted">{CONTRACT_TYPE_LABEL[a.contractType]}, {agreementRateLabel(a)}</span>
+              <span className="text-caption text-muted">{CONTRACT_TYPE_LABEL[a.contractType]}, {agreementRateLabelDisplay(a)}</span>
             </TimelineItem>
             {a.updatedAt !== a.createdAt && (
               <TimelineItem title="Terms updated" time={fromNow(a.updatedAt, NOW_ISO)} icon={<Clock size={11} />} />
@@ -126,7 +126,7 @@ export default function AgreementDetailPage() {
                 {a.contractType === "revenue_sharing"
                   ? `${a.commissionPercentage}% of ${formatCurrency(fin.data.grossRevenue)} gross revenue = ${formatCurrency(fin.data.commissionEarned)}.`
                   : a.contractType === "fixed_fee"
-                    ? `Fixed ${agreementRateLabel(a)} accrued over the agreement period = ${formatCurrency(fin.data.commissionEarned)}.`
+                    ? `Fixed ${agreementRateLabelDisplay(a)} accrued over the agreement period = ${formatCurrency(fin.data.commissionEarned)}.`
                     : `Base fee + ${a.hybridPercentage}% of gross revenue = ${formatCurrency(fin.data.commissionEarned)}.`}
                 {" "}After the fee and {formatCurrency(fin.data.expenses)} property expenses, {formatCurrency(fin.data.netToOwner)} is net to the owner.
               </p>

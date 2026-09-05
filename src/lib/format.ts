@@ -17,7 +17,7 @@ import type { Currency } from "@/lib/mock/types";
  * Pass `{ compact: false }` for invoices, receipts and anywhere an exact figure
  * matters.
  */
-export function formatCurrency(
+export function formatCurrencyRecorded(
   n: number,
   currency: Currency = "UGX",
   opts?: { compact?: boolean },
@@ -36,9 +36,61 @@ export function formatCurrency(
   })}`;
 }
 
-/** Exact figure, never abbreviated — invoices, receipts, quotation lines. */
-export function formatCurrencyFull(n: number, currency: Currency = "UGX"): string {
-  return formatCurrency(n, currency, { compact: false });
+/** Exact RECORDED figure, never abbreviated and never converted. */
+export function formatCurrencyRecordedFull(n: number, currency: Currency = "UGX"): string {
+  return formatCurrencyRecorded(n, currency, { compact: false });
+}
+
+/* --------------------------------------------- G1: the display layer */
+
+/**
+ * The display currency and rate currently in force.
+ *
+ * A module-level holder rather than a hook, because `formatCurrency` is called
+ * from ~262 sites including module-scope table-column definitions where a hook
+ * is impossible. `<CurrencyBridge />` keeps it in sync with the preferences
+ * store and re-keys the portal shells, so a change re-renders everything.
+ */
+let displayContext: { currency: Currency; rate: number } = { currency: "UGX", rate: 3750 };
+
+export function setDisplayContext(currency: Currency, rate: number) {
+  displayContext = { currency, rate };
+}
+export function getDisplayContext() {
+  return displayContext;
+}
+
+/**
+ * Format an amount FOR DISPLAY, converting into the active display currency.
+ *
+ * G1 reversed F5 here: the client asked for conversion, so a UGX record shown to
+ * a USD reader now reads "≈ USD 20,667.33". The ≈ is not decoration — a
+ * converted figure is indicative, because nobody was billed it and nobody was
+ * paid it. `formatCurrencyRecorded` remains for the api layer and documents,
+ * where the figure must be quoted exactly as recorded.
+ *
+ * `rateAtCreation` lets a record convert at the rate in force when it happened
+ * (G1/A4); without it the current rate is used.
+ */
+export function formatCurrency(
+  n: number,
+  currency: Currency = "UGX",
+  opts?: { compact?: boolean; rateAtCreation?: number | null },
+): string {
+  const { currency: display, rate } = displayContext;
+  if (currency === display) return formatCurrencyRecorded(n, currency, opts);
+  const stored = opts?.rateAtCreation;
+  const use = stored != null && Number.isFinite(stored) && stored > 0 ? stored : rate;
+  return `≈ ${formatCurrencyRecorded(convertAmount(n, currency, display, use), display, opts)}`;
+}
+
+/** Exact figure for display, never abbreviated. Converts like `formatCurrency`. */
+export function formatCurrencyFull(
+  n: number,
+  currency: Currency = "UGX",
+  rateAtCreation?: number | null,
+): string {
+  return formatCurrency(n, currency, { compact: false, rateAtCreation });
 }
 
 /** The symbol/code shown beside an input. */

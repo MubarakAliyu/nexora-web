@@ -40,6 +40,7 @@ import { CountUp } from "@/components/motion/count-up";
 import { cn } from "@/lib/utils";
 import { useSession } from "@/lib/stores/session";
 import type { ServiceBooking, ServiceBookingStatus } from "@/lib/mock/types";
+import { MoneyStat } from "@/components/app/money";
 
 
 const ALL_STATUSES = Object.keys(SERVICE_STATUS_LABEL) as ServiceBookingStatus[];
@@ -407,7 +408,7 @@ export default function ServiceBookingsPage() {
           <Card key={c.label} className="p-4">
             <p className="font-heading text-h2 font-semibold text-foreground">
               {c.money
-                ? <>UGX <CountUp to={c.value / 1_000_000} decimals={1} duration={1} immediate />M</>
+                ? <MoneyStat value={c.value} compact duration={1} />
                 : <CountUp to={c.value} immediate />}
             </p>
             <p className="text-caption text-muted">{c.label}</p>

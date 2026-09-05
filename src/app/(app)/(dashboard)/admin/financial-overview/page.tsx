@@ -8,7 +8,6 @@ import { ExportCsvButton } from "@/components/app/export-csv-button";
 import { StatusBadge } from "@/components/app/status";
 import { Card } from "@/components/ui/card";
 import { StatCard } from "@/components/ui/stat-card";
-import { CountUp } from "@/components/motion/count-up";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { BarChart } from "@/components/ui/chart";
@@ -39,11 +38,9 @@ import {
   getFinancialKpis, getRevenueBreakdown, listFinancialTransactions, listOwnerSettlements,
   type FinanceTxRow, type OwnerSettlement,
 } from "@/lib/api/finance";
+import { MoneyStat, useMoneyChartUnit } from "@/components/app/money";
 
-function MoneyStat({ value }: { value: number }) {
-  const m = value / 1_000_000;
-  return <span>UGX <CountUp to={m} decimals={m < 100 ? 1 : 0} duration={1.2} immediate />M</span>;
-}
+/* G1/A5 — the local UGX-hardcoded MoneyStat is gone; the shared one converts. */
 
 const KIND_TONE: Record<string, "default" | "muted" | "accent"> = {
   "Rent Payment": "default", "Service Payment": "accent", "Maintenance Revenue": "accent", "Owner Settlement": "muted",
@@ -128,7 +125,7 @@ function ProcessSettlementDialog({ settlement, onOpenChange, onDone }: { settlem
             {step === 0 && (
               <div className="space-y-4 py-2 motion-safe:animate-in motion-safe:fade-in">
                 <div className="rounded-xl bg-surface-hover p-4 text-caption">
-                  <p className="font-medium text-foreground">{calc.ownerName} — {calc.agreementTypeLabel}: {calc.rateLabel}</p>
+                  <p className="font-medium text-foreground">{calc.ownerName} — {calc.agreementTypeLabel}: {calc.rateLabelDisplay ?? calc.rateLabel}</p>
                   <p className="text-muted">Settlement schedule: {calc.settlementSchedule ?? "—"}</p>
                 </div>
                 <div className="grid gap-4 sm:grid-cols-2">
@@ -182,7 +179,7 @@ function ProcessSettlementDialog({ settlement, onOpenChange, onDone }: { settlem
                 <dl className="space-y-1.5 rounded-xl border border-border p-4 text-caption">
                   <div className="flex justify-between"><dt className="text-muted">Settlement period</dt><dd className="text-foreground">{calc.periodLabel}</dd></div>
                   <div className="flex justify-between"><dt className="text-muted">Gross revenue</dt><dd className="text-foreground">{formatCurrency(calc.grossRevenue)}</dd></div>
-                  <div className="flex justify-between"><dt className="text-muted">Management fee ({calc.agreementTypeLabel}, {calc.rateLabel})</dt><dd className="text-foreground">−{formatCurrency(calc.managementFee)}</dd></div>
+                  <div className="flex justify-between"><dt className="text-muted">Management fee ({calc.agreementTypeLabel}, {calc.rateLabelDisplay ?? calc.rateLabel})</dt><dd className="text-foreground">−{formatCurrency(calc.managementFee)}</dd></div>
                   <div className="flex justify-between"><dt className="text-muted">Expenses</dt><dd className="text-foreground">−{formatCurrency(calc.expenses)}</dd></div>
                   <div className="flex justify-between border-t border-border pt-1.5"><dt className="font-semibold text-foreground">Net payout</dt><dd className="font-heading text-h3 font-semibold text-primary">{formatCurrency(Math.max(0, calc.netPayout))}</dd></div>
                 </dl>
@@ -244,6 +241,7 @@ function ProcessSettlementDialog({ settlement, onOpenChange, onDone }: { settlem
 /* --------------------------------------------------------------- page */
 
 export default function FinancialOverviewPage() {
+  const chartUnit = useMoneyChartUnit();
   const scope = React.useMemo(() => ({ forceError: debugErrorFlag() }), []);
   const kpis = useAsync(() => getFinancialKpis(scope), [scope]);
   const revenue = useAsync(() => getRevenueBreakdown(scope), [scope]);
@@ -301,10 +299,10 @@ export default function FinancialOverviewPage() {
         <EmptyState icon={<ChartPie size={22} />} title="Couldn’t load financials" description={kpis.error} action={<Button variant="outline" size="sm" onClick={kpis.reload}>Try again</Button>} />
       ) : kpis.data ? (
         <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-4">
-          <StatCard label="Total revenue" value={<MoneyStat value={kpis.data.totalRevenue} />} icon={<Cash size={22} />} hint="rent + service + maintenance" />
-          <StatCard label="Total settlements" value={<MoneyStat value={kpis.data.totalSettlements} />} icon={<ChartLineUp size={22} />} hint="paid to owners" />
-          <StatCard label="Pending payouts" value={<MoneyStat value={kpis.data.pendingPayouts} />} icon={<Receipt size={22} />} hint="awaiting settlement" />
-          <StatCard label="Nexora earnings" value={<MoneyStat value={kpis.data.nexoraEarnings} />} icon={<ChartPie size={22} />} hint="commissions & fees" />
+          <StatCard label="Total revenue" value={<MoneyStat value={kpis.data.totalRevenue} compact />} icon={<Cash size={22} />} hint="rent + service + maintenance" />
+          <StatCard label="Total settlements" value={<MoneyStat value={kpis.data.totalSettlements} compact />} icon={<ChartLineUp size={22} />} hint="paid to owners" />
+          <StatCard label="Pending payouts" value={<MoneyStat value={kpis.data.pendingPayouts} compact />} icon={<Receipt size={22} />} hint="awaiting settlement" />
+          <StatCard label="Nexora earnings" value={<MoneyStat value={kpis.data.nexoraEarnings} compact />} icon={<ChartPie size={22} />} hint="commissions & fees" />
         </div>
       ) : null}
 
@@ -312,12 +310,12 @@ export default function FinancialOverviewPage() {
       <Card className="mt-6 p-6">
         <div className="mb-4 flex items-center justify-between">
           <h2 className="font-heading text-h3 font-semibold text-foreground">Revenue breakdown</h2>
-          <span className="text-caption text-muted">UGX M · rent vs service · last 6 months</span>
+          <span className="text-caption text-muted">{chartUnit.label} · rent vs service · last 6 months</span>
         </div>
         {revenue.loading ? <SkeletonChart className="border-0 p-0" /> : revenue.error ? (
           <EmptyState title="Couldn’t load chart" description={revenue.error} action={<Button variant="outline" size="sm" onClick={revenue.reload}>Try again</Button>} />
         ) : (
-          <BarChart data={(revenue.data ?? []) as unknown as Record<string, number>[]} xKey="label" series={[{ key: "rent", label: "Rent revenue" }, { key: "service", label: "Service revenue" }]} height={280} />
+          <BarChart data={(revenue.data ?? []).map((d) => ({ ...d, rent: d.rent / chartUnit.divisor, service: d.service / chartUnit.divisor })) as unknown as Record<string, number>[]} xKey="label" series={[{ key: "rent", label: "Rent revenue" }, { key: "service", label: "Service revenue" }]} height={280} />
         )}
       </Card>
 

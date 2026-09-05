@@ -6,7 +6,7 @@
 
 import * as db from "@/lib/mock/db";
 import {
-  getAgreementForOwner, commissionForAgreement, agreementFinancials, agreementRateLabel,
+  getAgreementForOwner, commissionForAgreement, agreementFinancials, agreementRateLabel, agreementRateLabelDisplay,
   ownerGrossRevenue, ownerExpenses, CONTRACT_TYPE_LABEL,
 } from "@/lib/api/agreements";
 import { hasSettlementForPeriod, defaultSettlementPeriod } from "@/lib/api/settlement";
@@ -14,6 +14,7 @@ import { serviceRevenueCollected } from "@/lib/api/service-lifecycle";
 import { maintenanceRevenueCollected, billedToTenant } from "@/lib/api/maintenance-liability";
 import { additionalChargeRevenue } from "@/lib/api/additional-charges";
 import type { ContractType } from "@/lib/mock/types";
+import { formatCurrency } from "@/lib/format";
 
 const mDelay = (ms = 400) => new Promise((r) => setTimeout(r, ms));
 const NOW = new Date(db.NOW_ISO);
@@ -294,11 +295,11 @@ export async function listOwnerSettlements(scope?: { forceError?: boolean }): Pr
     return {
       ownerId: owner.id, ownerName: owner.name, hasAgreement: true,
       agreementType: a.contractType, agreementTypeLabel: CONTRACT_TYPE_LABEL[a.contractType],
-      rateLabel: agreementRateLabel(a),
+      rateLabel: agreementRateLabelDisplay(a),
       gross, commission, expenses, net: Math.max(0, gross - commission - expenses),
       commissionMath: a.contractType === "revenue_sharing"
-        ? `${a.commissionPercentage}% of ${(gross / 1_000_000).toFixed(1)}M = ${(commission / 1_000_000).toFixed(1)}M`
-        : `${agreementRateLabel(a)} → ${(commission / 1_000_000).toFixed(1)}M`,
+        ? `${a.commissionPercentage}% of ${formatCurrency(gross)} = ${formatCurrency(commission)}`
+        : `${agreementRateLabelDisplay(a)} → ${formatCurrency(commission)}`,
       lastSettlement: lastRec?.processedAt ?? daysAgoIso(30),
       nextSettlement: nextSettlementDate(a.settlementSchedule),
       status: settledThisPeriod ? "settled" : "pending",

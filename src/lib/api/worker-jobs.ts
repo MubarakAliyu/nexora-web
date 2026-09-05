@@ -9,8 +9,8 @@
  * survives untouched.
  */
 import * as db from "@/lib/mock/db";
-import { activeCurrency } from "@/lib/stores/preferences";
-import { formatCurrencyFull } from "@/lib/format";
+import { activeCurrency, activeExchangeRate } from "@/lib/stores/preferences";
+import { formatCurrencyRecordedFull } from "@/lib/format";
 import { recordMutation } from "@/lib/api/actions";
 import { isAssignedTo } from "@/lib/api/worker";
 import { startServiceWork, markServiceCompleted } from "@/lib/api/service-lifecycle";
@@ -22,7 +22,7 @@ import type {
 
 const mDelay = (ms = 400) => new Promise((r) => setTimeout(r, ms));
 /** F5 — delegates to THE formatter. Currency defaults to the record's own. */
-const money = (n: number, c: Currency = "UGX") => formatCurrencyFull(n, c);
+const money = (n: number, c: Currency = "UGX") => formatCurrencyRecordedFull(n, c);
 
 export type WorkerJobKind = "service" | "maintenance";
 
@@ -408,6 +408,7 @@ export async function requestPayout(
   const payout: WorkerPayout = {
     // F5 — stamped with the currency it is being created in.
     currency: activeCurrency(),
+    exchangeRateAtCreation: activeExchangeRate(),
     id: `wpo_${Date.now()}`,
     reference: `NX-PO-${Math.floor(1000 + Math.random() * 9000)}`,
     staffId: member.id,

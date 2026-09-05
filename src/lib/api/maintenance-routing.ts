@@ -10,8 +10,8 @@
  * decision is made, and what has to happen before a technician is dispatched.
  */
 import * as db from "@/lib/mock/db";
-import { activeCurrency } from "@/lib/stores/preferences";
-import { formatCurrencyFull } from "@/lib/format";
+import { activeCurrency, activeExchangeRate } from "@/lib/stores/preferences";
+import { formatCurrencyRecordedFull } from "@/lib/format";
 import { recordMutation } from "@/lib/api/actions";
 import { pushNotify, resolveStaff } from "@/lib/api/admin-mutations";
 import type {
@@ -22,7 +22,7 @@ import type { NotificationAudience } from "@/lib/api/notifications";
 
 const mDelay = (ms = 450) => new Promise((r) => setTimeout(r, ms));
 /** F5 — delegates to THE formatter. Currency defaults to the record's own. */
-const money = (n: number, c: Currency = "UGX") => formatCurrencyFull(n, c);
+const money = (n: number, c: Currency = "UGX") => formatCurrencyRecordedFull(n, c);
 
 const pName = (id: string) => db.properties.find((p) => p.id === id)?.name ?? "the property";
 const uLabel = (id?: string) => db.units.find((u) => u.id === id)?.label ?? "the unit";
@@ -234,6 +234,7 @@ export async function routeCharge(id: string, input: RouteChargeInput): Promise<
     const invoice: Invoice = {
       // F5 — stamped with the currency it is being created in.
       currency: activeCurrency(),
+      exchangeRateAtCreation: activeExchangeRate(),
       id: `inv_mt_${Date.now()}`,
       number,
       leaseId: tenantRec?.leaseId ?? "",

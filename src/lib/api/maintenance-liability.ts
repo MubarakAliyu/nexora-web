@@ -10,8 +10,8 @@
  *   nexora → operational cost  → absorbed; neither party is charged
  */
 import * as db from "@/lib/mock/db";
-import { activeCurrency } from "@/lib/stores/preferences";
-import { formatCurrencyFull } from "@/lib/format";
+import { activeCurrency, activeExchangeRate } from "@/lib/stores/preferences";
+import { formatCurrencyRecordedFull } from "@/lib/format";
 import { recordMutation } from "@/lib/api/actions";
 import { pushNotify } from "@/lib/api/admin-mutations";
 import type {
@@ -21,7 +21,7 @@ import type {
 
 const mDelay = (ms = 450) => new Promise((r) => setTimeout(r, ms));
 /** F5 — delegates to THE formatter. Currency defaults to the record's own. */
-const money = (n: number, c: Currency = "UGX") => formatCurrencyFull(n, c);
+const money = (n: number, c: Currency = "UGX") => formatCurrencyRecordedFull(n, c);
 
 const pName = (id: string) => db.properties.find((p) => p.id === id)?.name ?? "the property";
 const uLabel = (id?: string) => db.units.find((u) => u.id === id)?.label ?? "the unit";
@@ -93,6 +93,7 @@ export async function closeTicketWithLiability(
     /* ---- BRANCH A: the owner pays, via a property expense ---- */
     const expense: Expense = {
       currency: activeCurrency(),
+      exchangeRateAtCreation: activeExchangeRate(),
       id: `exp_mt_${Date.now()}`,
       propertyId: t.propertyId,
       category: "maintenance",
@@ -175,6 +176,7 @@ export async function closeTicketWithLiability(
     const invoice: Invoice = {
       // F5 — stamped with the currency it is being created in.
       currency: activeCurrency(),
+      exchangeRateAtCreation: activeExchangeRate(),
       id: `inv_mt_${Date.now()}`,
       number,
       leaseId: tenantRec?.leaseId ?? "",
@@ -213,6 +215,7 @@ export async function closeTicketWithLiability(
   /* ---- BRANCH C: Nexora absorbs it ---- */
   const expense: Expense = {
     currency: activeCurrency(),
+    exchangeRateAtCreation: activeExchangeRate(),
     id: `exp_nx_${Date.now()}`,
     /* ⚠️ propertyId IS DELIBERATELY EMPTY — DO NOT "FIX" THIS.
      *

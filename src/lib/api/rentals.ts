@@ -6,8 +6,8 @@
  */
 
 import * as db from "@/lib/mock/db";
-import { activeCurrency } from "@/lib/stores/preferences";
-import { formatCurrencyFull } from "@/lib/format";
+import { activeCurrency, activeExchangeRate } from "@/lib/stores/preferences";
+import { formatCurrencyRecordedFull } from "@/lib/format";
 import { recordMutation } from "@/lib/api/actions";
 import { incrementStaffJobs, decrementStaffJobs, staffRef } from "@/lib/api/admin-mutations";
 import { useNotifications } from "@/lib/stores/notifications";
@@ -36,7 +36,7 @@ function notify(title: string, body: string, entityType: string, entityId: strin
   useNotifications.getState().pushSystem({ type: "system", title, body, entityType, entityId, action: "created" });
 }
 /** F5 — delegates to THE formatter. Currency defaults to the record's own. */
-const money = (n: number, c: Currency = "UGX") => formatCurrencyFull(n, c);
+const money = (n: number, c: Currency = "UGX") => formatCurrencyRecordedFull(n, c);
 const dateShort = (iso: string) => new Date(iso).toLocaleDateString("en-GB", { day: "numeric", month: "short" });
 
 /** Monthly-equivalent price used for filtering/sorting either rental type. */
@@ -273,6 +273,7 @@ export async function createServiceBooking(input: ServiceBookingInput): Promise<
   const booking: ServiceBooking = {
     // F5 — stamped with the currency it is being created in.
     currency: activeCurrency(),
+    exchangeRateAtCreation: activeExchangeRate(),
     id: `svb_web_${Date.now()}`,
     reference: ref("NX-SV"),
     kind: input.kind,

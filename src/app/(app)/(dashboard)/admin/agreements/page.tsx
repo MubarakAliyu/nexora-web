@@ -19,7 +19,7 @@ import { useAsync, debugErrorFlag } from "@/lib/use-async";
 import { formatDate } from "@/lib/format";
 import { ownerOptions } from "@/lib/api/admin";
 import {
-  fetchAgreements, deleteAgreement, agreementRateLabel, CONTRACT_TYPE_LABEL,
+  fetchAgreements, deleteAgreement, agreementRateLabelDisplay, CONTRACT_TYPE_LABEL,
   type ManagementAgreement,
 } from "@/lib/api/agreements";
 
@@ -61,7 +61,7 @@ export default function AgreementsPage() {
       ),
     },
     { key: "contractType", header: "Type", render: (a) => <Badge variant={TYPE_TONE[a.contractType]}>{CONTRACT_TYPE_LABEL[a.contractType]}</Badge> },
-    { key: "rate", header: "Rate / Amount", render: (a) => <span className="font-medium text-foreground">{agreementRateLabel(a)}</span> },
+    { key: "rate", header: "Rate / Amount", render: (a) => <span className="font-medium text-foreground">{agreementRateLabelDisplay(a)}</span> },
     { key: "effectiveDate", header: "Effective", sortable: true, render: (a) => formatDate(a.effectiveDate) },
     { key: "expiryDate", header: "Expiry", sortable: true, render: (a) => formatDate(a.expiryDate) },
     { key: "settlementSchedule", header: "Settlement", render: (a) => <Badge variant="muted">{SCHED_LABEL[a.settlementSchedule]}</Badge> },

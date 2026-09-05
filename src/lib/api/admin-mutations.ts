@@ -5,8 +5,8 @@
  * revision bump + audit entry + system notification. Toasts fired by callers.
  */
 import * as db from "@/lib/mock/db";
-import { activeCurrency } from "@/lib/stores/preferences";
-import { formatCurrencyFull } from "@/lib/format";
+import { activeCurrency, activeExchangeRate } from "@/lib/stores/preferences";
+import { formatCurrencyRecordedFull } from "@/lib/format";
 import { recordMutation } from "@/lib/api/actions";
 import { useNotifications } from "@/lib/stores/notifications";
 import { createAgreement, type AgreementInput } from "@/lib/api/agreements";
@@ -35,7 +35,7 @@ export function pushNotify(
 }
 
 /** F5 — delegates to THE formatter. Currency defaults to the record's own. */
-const money = (n: number, c: Currency = "UGX") => formatCurrencyFull(n, c);
+const money = (n: number, c: Currency = "UGX") => formatCurrencyRecordedFull(n, c);
 const dateOf = (iso: string) => new Date(iso).toLocaleDateString("en-GB", { day: "numeric", month: "short", year: "numeric" });
 const propName = (propertyId: string) => db.properties.find((p) => p.id === propertyId)?.name ?? "the property";
 import type {
@@ -359,6 +359,7 @@ export async function payInvoice(input: PayInput): Promise<Payment> {
   const payment: Payment = {
     // F5 — stamped with the currency it is being created in.
     currency: activeCurrency(),
+    exchangeRateAtCreation: activeExchangeRate(),
     id: `pay_${Date.now()}`,
     invoiceId: invoice.id,
     tenantId: invoice.tenantId,
@@ -403,6 +404,7 @@ export async function createTicket(input: TicketInput): Promise<MaintenanceTicke
   const ticket: MaintenanceTicket = {
     // F5 — stamped with the currency it is being created in.
     currency: activeCurrency(),
+    exchangeRateAtCreation: activeExchangeRate(),
     id: `tkt_${Date.now()}`,
     ref: `TKT-${String(db.tickets.length + 1).padStart(4, "0")}`,
     title: input.title,

@@ -14,8 +14,10 @@ import { useAsync, debugErrorFlag } from "@/lib/use-async";
 import { formatCurrency } from "@/lib/format";
 import { generateCSV } from "@/lib/csv";
 import { getAnalytics, type Scope } from "@/lib/api/admin";
+import { useMoneyChartUnit } from "@/components/app/money";
 
 export default function AnalyticsPage() {
+  const chartUnit = useMoneyChartUnit();
   const [range, setRange] = React.useState("ytd");
   const scope: Scope = React.useMemo(() => ({ forceError: debugErrorFlag() }), []);
   const { data, loading, error, reload } = useAsync(() => getAnalytics(scope), [scope]);
@@ -72,8 +74,8 @@ export default function AnalyticsPage() {
 
           <div className="mt-6 grid gap-4 lg:grid-cols-2">
             <Card className="p-6">
-              <h2 className="mb-4 font-heading text-h3 font-semibold text-foreground">Revenue by property (UGX M)</h2>
-              <BarChart data={data.revenueByProperty} xKey="name" series={[{ key: "value", label: "Revenue" }]} height={300} />
+              <h2 className="mb-4 font-heading text-h3 font-semibold text-foreground">Revenue by property ({chartUnit.label})</h2>
+              <BarChart data={data.revenueByProperty.map((d) => ({ ...d, value: d.value / chartUnit.divisor }))} xKey="name" series={[{ key: "value", label: "Revenue" }]} height={300} />
             </Card>
             <Card className="p-6">
               <h2 className="mb-4 font-heading text-h3 font-semibold text-foreground">Collection rate trend</h2>

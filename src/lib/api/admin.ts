@@ -9,7 +9,7 @@
  */
 
 import * as db from "@/lib/mock/db";
-import { formatCurrencyFull } from "@/lib/format";
+import { formatCurrency, formatCurrencyRecordedFull } from "@/lib/format";
 import { recordMutation } from "@/lib/api/actions";
 import { incrementStaffJobs, pushNotify, staffRef, resolveStaff } from "@/lib/api/admin-mutations";
 import { leaseView } from "@/lib/lease";
@@ -1012,7 +1012,8 @@ export async function getOwnerSnapshot(ownerId: string, scope?: Scope): Promise<
   );
 }
 
-const toM = (n: number) => `${(n / 1_000_000).toFixed(1)}M`;
+/* G1/A5 — owner activity lines are UI-only text, so they follow the display currency. */
+const toM = (n: number) => formatCurrency(n);
 
 /** Activity feed scoped to a single owner's properties (payments, completed
  *  maintenance, lease renewals) — read-only, for the Owner portal. */
@@ -1025,7 +1026,7 @@ export async function getOwnerActivity(ownerId: string, scope?: Scope): Promise<
     .slice(0, 6)
     .forEach((p, i) => {
       const t = db.tenants.find((x) => x.id === p.tenantId);
-      acts.push({ id: `oa_pay_${i}`, at: p.date, kind: "payment", text: `Rent received — UGX ${toM(p.amount)} from ${t?.name ?? "tenant"} (${propertyName(p.propertyId)})` });
+      acts.push({ id: `oa_pay_${i}`, at: p.date, kind: "payment", text: `Rent received — ${toM(p.amount)} from ${t?.name ?? "tenant"} (${propertyName(p.propertyId)})` });
     });
   db.tickets
     .filter((tk) => propIds.has(tk.propertyId) && (tk.status === "completed" || tk.status === "closed"))
@@ -1099,7 +1100,7 @@ export async function getOwnerFinancials(ownerId: string, scope?: Scope): Promis
 /* ============================================================ leases (mutations) */
 
 /** F5 — delegates to THE formatter. */
-const _money = (n: number, c: Currency = "UGX") => formatCurrencyFull(n, c);
+const _money = (n: number, c: Currency = "UGX") => formatCurrencyRecordedFull(n, c);
 const _dateOf = (iso: string) => new Date(iso).toLocaleDateString("en-GB", { day: "numeric", month: "short", year: "numeric" });
 
 export async function renewLease(id: string, months = 12): Promise<Lease> {

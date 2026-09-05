@@ -1,6 +1,6 @@
 /* eslint-disable jsx-a11y/alt-text -- @react-pdf <Image> has no alt prop */
 import * as React from "react";
-import { formatCurrencyFull } from "@/lib/format";
+import { formatCurrencyRecordedFull } from "@/lib/format";
 import type { Currency } from "@/lib/mock/types";
 import { Document, Page, View, Text as RpText, Image, StyleSheet, type DocumentProps } from "@react-pdf/renderer";
 import { PDF } from "./theme";
@@ -81,7 +81,7 @@ const s = StyleSheet.create({
 });
 
 /** F5 — PDFs render in the currency the record was raised in. */
-function money(n: number, c: Currency = "UGX") { return formatCurrencyFull(n, c); }
+function money(n: number, c: Currency = "UGX") { return formatCurrencyRecordedFull(n, c); }
 
 function Header({ title }: { title: string }) {
   return (
