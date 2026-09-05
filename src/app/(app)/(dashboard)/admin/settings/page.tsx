@@ -22,7 +22,7 @@ import { AuditTab } from "@/components/admin/settings/audit-tab";
 import { SESSION_TIMEOUT_MINUTES, SESSION_WARNING_MINUTES } from "@/components/app/session-timeout";
 import { getOwnerApprovalThreshold, setOwnerApprovalThreshold } from "@/lib/api/maintenance-routing";
 import { useSession } from "@/lib/stores/session";
-import { formatCurrency, formatCurrencyFull, currencyLabel } from "@/lib/format";
+import { formatCurrency, formatCurrencyFull, currencyLabel, formatDate } from "@/lib/format";
 import { usePreferences } from "@/lib/stores/preferences";
 import { recordMutation } from "@/lib/api/actions";
 import type { Currency } from "@/lib/mock/types";
@@ -121,14 +121,26 @@ function GlobalTab() {
       before: { currency: before }, after: { currency: next },
       notify: {
         type: "system", title: "Currency preference updated",
-        body: `New records will be created in ${next}. Existing records keep the currency they were recorded in.`,
+        body: `Amounts across the dashboards are now displayed in ${next}. Records keep the currency they were recorded in; converted figures are indicative.`,
         audiences: ["admin"],
       },
     });
-    toast.success(`Default currency is now ${next}`, {
-      description: "Existing records keep the currency they were recorded in.",
+    toast.success(`Displaying amounts in ${next}`, {
+      description: "Converted figures are indicative — records keep their recorded currency.",
     });
   };
+
+  /* G1/A1 — the exchange rate, Save-owned like the F3 threshold. */
+  const committedRate = usePreferences((st) => st.exchangeRate);
+  const rateConfirmed = usePreferences((st) => st.exchangeRateConfirmed);
+  const rateUpdatedAt = usePreferences((st) => st.exchangeRateUpdatedAt);
+  const rateUpdatedBy = usePreferences((st) => st.exchangeRateUpdatedBy);
+  const setExchangeRate = usePreferences((st) => st.setExchangeRate);
+  const [rateField, setRateField] = React.useState(String(committedRate));
+  React.useEffect(() => { setRateField(String(committedRate)); }, [committedRate]);
+  const parsedRate = Number(rateField);
+  const rateValid = Number.isFinite(parsedRate) && parsedRate > 0;
+  const rateDirty = rateValid && parsedRate !== committedRate;
 
   const parsedThreshold = Number(state.approvalThreshold);
   const thresholdValid = Number.isFinite(parsedThreshold) && parsedThreshold >= 0;
@@ -140,12 +152,12 @@ function GlobalTab() {
      owns it, which means an edited-but-unsaved value can be lost by navigating
      away — hence the guard below. */
   React.useEffect(() => {
-    if (!thresholdDirty) return;
+    if (!thresholdDirty && !rateDirty) return;
     const onBeforeUnload = (e: BeforeUnloadEvent) => { e.preventDefault(); e.returnValue = ""; };
     const onCapturedClick = (e: MouseEvent) => {
       const link = (e.target as HTMLElement | null)?.closest?.("a[href]") as HTMLAnchorElement | null;
       if (!link || link.target === "_blank") return;
-      if (!window.confirm("You have an unsaved approval threshold. Leave without saving?")) {
+      if (!window.confirm("You have unsaved Global Settings changes. Leave without saving?")) {
         e.preventDefault();
         e.stopPropagation();
       }
@@ -156,7 +168,7 @@ function GlobalTab() {
       window.removeEventListener("beforeunload", onBeforeUnload);
       document.removeEventListener("click", onCapturedClick, true);
     };
-  }, [thresholdDirty]);
+  }, [thresholdDirty, rateDirty]);
 
   const save = async () => {
     setBusy(true);
@@ -167,6 +179,24 @@ function GlobalTab() {
         setCommittedThreshold(parsedThreshold);
         toast.success("Approval threshold updated", {
           description: `Owner approval now required above ${formatCurrencyFull(parsedThreshold)}.`,
+        });
+      }
+      if (isSuperAdmin && rateDirty) {
+        const before = committedRate;
+        setExchangeRate(parsedRate, actorName);
+        recordMutation({
+          entityType: "settings", entityId: "exchange_rate", entityName: "USD exchange rate",
+          action: "updated",
+          summary: `USD exchange rate changed from 1 USD = ${before.toLocaleString("en-UG")} UGX to 1 USD = ${parsedRate.toLocaleString("en-UG")} UGX by ${actorName}`,
+          before: { rate: before }, after: { rate: parsedRate },
+          notify: {
+            type: "system", title: "Exchange rate updated",
+            body: `1 USD = ${parsedRate.toLocaleString("en-UG")} UGX. Converted figures across the dashboards now use this rate; records keep the rate they were created at.`,
+            audiences: ["admin"],
+          },
+        });
+        toast.success("Exchange rate updated", {
+          description: `1 USD = ${parsedRate.toLocaleString("en-UG")} UGX.`,
         });
       }
       await saveSettingsSection("global", "Updated global settings");
@@ -192,12 +222,58 @@ function GlobalTab() {
                 <option value="USD">{currencyLabel("USD")}</option>
               </select>
               <p className="mt-1 text-caption text-muted">
-                Amounts are displayed in the currency in which they were recorded.
-                Automatic conversion is not enabled.
+                Displayed amounts are converted to this currency at the rate below.
+                <span className="text-foreground"> Converted amounts are indicative.</span>{" "}
+                Invoices and statements show the currency in which the transaction was recorded.
               </p>
             </Field>
             <Field label="Timezone" htmlFor="g-tz"><select id="g-tz" className={selectClass} value={state.timezone} onChange={(e) => set("timezone", e.target.value)}><option>Africa/Kampala</option><option>Africa/Nairobi</option><option>UTC</option></select></Field>
             <Field label="Date format" htmlFor="g-df"><select id="g-df" className={selectClass} value={state.dateFormat} onChange={(e) => set("dateFormat", e.target.value)}><option>DD MMM YYYY</option><option>MM/DD/YYYY</option><option>YYYY-MM-DD</option></select></Field>
+          </div>
+        </div>
+        {/* G1/A1 — the rate is admin-configured because no FX provider has been
+            chosen. Save owns the commit (the F4 pattern), not blur. */}
+        <div>
+          <h3 className="mb-3 font-heading text-h3 font-semibold text-foreground">Currency &amp; exchange rate</h3>
+          <div className="grid gap-4 sm:grid-cols-2">
+            <Field label="Base currency" htmlFor="g-base">
+              <Input id="g-base" value="UGX — Ugandan Shilling" disabled />
+              <p className="mt-1 text-caption text-muted">The currency the business operates in.</p>
+            </Field>
+            <Field
+              label="USD exchange rate"
+              htmlFor="g-rate"
+              error={rateValid ? undefined : "Enter a rate greater than zero"}
+            >
+              <div className="flex items-center gap-2">
+                <span className="shrink-0 text-body text-muted">1 USD =</span>
+                <Input id="g-rate" type="number" min={1} step={10} value={rateField}
+                  disabled={!isSuperAdmin}
+                  title={isSuperAdmin ? undefined : "Only a Super Admin may change the exchange rate"}
+                  onChange={(e) => setRateField(e.target.value)} />
+                <span className="shrink-0 text-body text-muted">UGX</span>
+              </div>
+              <p className="mt-1 text-caption text-muted">
+                Used to convert displayed amounts between UGX and USD. Update this when the
+                rate moves. A live rate feed can be connected later.
+              </p>
+              {!rateConfirmed && (
+                <p className="mt-1 text-caption font-medium text-primary">
+                  Placeholder rate — confirm with Finance before relying on converted figures.
+                </p>
+              )}
+              {rateUpdatedAt && (
+                <p className="mt-1 text-caption text-muted">
+                  Last updated {formatDate(rateUpdatedAt)}
+                  {rateUpdatedBy ? ` by ${rateUpdatedBy}` : ""}.
+                </p>
+              )}
+              {rateDirty && (
+                <p key="rate-dirty" className="mt-1 text-caption font-medium text-primary motion-safe:animate-in motion-safe:fade-in">
+                  Unsaved — currently 1 USD = {committedRate.toLocaleString("en-UG")} UGX. Save changes to apply.
+                </p>
+              )}
+            </Field>
           </div>
         </div>
         <div>

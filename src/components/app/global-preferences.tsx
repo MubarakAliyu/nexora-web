@@ -49,12 +49,12 @@ export function GlobalPreferences({
       before: { currency: before }, after: { currency: next },
       notify: {
         type: "system", title: "Currency preference updated",
-        body: `New records will be created in ${next}. Existing records keep the currency they were recorded in.`,
+        body: `Amounts across the dashboards are now displayed in ${next}. Records keep the currency they were recorded in; converted figures are indicative.`,
         audiences: ["admin"],
       },
     });
-    toast.success(`Default currency is now ${next}`, {
-      description: "Existing records keep the currency they were recorded in.",
+    toast.success(`Displaying amounts in ${next}`, {
+      description: "Converted figures are indicative — records keep their recorded currency.",
     });
   };
 
@@ -82,9 +82,9 @@ export function GlobalPreferences({
           <p className="mt-2 inline-flex items-start gap-2 rounded-xl border border-border bg-surface-hover p-3 text-caption text-muted">
             <InfoCircle size={16} className="mt-0.5 shrink-0 text-primary" />
             <span>
-              Amounts are displayed in the currency in which they were recorded.
-              Automatic conversion is not enabled. Changing this affects new records
-              and your own totals only.
+              Displayed amounts are converted to this currency at the rate an admin sets.
+              <span className="text-foreground"> Converted amounts are indicative</span> —
+              invoices and statements show the currency in which the transaction was recorded.
             </span>
           </p>
         </Field>
