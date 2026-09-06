@@ -1197,6 +1197,93 @@ export interface WorkerPayout {
   rejectionReason: string | null;
 }
 
+/* ------------------------------------- G1/B1: worker earnings & payouts ---
+
+   ON THE "NO WALLET" RULE. The 27 August minutes said "do not add a worker
+   wallet unless separately approved". The client has now explicitly asked for
+   balances, withdrawals, payout requests and bank accounts, and the G1 brief
+   states in terms: "THIS IS THAT APPROVAL." These types are that approval being
+   exercised, not a spec violation.
+
+   The balance is still DERIVED, never stored:
+     available = earned − paid out − pending requests
+   There is no top-up, no transfer between workers, and no way for a balance to
+   exist that is not backed by a completed job. */
+
+export type WorkerAccountType = "bank" | "mobile_money";
+
+/**
+ * A worker's payout destination.
+ *
+ * ⚠️ `accountNumber` is the ONLY place a full account number lives. It is masked
+ * everywhere else — lists, tables, notifications, toasts, audit summaries and
+ * exports — and only the edit form renders it in full. Use `maskAccount()`.
+ */
+export interface WorkerBankAccount {
+  id: string;
+  staffId: string;
+  accountType: WorkerAccountType;
+  /** Bank name, or mobile-money provider (MTN MoMo, Airtel Money). */
+  institution: string;
+  accountName: string;
+  accountNumber: string;
+  branch?: string | null;
+  isPrimary: boolean;
+  addedAt: string;
+  updatedAt: string;
+}
+
+export type PayoutFrequency = "weekly" | "biweekly" | "monthly" | "on_demand";
+
+/**
+ * When and on what terms a worker gets paid.
+ *
+ * `staffId === null` is the global default; a row with a staffId is a per-worker
+ * override that wins over it.
+ */
+export interface PayoutSchedule {
+  id: string;
+  staffId: string | null;
+  frequency: PayoutFrequency;
+  /** ISO weekday 1–7 for weekly/biweekly, day of month 1–28 for monthly. */
+  payoutDay: number;
+  /** A request below this is refused; the shortfall is shown to the worker. */
+  minimumPayout: number;
+  /** Processing fee Nexora deducts, as a percentage of the amount requested. */
+  processingFeePercent: number;
+  currency?: Currency;
+  updatedAt: string;
+  updatedBy: string;
+}
+
+export type PayoutRequestStatus = "pending" | "approved" | "rejected" | "paid" | "cancelled";
+
+export interface PayoutRequest {
+  /** G1/A4 — the rate in force when the request was raised. */
+  exchangeRateAtCreation?: number | null;
+  /** F5 — the currency this was RECORDED in. Never converted on documents. */
+  currency?: Currency;
+  id: string;
+  reference: string;
+  staffId: string;
+  staffName: string;
+  /** What the worker asked for, before the processing fee. */
+  amountRequested: number;
+  fee: number;
+  /** What actually reaches their account: requested − fee. */
+  netAmount: number;
+  accountId: string;
+  status: PayoutRequestStatus;
+  requestedAt: string;
+  decidedAt: string | null;
+  decidedBy: string | null;
+  paidAt: string | null;
+  paidBy: string | null;
+  rejectionReason: string | null;
+  /** Set on "mark as paid" — the outgoing financial transaction it created. */
+  transactionId: string | null;
+}
+
 /* --------------------------------------------- F4: worker job lifecycle */
 
 /**

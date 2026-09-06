@@ -26,6 +26,7 @@ import {
   availabilityScheduleFor, saveAvailabilitySchedule, updateWorkerContact,
 } from "@/lib/api/worker";
 import { AvailabilitySegmented } from "@/components/worker/availability-control";
+import { PayoutAccountsCard } from "@/components/worker/payout-accounts";
 import type { WorkerDayAvailability } from "@/lib/mock/types";
 
 const contactSchema = z.object({
@@ -194,6 +195,9 @@ export default function WorkerProfilePage() {
           Save availability
         </Button>
       </Card>
+
+      {/* G1/B4 — where a worker's payout destinations live. */}
+      <PayoutAccountsCard member={member} actor={user?.name ?? "Worker"} />
 
       <Card className="divide-y divide-border">
         <Link href="/change-password" className="flex min-h-[56px] items-center gap-3 p-4 text-body font-medium text-foreground">

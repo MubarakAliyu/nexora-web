@@ -47,6 +47,10 @@ import type {
   WeekDay,
   WorkerEarning,
   WorkerPayout,
+  WorkerBankAccount,
+  PayoutSchedule,
+  PayoutRequest,
+  PayoutRequestStatus,
   TicketLiability,
   ServiceType,
   ServiceCategory,
@@ -1427,6 +1431,100 @@ export const workerPayouts: WorkerPayout[] = [];
     workerPayouts.push(payout);
     settled.forEach((e) => { e.payoutId = payout.id; });
   }
+}
+
+/* ------------------------------------ G1/B1: payout schedules, accounts,
+   and requests.
+
+   Separately approved by the client (see the note on WorkerBankAccount in
+   types.ts). The balance stays derived — nothing here stores one. */
+export const payoutSchedules: PayoutSchedule[] = [
+  {
+    id: "psc_global", staffId: null, frequency: "biweekly", payoutDay: 5,
+    minimumPayout: 50_000, processingFeePercent: 1.5, currency: "UGX",
+    updatedAt: daysAgo(60), updatedBy: "Aisha Nakato",
+  },
+];
+
+export const workerBankAccounts: WorkerBankAccount[] = [];
+export const payoutRequests: PayoutRequest[] = [];
+
+{
+  /* Destinations for the three demo workers: one bank, one MoMo, one of each so
+     the masking rule is exercised on both shapes. */
+  const seedAccounts: { email: string; accounts: Omit<WorkerBankAccount, "id" | "staffId" | "addedAt" | "updatedAt">[] }[] = [
+    { email: "sarah.worker@nexora.co.ug", accounts: [
+      { accountType: "bank", institution: "Stanbic Bank Uganda", accountName: "Sarah Nabirye", accountNumber: "9030012345678", branch: "Garden City", isPrimary: true },
+      { accountType: "mobile_money", institution: "MTN MoMo", accountName: "Sarah Nabirye", accountNumber: "+256772100311", branch: null, isPrimary: false },
+    ] },
+    { email: "fred.worker@nexora.co.ug", accounts: [
+      { accountType: "mobile_money", institution: "Airtel Money", accountName: "Fred Wanyama", accountNumber: "+256752100412", branch: null, isPrimary: true },
+    ] },
+    { email: "ronald.worker@nexora.co.ug", accounts: [
+      { accountType: "bank", institution: "Centenary Bank", accountName: "Ronald Kayemba", accountNumber: "3100987654321", branch: "Kampala Road", isPrimary: true },
+    ] },
+  ];
+  let a = 0;
+  for (const s of seedAccounts) {
+    const member = staff.find((st) => st.email === s.email);
+    if (!member) continue;
+    for (const acct of s.accounts) {
+      a += 1;
+      workerBankAccounts.push({
+        ...acct, id: `wba_${a}`, staffId: member.id,
+        addedAt: daysAgo(120), updatedAt: daysAgo(120),
+      });
+    }
+  }
+
+  /* Ronald is a contractor and gets paid monthly rather than fortnightly —
+     a per-worker override so the admin screen has one to display. */
+  const ronald = staff.find((st) => st.email === "ronald.worker@nexora.co.ug");
+  if (ronald) {
+    payoutSchedules.push({
+      id: "psc_ronald", staffId: ronald.id, frequency: "monthly", payoutDay: 28,
+      minimumPayout: 100_000, processingFeePercent: 2, currency: "UGX",
+      updatedAt: daysAgo(45), updatedBy: "Aisha Nakato",
+    });
+  }
+
+  /* One request in each status so every branch of the admin queue and the
+     worker's history renders on first login. */
+  const feeOf = (n: number, pct: number) => Math.round((n * pct) / 100);
+  const mk = (
+    n: number, member: Staff | undefined, amount: number, status: PayoutRequestStatus,
+    days: { requested: number; decided?: number; paid?: number },
+    extra: Partial<PayoutRequest> = {},
+  ): void => {
+    if (!member) return;
+    const acct = workerBankAccounts.find((x) => x.staffId === member.id && x.isPrimary);
+    if (!acct) return;
+    const sch = payoutSchedules.find((s) => s.staffId === member.id) ?? payoutSchedules[0];
+    const fee = feeOf(amount, sch.processingFeePercent);
+    payoutRequests.push({
+      id: `pyr_${n}`, reference: `NX-PR-${2000 + n}`,
+      staffId: member.id, staffName: member.name,
+      amountRequested: amount, fee, netAmount: amount - fee,
+      accountId: acct.id, status,
+      requestedAt: daysAgo(days.requested),
+      decidedAt: days.decided != null ? daysAgo(days.decided) : null,
+      decidedBy: days.decided != null ? "Aisha Nakato" : null,
+      paidAt: days.paid != null ? daysAgo(days.paid) : null,
+      paidBy: days.paid != null ? "Grace Namuli" : null,
+      rejectionReason: null, transactionId: null,
+      currency: "UGX", exchangeRateAtCreation: null,
+      ...extra,
+    });
+  };
+  const sarah = staff.find((st) => st.email === "sarah.worker@nexora.co.ug");
+  const fred = staff.find((st) => st.email === "fred.worker@nexora.co.ug");
+  mk(1, sarah, 400_000, "pending", { requested: 2 });
+  mk(2, fred, 250_000, "approved", { requested: 6, decided: 4 });
+  mk(3, sarah, 600_000, "paid", { requested: 40, decided: 38, paid: 36 });
+  mk(4, fred, 900_000, "rejected", { requested: 30, decided: 29 }, {
+    rejectionReason: "Requested more than the earnings ledger supported at the time. Raise again after the March jobs are signed off.",
+  });
+  mk(5, ronald, 120_000, "cancelled", { requested: 12 });
 }
 
 /**
