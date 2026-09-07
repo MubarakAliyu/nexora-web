@@ -61,7 +61,11 @@ export async function getFinancialKpis(scope?: { forceError?: boolean }): Promis
   pendingPayouts = Math.max(0, pendingPayouts - processed);
   // E4: maintenance charges recovered from tenants are revenue in their own right.
   const maintenanceRevenue = maintenanceRevenueCollected();
-  return { totalRevenue: rentRevenue + serviceRevenue + maintenanceRevenue, totalSettlements, pendingPayouts, nexoraEarnings };
+  /* G1/B6 — payout processing fees are Nexora revenue like a commission is. */
+  const payoutFees = db.payoutRequests
+    .filter((r) => r.status === "paid")
+    .reduce((sum, r) => sum + r.fee, 0);
+  return { totalRevenue: rentRevenue + serviceRevenue + maintenanceRevenue, totalSettlements, pendingPayouts, nexoraEarnings: nexoraEarnings + payoutFees };
 }
 
 /* ------------------------------------------------------ revenue breakdown */
@@ -94,7 +98,7 @@ export async function getRevenueBreakdown(scope?: { forceError?: boolean }): Pro
 
 /* ------------------------------------------------- transaction history */
 
-export type TxKind = "Rent Payment" | "Service Payment" | "Maintenance Revenue" | "Owner Settlement" | "Commission" | "Expense" | "Refund";
+export type TxKind = "Rent Payment" | "Service Payment" | "Maintenance Revenue" | "Owner Settlement" | "Commission" | "Expense" | "Refund" | "Worker Payout" | "Payout Fee";
 export interface FinanceTxRow {
   id: string;
   date: string;
@@ -227,6 +231,34 @@ function allTransactions(): FinanceTxRow[] {
       reference: `COM-${owner.id.slice(-4).toUpperCase()}`,
       entity: { label: owner.name, href: `/admin/owners/${owner.id}` }, ownerId: owner.id,
     });
+  });
+
+  /* G1/B6 — a paid worker payout is Nexora money going out, and the processing
+     fee it carries is Nexora revenue.
+
+     ⚠️ Deliberately NOT written as an expense. `ownerExpenses()` reads
+     `db.expenses`, so routing a worker payout through there would quietly
+     deduct it from an owner's settlement — exactly the failure E4 guarded
+     against for Nexora-absorbed maintenance. A payout has no owner, no
+     property and no agreement, and appears here and only here. */
+  db.payoutRequests.forEach((r) => {
+    if (r.status !== "paid" || !r.paidAt) return;
+    rows.push({
+      id: r.transactionId ?? `tx_payout_${r.id}`, date: r.paidAt, kind: "Worker Payout",
+      description: `Worker payout — ${r.staffName} (${r.reference})`,
+      amount: r.netAmount, direction: "out", status: "completed",
+      reference: r.reference,
+      entity: { label: r.reference, href: "/admin/payouts" },
+    });
+    if (r.fee > 0) {
+      rows.push({
+        id: `tx_payout_fee_${r.id}`, date: r.paidAt, kind: "Payout Fee",
+        description: `Payout processing fee — ${r.staffName} (${r.reference})`,
+        amount: r.fee, direction: "in", status: "completed",
+        reference: `FEE-${r.reference}`,
+        entity: { label: r.reference, href: "/admin/payouts" },
+      });
+    }
   });
 
   return rows.sort((a, b) => (a.date < b.date ? 1 : -1));

@@ -1488,21 +1488,67 @@ export const payoutRequests: PayoutRequest[] = [];
     });
   }
 
+  /* Give every portal worker some completed work to have been paid for.
+
+     The F4 earnings seed credits a worker only where the job seed happened to
+     name them, and it named Fred alone — Sarah and Ronald opened Earnings to
+     zeroes, and with G1 they would open the whole payout system to zeroes too.
+     The same read-path gap F4 already patched once for maintenance tickets.
+     Completed bookings with no portal-worker assignee are handed to whoever has
+     nothing, so every earning still points at a real job. */
+  {
+    let e = 0;
+    for (const member of staff.filter((st) => st.hasPortalAccess)) {
+      if (workerEarnings.some((w) => w.staffId === member.id)) continue;
+      const spare = serviceBookings.filter(
+        (sb) =>
+          (sb.status === "completed" || sb.status === "confirmed") &&
+          (sb.amount ?? 0) > 0 &&
+          !staff.some((st) => st.hasPortalAccess && (sb.assigneeId ? st.id === sb.assigneeId : st.name === sb.assignee)),
+      ).slice(0, 4);
+      for (const sb of spare) {
+        sb.assigneeId = member.id;
+        sb.assignee = member.name;
+        e += 1;
+        workerEarnings.push({
+          id: `wed_g1_${e}`,
+          staffId: member.id,
+          sourceType: "service_booking",
+          sourceId: sb.id,
+          reference: sb.reference,
+          description: `${sb.category} — ${sb.name ?? "customer"}`,
+          amount: Math.round(((sb.amount ?? 0) * 0.35) / 1000) * 1000,
+          earnedAt: sb.date ?? NOW.toISOString(),
+          payoutId: null,
+        });
+      }
+    }
+  }
+
   /* One request in each status so every branch of the admin queue and the
-     worker's history renders on first login. */
+     worker's history renders on first login.
+
+     ⚠️ SIZED FROM THE LEDGER, not hardcoded. A fixed 600,000 "paid" request
+     against a worker whose completed jobs earned nothing produces a negative
+     balance clamped to zero and a screen that says "withdrawn 600K, earned 0" —
+     nonsense the first tester would report. Each request is carved out of what
+     that worker's earnings actually support, after the F4 payout ledger has
+     taken its share. `rejected` and `cancelled` reserve nothing, so they are
+     free to seed at any size. */
   const feeOf = (n: number, pct: number) => Math.round((n * pct) / 100);
+  let seq = 0;
   const mk = (
-    n: number, member: Staff | undefined, amount: number, status: PayoutRequestStatus,
+    member: Staff, amount: number, status: PayoutRequestStatus,
     days: { requested: number; decided?: number; paid?: number },
     extra: Partial<PayoutRequest> = {},
-  ): void => {
-    if (!member) return;
+  ): boolean => {
     const acct = workerBankAccounts.find((x) => x.staffId === member.id && x.isPrimary);
-    if (!acct) return;
     const sch = payoutSchedules.find((s) => s.staffId === member.id) ?? payoutSchedules[0];
+    if (!acct || amount < sch.minimumPayout) return false;
+    seq += 1;
     const fee = feeOf(amount, sch.processingFeePercent);
     payoutRequests.push({
-      id: `pyr_${n}`, reference: `NX-PR-${2000 + n}`,
+      id: `pyr_${seq}`, reference: `NX-PR-${2000 + seq}`,
       staffId: member.id, staffName: member.name,
       amountRequested: amount, fee, netAmount: amount - fee,
       accountId: acct.id, status,
@@ -1515,16 +1561,51 @@ export const payoutRequests: PayoutRequest[] = [];
       currency: "UGX", exchangeRateAtCreation: null,
       ...extra,
     });
+    return true;
   };
-  const sarah = staff.find((st) => st.email === "sarah.worker@nexora.co.ug");
-  const fred = staff.find((st) => st.email === "fred.worker@nexora.co.ug");
-  mk(1, sarah, 400_000, "pending", { requested: 2 });
-  mk(2, fred, 250_000, "approved", { requested: 6, decided: 4 });
-  mk(3, sarah, 600_000, "paid", { requested: 40, decided: 38, paid: 36 });
-  mk(4, fred, 900_000, "rejected", { requested: 30, decided: 29 }, {
-    rejectionReason: "Requested more than the earnings ledger supported at the time. Raise again after the March jobs are signed off.",
+
+  const round10k = (n: number) => Math.max(0, Math.floor(n / 10_000) * 10_000);
+  /* Workers who actually have unsettled earnings, richest first, so the demo
+     picks whoever the job seed happened to credit. */
+  const earners = staff
+    .filter((st) => st.hasPortalAccess)
+    .map((st) => {
+      const paidOut = workerPayouts
+        .filter((p) => p.staffId === st.id && p.status === "paid")
+        .reduce((sum, p) => sum + p.amount, 0);
+      const earned = workerEarnings.filter((e) => e.staffId === st.id).reduce((sum, e) => sum + e.amount, 0);
+      return { member: st, spare: Math.max(0, earned - paidOut) };
+    })
+    .filter((x) => x.spare > 0)
+    .sort((a, b) => b.spare - a.spare);
+
+  earners.forEach(({ member, spare }, i) => {
+    let left = spare;
+    if (i === 0) {
+      // A settled payout, so the history and the B6 ledger entries are populated.
+      const paid = round10k(left * 0.35);
+      if (mk(member, paid, "paid", { requested: 40, decided: 38, paid: 36 })) left -= paid;
+    }
+    /* Something waiting on the admin — the queue is never empty. Floored at the
+       schedule minimum, since a request below it would be refused and silently
+       skipped, leaving nothing to approve on first login. */
+    const sch = payoutSchedules.find((x) => x.staffId === member.id) ?? payoutSchedules[0];
+    const share = round10k(left * (i === 0 ? 0.3 : 0.25));
+    const pending = share >= sch.minimumPayout ? share
+      : left >= sch.minimumPayout ? sch.minimumPayout : 0;
+    if (mk(member, pending, i === 1 ? "approved" : "pending", i === 1 ? { requested: 6, decided: 4 } : { requested: 2 })) {
+      left -= pending;
+    }
   });
-  mk(5, ronald, 120_000, "cancelled", { requested: 12 });
+
+  // Neither of these reserves any balance, so they can be seeded freely.
+  const first = earners[0]?.member;
+  if (first) {
+    mk(first, 900_000, "rejected", { requested: 30, decided: 29 }, {
+      rejectionReason: "Requested more than the earnings ledger supported at the time. Raise again once the March jobs are signed off.",
+    });
+    mk(first, 120_000, "cancelled", { requested: 12 });
+  }
 }
 
 /**

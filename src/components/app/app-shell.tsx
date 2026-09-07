@@ -38,6 +38,7 @@ import {
 import { NotificationCenter } from "./notification-center";
 import { ThemeToggle } from "./theme-toggle";
 import { navForRole } from "./nav-config";
+import { pendingPayoutCount } from "@/lib/api/payouts";
 import { ticketsAwaitingOwnerApproval } from "@/lib/api/maintenance-routing";
 import { useSession } from "@/lib/stores/session";
 import { useUI } from "@/lib/stores/ui";
@@ -151,7 +152,10 @@ export function AppShell({ children }: { children: React.ReactNode }) {
   // F3 — owners see a count of repairs waiting on their decision.
   const ownerApprovals =
     user.role === "owner" && user.ownerId ? ticketsAwaitingOwnerApproval(user.ownerId).length : 0;
-  const nav = navForRole(user.role, { ownerApprovals });
+  /* G1/B5 — the badge is the admin's cue that a worker is waiting to be paid. */
+  const pendingPayouts =
+    user.role === "super_admin" || user.role === "finance_officer" ? pendingPayoutCount() : 0;
+  const nav = navForRole(user.role, { ownerApprovals, pendingPayouts });
   const segs = pathname.split("/").filter(Boolean);
   const crumbs: Crumb[] = segs.map((seg, i) => ({
     label: i === 0 ? "Dashboard" : titleCase(seg),

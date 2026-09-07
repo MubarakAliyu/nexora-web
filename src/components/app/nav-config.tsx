@@ -20,6 +20,7 @@ import {
   ChartPie,
   Tag,
   ClipboardCheck,
+  Wallet,
 } from "flowbite-react-icons/outline";
 import type { SidebarItem } from "@/components/ui/sidebar";
 import type { Role } from "@/lib/roles";
@@ -28,7 +29,7 @@ const sz = 20;
 
 /** Nav items per role. Some routes are built in later batches (9–11) — the
  *  shell and navigation exist now; those pages arrive with their batch. */
-export function navForRole(role: Role, counts?: { ownerApprovals?: number }): SidebarItem[] {
+export function navForRole(role: Role, counts?: { ownerApprovals?: number; pendingPayouts?: number }): SidebarItem[] {
   if (role === "owner") {
     return [
       { label: "Dashboard", href: "/owner", icon: <Grid size={sz} /> },
@@ -67,6 +68,9 @@ export function navForRole(role: Role, counts?: { ownerApprovals?: number }): Si
     leases: { label: "Leases", href: "/admin/leases", icon: <FileLines size={sz} /> },
     finance: { label: "Finance", href: "/admin/finance", icon: <Cash size={sz} /> },
     financialOverview: { label: "Financial Overview", href: "/admin/financial-overview", icon: <ChartPie size={sz} /> },
+    /* G1/B5 — money waiting on an approval sits directly under the money
+       screens, with a badge because a worker is waiting to be paid. */
+    payouts: { label: "Worker Payouts", href: "/admin/payouts", icon: <Wallet size={sz} />, badge: counts?.pendingPayouts },
     maintenance: { label: "Maintenance", href: "/admin/maintenance", icon: <AdjustmentsHorizontal size={sz} /> },
     leads: { label: "CRM / Leads", href: "/admin/leads", icon: <ClipboardList size={sz} /> },
     bookings: { label: "Bookings", href: "/admin/bookings", icon: <CalendarMonth size={sz} /> },
@@ -80,10 +84,12 @@ export function navForRole(role: Role, counts?: { ownerApprovals?: number }): Si
 
   const keysByRole: Record<Role, string[]> = {
     super_admin: Object.keys(all),
-    ops_manager: Object.keys(all),
+    /* G1/B5 — payouts move money out of Nexora, so the queue is Super Admin
+       and Finance Officer only. An ops manager sees everything else. */
+    ops_manager: Object.keys(all).filter((k) => k !== "payouts"),
     property_manager: ["dashboard", "properties", "units", "owners", "agreements", "tenants", "leases", "finance", "financialOverview", "maintenance", "leads", "bookings", "serviceBookings"],
     maintenance_officer: ["dashboard", "maintenance", "properties"],
-    finance_officer: ["dashboard", "finance", "financialOverview", "serviceCatalogue", "owners", "agreements", "analytics", "announcements"],
+    finance_officer: ["dashboard", "finance", "financialOverview", "payouts", "serviceCatalogue", "owners", "agreements", "analytics", "announcements"],
     owner: [],
     tenant: [],
     // F4 — service workers have their own portal chrome; no admin nav at all.

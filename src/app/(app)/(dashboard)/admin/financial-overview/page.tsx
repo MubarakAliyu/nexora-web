@@ -45,6 +45,7 @@ import { MoneyStat, useMoneyChartUnit } from "@/components/app/money";
 const KIND_TONE: Record<string, "default" | "muted" | "accent"> = {
   "Rent Payment": "default", "Service Payment": "accent", "Maintenance Revenue": "accent", "Owner Settlement": "muted",
   Commission: "default", Expense: "muted", Refund: "accent",
+  "Worker Payout": "muted", "Payout Fee": "default",
 };
 
 /* -------------------------------------------------- transaction detail */
@@ -333,7 +334,7 @@ export default function FinancialOverviewPage() {
             </div>
             <select className={selectClass} value={kind} onChange={(e) => setKind(e.target.value)} aria-label="Type">
               <option value="all">All types</option>
-              <option>Rent Payment</option><option>Service Payment</option><option>Maintenance Revenue</option><option>Owner Settlement</option><option>Commission</option><option>Expense</option>
+              <option>Rent Payment</option><option>Service Payment</option><option>Maintenance Revenue</option><option>Owner Settlement</option><option>Commission</option><option>Worker Payout</option><option>Payout Fee</option><option>Expense</option>
             </select>
             <select className={selectClass} value={status} onChange={(e) => setStatus(e.target.value)} aria-label="Status">
               <option value="all">All statuses</option><option value="completed">Completed</option><option value="pending">Pending</option><option value="failed">Failed</option>
