@@ -4,6 +4,121 @@ Running log of completed batches (0 → 12), per `PROMPT.md`.
 
 ---
 
+## Execution Batch G1 — Currency Conversion & Worker Payout System ✅ COMPLETE
+
+**Gate:** lint + `tsc --noEmit` clean · `npm run build` **warning-free, 93 static pages**
+(92 → 93; `/admin/payouts` is the only new route).
+
+A revision round on client feedback. Part A reverses an F5 decision; Part B exercises an
+approval the 27 August minutes had withheld.
+
+### Part A — currency conversion
+
+F5 deliberately did NOT convert: the 27 Aug minutes recorded that exchange-rate behaviour
+"was not defined and must not be assumed". The client has now asked for it explicitly, so
+G1 converts — and says so at the top of `preferences.ts` and `format.ts` so the reversal is
+legible to whoever reads it next.
+
+- **A1** Admin-set rate in Settings → Global ("1 USD = ___ UGX"), Super Admin only,
+  Save-owned like the F3 threshold. Placeholder flag until first confirmed; last-updated
+  timestamp and who; persisted through E1.
+- **A2** `formatCurrency` **split, not duplicated**: `formatCurrencyRecorded*` for the api
+  layer, audit summaries and PDFs (never converts) and `formatCurrency` for display
+  (converts). The 262 F5 call sites keep working unchanged because the display currency and
+  rate live in a module-level holder that `useCurrencyKey()` keeps in sync and re-keys both
+  portal shells on. Rounding: USD 2dp, UGX whole shillings.
+- **A3** Converted figures are prefixed `≈`, dotted-underlined, and carry a tooltip naming
+  the recorded amount and the rate used. Documents print the RECORDED currency —
+  `pdf/builders.ts` was calling the converting formatter and was fixed.
+- **A4** `exchangeRateAtCreation` on 10 record types, stamped at 12 creation sites in 8 api
+  files. Historical rows convert at their own rate; pre-G1 rows fall back to the current one.
+- **A5** Sweep of all four portals plus marketing.
+
+**Locations that did NOT convert, found and fixed: 14.**
+
+| # | Location | Why it was missed |
+|---|---|---|
+| 1–3 | Three local `MoneyStat` helpers (admin dashboard, owner dashboard, financial overview) | Rendered `UGX <CountUp/>M` inline — never called `formatCurrency`, so F5's consolidation never reached them either |
+| 4–8 | Five money-chart captions + their data (admin, owner, analytics, owner financials ×2) | Axis labels AND tooltips read raw UGX millions |
+| 9–12 | Four maintenance KPI tiles | `<CountUp prefix="UGX " />` |
+| 13 | `agreementRateLabel` | Built a display string in the api layer with a hardcoded `UGX` |
+| 14 | Owner activity feed (`toM`) | Inline `` `UGX ${…}M` `` template |
+
+The shared `MoneyStat` picks its K/M unit **after** conversion, because UGX 639M is USD 167K,
+not USD 0.2M. `agreementRateLabel` was split into a recorded twin (stamped onto settlement
+records, printed on statements) and `agreementRateLabelDisplay` (tables and badges) —
+the same recorded/display split `format.ts` makes.
+
+Marketing is pinned to the recorded currency by `useRecordedCurrencyBoundary()`: the public
+site has no visitor-facing currency control, and a marketing price becomes the recorded
+amount of the booking that follows, so an admin's USD preference must not leak into it.
+
+**Anchor figures.** Rate set to 3,820 (audit records `before {rate:3750} → after {rate:3820}`).
+Total revenue UGX 639,025,000 → `≈ USD 167K`, tooltip "Recorded as UGX 639,025,000 · converted
+at 1 USD = 3,820 UGX". Switching back to UGX restored every figure exactly, `≈` count zero.
+
+### Part B — worker earnings & payouts
+
+**⚠️ ON THE "NO WALLET" RULE — READ THIS BEFORE FILING A SPEC VIOLATION.** The 27 August
+minutes said "do not add a worker wallet unless separately approved", and Revision Batch A
+had removed the earlier proprietary wallet module entirely. The client has now explicitly
+requested balances, withdrawals, payout requests and bank accounts, and the G1 brief states
+in terms: "THIS IS THAT APPROVAL." Part B is that approval being exercised. The note is
+repeated at the top of `types.ts`, `payouts.ts` and the earnings screen.
+
+What the approval did *not* change: **the balance is derived, never stored** —
+`available = earned − withdrawn − in flight` — with no top-up, no transfer between workers,
+and no balance that is not backed by a completed job. The removed `/admin/wallet` route,
+store slice and `WalletTx` types stay removed.
+
+- **B1** `WorkerBankAccount`, `PayoutSchedule` (global default + per-worker overrides),
+  `PayoutRequest`. The F4 earnings ledger is extended, not replaced. **SCHEMA_VERSION bumped
+  `f4-2026-08-30` → `g1-2026-09-05`.**
+- **B2** `/worker/earnings` rebuilt mobile-first: five figures (Total earned, Withdrawn,
+  Available balance as the `--primary` headline, Pending, Fees deducted), a next-payout panel
+  with countdown and schedule text, and a Request button that is disabled with the reason
+  spelled out rather than left to guess.
+- **B3** Request flow: full balance in one tap or a specific amount, destination account, live
+  fee preview (requested / fee / net). Balance reduces immediately on submit; cancel restores it.
+- **B4** Bank and mobile-money accounts on the worker's profile.
+- **B5** `/admin/payouts` — Super Admin and Finance Officer only, nav after Financial Overview
+  with a pending badge, plus a route guard so a typed URL does not get in. KPIs, filters,
+  detail dialog, approve / reject (reason required) / mark as paid, bulk approve, and
+  Save-owned schedule configuration.
+- **B6** A paid payout is an outgoing Nexora transaction; its processing fee is Nexora revenue.
+
+**★ Payouts do not touch owner settlements.** Salim Kato, before and after approving and
+paying NX-PR-2002:
+
+| | Gross | Commission | Expenses | Net |
+|---|---|---|---|---|
+| Before | 113,650,000 | 17,047,500 | 17,850,000 | **78,752,500** |
+| After | 113,650,000 | 17,047,500 | 17,850,000 | **78,752,500** |
+
+Unchanged to the shilling, and identical to the F3/F5 baseline. The guarantee is structural:
+`markPayoutPaid` writes no expense, no owner, no property and no agreement. Routing a payout
+through `db.expenses` would have been read by `ownerExpenses()` and quietly deducted from a
+settlement — the same failure E4 guarded against for Nexora-absorbed maintenance.
+
+**Masking.** `accountNumber` is rendered in full in exactly one place — the worker's own edit
+form. Lists, the payout dialog, the admin table and its CSV export, notification bodies,
+toasts and audit summaries all go through `maskAccount()`. Verified by grepping every
+`accountNumber` read in `src/`.
+
+**Notification scoping (the F4 pattern).** Every worker-facing payout message carries
+`recipientStaffId`; only the admin-facing twin is a broadcast. Verified live: Sarah's four
+payout notifications all carry `stf_ops_4`, and Fred's portal shows none of them.
+
+**Two seed defects found while verifying.** (1) Payout requests seeded at fixed amounts
+produced "withdrawn UGX 600K, earned UGX 0" for a worker with no completed jobs — they are now
+sized from what that worker's ledger actually supports. (2) The F4 earnings seed credits a
+worker only where the job seed happened to name them, and it named Fred alone; Sarah and
+Ronald opened Earnings — and would have opened the whole payout system — to zeroes. Completed
+bookings with no portal-worker assignee are now handed to whoever has none, so every earning
+still points at a real job.
+
+---
+
 ## ⚠ STANDING RULE — icons
 
 `components.json` has `iconLibrary: "lucide"` (shadcn CLI default), but **`lucide-react` must NEVER

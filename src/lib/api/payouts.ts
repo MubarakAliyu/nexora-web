@@ -162,7 +162,11 @@ export async function savePayoutSchedule(input: SaveScheduleInput, actor: string
     id: `psc_${Date.now()}`, staffId: input.staffId,
     frequency: input.frequency, payoutDay: input.payoutDay,
     minimumPayout: input.minimumPayout, processingFeePercent: input.processingFeePercent,
-    currency: activeCurrency(), updatedAt: db.NOW_ISO, updatedBy: actor,
+    /* A schedule is policy, not a transaction: its minimum is a base-currency
+       figure, so it is pinned to UGX rather than to whatever the admin happens
+       to be viewing in. The field is labelled UGX to match, like the F3 owner
+       approval threshold. */
+    currency: "UGX", updatedAt: db.NOW_ISO, updatedBy: actor,
   };
   row.frequency = input.frequency;
   row.payoutDay = input.payoutDay;

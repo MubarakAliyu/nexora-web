@@ -31,10 +31,14 @@ knows where its data comes from.
 9. [Sessions and auth](#9-sessions-and-auth)
 10. [Placeholders awaiting stakeholder input](#10-placeholders-awaiting-stakeholder-input)
 11. [Known limitations](#11-known-limitations)
+12. [Worker payouts](#12-worker-payouts-g1)
 
 ---
 
 ## 2. Data model
+
+G1 adds three collections — `workerBankAccounts`, `payoutSchedules`, `payoutRequests` —
+and `exchangeRateAtCreation` to ten existing financial types. See §7 and §12.
 
 Full field-level definitions live in `src/lib/mock/types.ts` — that file is the
 authoritative schema and is worth reading alongside this section. Relationships:
@@ -427,18 +431,44 @@ Notification queries therefore need **both** filters:
 Two currencies: **UGX and USD** (the 27 Aug minutes: "especially because short-term
 rental customers and property owners may be international").
 
-- **Every financial record stores the currency it was recorded in.**
-- **There is NO automatic conversion.** The minutes: exchange-rate behaviour "was not
-  defined and must not be assumed". An invoice raised in UGX is displayed as UGX to a
-  user whose preference is USD. Do not add an FX layer without a decision.
-- The user's currency preference governs **new records** and their own unscoped totals
-  — nothing else.
-- Totals that span records of mixed currency are **undefined** today. All seeded data is
-  UGX, so this has not bitten yet. When you implement reporting, either group by
-  currency or make the caller pass one — do not sum across.
+> **⚠️ CHANGED IN G1.** F5 shipped with no conversion because the minutes said
+> exchange-rate behaviour "was not defined and must not be assumed". The client has since
+> asked for it explicitly, so the frontend now converts for DISPLAY. Read this whole
+> section before touching money — the recorded/display split is the load-bearing idea.
 
-If FX is later approved, the right shape is a rate table with an `asOf` timestamp and a
-rate stored **on each converted line**, so historical documents stay reproducible.
+**Recorded vs display.** Every financial record still stores the currency it was recorded
+in, and that value is never rewritten. Conversion happens only on the way to a screen:
+
+| Layer | Function | Converts? |
+|---|---|---|
+| api layer, audit summaries, notification bodies | `formatCurrencyRecorded` / `…Full` | **No** |
+| PDFs — invoices, receipts, statements | `formatCurrencyRecordedFull` | **No** |
+| Dashboards, tables, KPI tiles, charts | `formatCurrency`, `<Money>`, `<MoneyStat>` | Yes |
+| Public marketing site | pinned to base currency | **No** |
+
+A converted figure is prefixed `≈` and carries a tooltip naming the recorded amount and
+the rate used, because nobody was ever billed it. **A settlement paid as UGX 77,502,500
+must never appear to be a USD obligation** — that is why documents are on the recorded
+side of the line.
+
+**The rate.** Admin-set in Settings → Global, Super Admin only, Save-owned. There is no FX
+provider. `PreferencesState` holds `exchangeRate`, `exchangeRateConfirmed`,
+`exchangeRateUpdatedAt`, `exchangeRateUpdatedBy`, and the UI warns while the seeded
+placeholder (3,750) is still in force.
+
+**Rate snapshotting.** Ten record types carry `exchangeRateAtCreation`, stamped at
+creation. A historical record converts at ITS OWN rate, not today's, so a rate change does
+not silently revalue last quarter. Rows created before G1 have `null` and fall back to the
+current rate; the UI marks them.
+
+**What the backend owes here:**
+
+1. A rate table with an `asOf` timestamp, and the rate persisted **on each line** — the
+   frontend already models exactly this via `exchangeRateAtCreation`.
+2. Authority over the rate: the frontend's value is a display preference, not a
+   ledger fact. Reject any write that tries to change a recorded amount or currency.
+3. Reporting totals that span records of mixed currency remain **undefined**. All seeded
+   data is UGX. Group by currency or make the caller pass one — do not sum across.
 
 ---
 
@@ -508,7 +538,8 @@ flagged in the UI with the words "pending stakeholder confirmation".
 | 3 | **Worker rates / Nexora fee split** | `WORKER_SHARE_RATE = 0.35` | `lib/api/worker.ts` |
 | 4 | **Session timeout duration** | 30 min, 2-min warning | `SESSION_TIMEOUT_MINUTES` |
 | 5 | **Payment provider** | Simulated; five states modelled, no provider chosen | `lib/api/payment-states.ts` |
-| 6 | **FX behaviour** | None — no conversion, by instruction | §7 |
+| 6 | **Exchange rate** | `3,750` UGX per USD, flagged as a placeholder until an admin confirms it | Settings → Global; §7 |
+| 8 | **Payout schedule and fee** | Every two weeks on a Friday, minimum `UGX 50,000`, processing fee `1.5%` | `/admin/payouts` → Payout schedule; per-worker overrides supported |
 | 7 | **Service Officer vs Service Worker** | "Service Worker" used throughout | Naming left open at the meeting |
 
 ---
@@ -534,3 +565,65 @@ Two smaller ones:
 - **Assignment conflict detection is a frontend convenience only.** It warns, it does
   not block, and it cannot serialise two admins assigning the same worker at once.
   The backend should own real validation.
+
+---
+
+## 12. Worker payouts (G1)
+
+> **⚠️ ON THE "NO WALLET" RULE.** The 27 August minutes said "do not add a worker wallet
+> unless separately approved", and Revision Batch A had removed an earlier proprietary
+> wallet module. The client has since explicitly requested balances, withdrawals, payout
+> requests and bank accounts, and the G1 brief granted that approval in terms. This module
+> is that approval being exercised — **not** a spec violation. If you are auditing against
+> the August minutes, this is the paragraph you are looking for.
+
+**The balance is derived, never stored.**
+
+```
+available = total earned − withdrawn − in flight
+```
+
+- `total earned` — the sum of `WorkerEarning` rows, one per completed job.
+- `withdrawn` — paid `WorkerPayout` (F4) **plus** paid `PayoutRequest` (G1). Both stores
+  count; reading only one shows a worker money they were paid months ago.
+- `in flight` — every request raised and not yet rejected or cancelled.
+
+There is no top-up, no transfer between workers, and no balance that is not backed by a
+completed job. **Do not add a stored balance column.** Derive it, or you will have two
+numbers that disagree.
+
+**New collections:** `workerBankAccounts`, `payoutSchedules`, `payoutRequests`.
+`PayoutSchedule.staffId === null` is the global default; a row with a `staffId` overrides
+it for that person.
+
+**Status machine.** `pending → approved → paid`, with `rejected` from either of the first
+two and `cancelled` by the worker while pending. Rejecting or cancelling returns the
+amount to the available balance; there is no compensating entry, because the balance is
+derived.
+
+**Account numbers.** `WorkerBankAccount.accountNumber` is the only place a full number
+lives. The frontend masks it everywhere else — lists, dialogs, tables, CSV exports,
+notification bodies, toasts and audit summaries — via `maskAccount()`. **The API should
+return it masked by default** and require an explicit, authorised read for the full value;
+the frontend needs it in exactly one place, the worker's own edit form.
+
+**★ Payouts must not touch owner settlements.** A worker payout is a Nexora operating
+cost. `markPayoutPaid` writes no expense, no owner, no property and no agreement — it
+stamps a `transactionId` and the ledger derives two rows from it:
+
+| Row | Direction | Amount |
+|---|---|---|
+| `Worker Payout` | out | `netAmount` |
+| `Payout Fee` | in (Nexora revenue) | `fee` |
+
+Routing a payout through `db.expenses` would be picked up by `ownerExpenses()` and quietly
+deducted from an owner's settlement — the same failure E4 guarded against for
+Nexora-absorbed maintenance. Verified: Salim Kato's settlement is unchanged to the shilling
+across a full approve-and-pay cycle (net UGX 78,752,500 before and after).
+
+**Notification scoping.** Every worker-facing payout message carries `recipientStaffId`;
+only its admin-facing twin is a broadcast to the `admin` audience. A payout concerns one
+person's money — see §6.
+
+**Access.** `/admin/payouts` is Super Admin and Finance Officer only, enforced in the nav
+and again by a route guard. The backend must enforce it properly.

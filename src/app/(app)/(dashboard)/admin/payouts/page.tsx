@@ -38,7 +38,7 @@ import { toast } from "@/components/ui/sonner";
 import { useAsync, debugErrorFlag } from "@/lib/use-async";
 import { useSession } from "@/lib/stores/session";
 import { useLive } from "@/lib/stores/live";
-import { formatCurrency, formatDate } from "@/lib/format";
+import { formatCurrency, formatCurrencyRecordedFull, formatDate } from "@/lib/format";
 import { MoneyStat } from "@/components/app/money";
 import * as db from "@/lib/mock/db";
 import {
@@ -465,7 +465,7 @@ function SchedulePanel({
 
       {dirty && (
         <p key="ps-dirty" className="mt-3 text-caption font-medium text-primary motion-safe:animate-in motion-safe:fade-in">
-          Unsaved — currently {scheduleText(committed).toLowerCase()}, minimum {formatCurrency(committed.minimumPayout)}, fee {committed.processingFeePercent}%.
+          Unsaved — currently {scheduleText(committed).toLowerCase()}, minimum {formatCurrencyRecordedFull(committed.minimumPayout)}, fee {committed.processingFeePercent}%.
         </p>
       )}
       <p className="mt-1 text-caption text-muted">
