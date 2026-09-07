@@ -109,6 +109,16 @@ toasts and audit summaries all go through `maskAccount()`. Verified by grepping 
 `recipientStaffId`; only the admin-facing twin is a broadcast. Verified live: Sarah's four
 payout notifications all carry `stf_ops_4`, and Fred's portal shows none of them.
 
+**A currency defect found while verifying Part B under a USD preference.** The
+custom-amount field on `/worker/earnings` is labelled with the display currency, but the
+number typed into it was compared against a UGX balance and written to the request as-is —
+a worker viewing USD who typed 50 was asking for fifty shillings. `createPayoutRequest` was
+also stamping `currency: activeCurrency()`, the F5 reflex, which would have labelled a
+shilling figure as dollars. A payout is drawn from the earnings ledger, so it is now
+denominated the way the ledger is, and the typed value is converted from the display
+currency first. Verified: USD 30 typed records as **UGX 112,500** with
+`exchangeRateAtCreation 3750`.
+
 **Two seed defects found while verifying.** (1) Payout requests seeded at fixed amounts
 produced "withdrawn UGX 600K, earned UGX 0" for a worker with no completed jobs — they are now
 sized from what that worker's ledger actually supports. (2) The F4 earnings seed credits a
