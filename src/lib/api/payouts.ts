@@ -28,7 +28,7 @@
  * as Nexora revenue. See the "does not touch owner settlements" note in B6.
  */
 import * as db from "@/lib/mock/db";
-import { activeCurrency, activeExchangeRate } from "@/lib/stores/preferences";
+import { activeExchangeRate } from "@/lib/stores/preferences";
 import { formatCurrencyRecordedFull } from "@/lib/format";
 import { recordMutation } from "@/lib/api/actions";
 import { pushNotify } from "@/lib/api/admin-mutations";
@@ -432,7 +432,12 @@ export async function createPayoutRequest(input: CreatePayoutRequestInput): Prom
 
   const fee = feeFor(amount, schedule);
   const row: PayoutRequest = {
-    currency: activeCurrency(),
+    /* ⚠️ Recorded in the LEDGER's currency, not the viewer's.
+       A payout is drawn from the earnings ledger, so it is denominated the same
+       way the ledger is. Stamping `activeCurrency()` here — the F5 reflex, right
+       for a record the user is authoring from scratch — would label a shilling
+       figure as dollars the moment a worker switched their display preference. */
+    currency: bal.currency,
     exchangeRateAtCreation: activeExchangeRate(),
     id: `pyr_${Date.now()}`,
     reference: `NX-PR-${Math.floor(2000 + Math.random() * 7999)}`,

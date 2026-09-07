@@ -34,7 +34,7 @@ import {
 import { toast } from "@/components/ui/sonner";
 import { useSession } from "@/lib/stores/session";
 import { useLive } from "@/lib/stores/live";
-import { formatCurrency, formatDate } from "@/lib/format";
+import { convertAmount, formatCurrency, formatDate } from "@/lib/format";
 import { staffForUser } from "@/lib/api/worker";
 import { earningsFor } from "@/lib/api/worker-jobs";
 import {
@@ -45,6 +45,7 @@ import {
 } from "@/lib/api/payouts";
 import type { PayoutRequestStatus } from "@/lib/mock/types";
 import { CurrencyCode } from "@/components/app/currency-code";
+import { useMoney } from "@/components/app/money";
 
 const STATUS_TONE: Record<PayoutRequestStatus, string> = {
   pending: "border-primary/30 bg-primary/10 text-primary",
@@ -78,6 +79,7 @@ export default function WorkerEarningsPage() {
   const [accountId, setAccountId] = React.useState("");
   const [busy, setBusy] = React.useState(false);
   const [cancelling, setCancelling] = React.useState<string | null>(null);
+  const { displayCurrency, rate } = useMoney();
 
   const member = React.useMemo(
     () => staffForUser(user?.id, user?.staffId),
@@ -119,7 +121,13 @@ export default function WorkerEarningsPage() {
   const days = daysToNextPayout(schedule);
   const next = nextPayoutDate(schedule);
 
-  const requested = mode === "full" ? balance.available : Number(amount);
+  /* G1/A5 — the field is labelled in the DISPLAY currency, so the number typed
+     into it is in that currency and has to come back to the record's currency
+     before it is compared with a balance or written to a request. Without this
+     a worker viewing USD typed "50" and asked for fifty shillings: the same
+     label-versus-record mismatch F5 found in 28 input labels, inverted. */
+  const typed = convertAmount(Number(amount), displayCurrency, balance.currency, rate);
+  const requested = mode === "full" ? balance.available : typed;
   const preview = previewFee(Number.isFinite(requested) && requested > 0 ? requested : 0, member?.id);
   const amountValid =
     Number.isFinite(requested) &&
@@ -128,9 +136,13 @@ export default function WorkerEarningsPage() {
     requested >= schedule.minimumPayout;
   const canSubmit = amountValid && !!accountId;
 
+  /* Prefilled in the DISPLAY currency, because that is the currency the field
+     is labelled in — see the note on `typed` above. */
+  const inDisplay = (n: number) => String(convertAmount(n, balance.currency, displayCurrency, rate));
+
   const openDialog = () => {
     setMode("full");
-    setAmount(String(balance.available));
+    setAmount(inDisplay(balance.available));
     setAccountId(primaryAccountFor(member?.id)?.id ?? accounts[0]?.id ?? "");
     setOpen(true);
   };
@@ -315,7 +327,7 @@ export default function WorkerEarningsPage() {
             <Button
               variant={mode === "full" ? "primary" : "outline"}
               className="min-h-[48px] justify-start gap-2"
-              onClick={() => { setMode("full"); setAmount(String(balance.available)); }}
+              onClick={() => { setMode("full"); setAmount(inDisplay(balance.available)); }}
             >
               <ArrowUp size={18} /> Full balance
             </Button>
@@ -336,7 +348,9 @@ export default function WorkerEarningsPage() {
               error={amountValid ? undefined : `Enter between ${m(schedule.minimumPayout)} and ${m(balance.available)}`}
             >
               <Input
-                id="po-amt" type="number" min={schedule.minimumPayout} max={balance.available}
+                id="po-amt" type="number" step="any"
+                min={convertAmount(schedule.minimumPayout, balance.currency, displayCurrency, rate)}
+                max={convertAmount(balance.available, balance.currency, displayCurrency, rate)}
                 value={amount} onChange={(e) => setAmount(e.target.value)}
                 className="min-h-[48px]"
               />
