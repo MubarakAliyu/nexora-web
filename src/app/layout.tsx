@@ -78,7 +78,13 @@ export default function RootLayout({
           href="https://fonts.googleapis.com/css2?family=Montserrat:wght@400;500&display=swap"
         />
       </head>
-      <body className="antialiased">
+      {/* Browser extensions (ColorZilla's `cz-shortcut-listen`, Grammarly's
+          `data-gr-*`, password managers) write attributes onto <body> before
+          React hydrates, which React then reports as a hydration mismatch. It is
+          not our markup and there is nothing to fix in it. This suppresses the
+          warning for THIS element's own attributes only — it does not cascade to
+          children, so a real mismatch inside the app still surfaces. */}
+      <body className="antialiased" suppressHydrationWarning>
         <MockDataHydrator />
         <MotionProvider>{children}</MotionProvider>
       </body>
